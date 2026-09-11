@@ -70,12 +70,11 @@ Configura en Vercel las mismas variables definidas en `apps/web/.env.local.examp
 
 ### Vercel
 
-En Vercel importa el repositorio y establece `apps/web` como **Root Directory**. El archivo `apps/web/vercel.json` ya define el framework y los comandos de instalacion/build.
+En Vercel importa el repositorio usando la raiz del repositorio como **Root Directory**. El archivo `vercel.json` de la raiz instala el workspace y compila `apps/web`, incluyendo `packages/shared-types`.
 
 Tambien puedes enlazar y desplegar con CLI:
 
 ```bash
-cd apps/web
 npx vercel login
 npx vercel link
 npx vercel --prod
