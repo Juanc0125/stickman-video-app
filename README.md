@@ -66,7 +66,7 @@ npx supabase link --project-ref <SUPABASE_PROJECT_REF>
 npx supabase db push
 ```
 
-Configura en Vercel las mismas variables definidas en `apps/web/.env.local.example`. La service role key debe mantenerse solo en servidor y nunca exponerse como `NEXT_PUBLIC_*`.
+Configura en Vercel las mismas variables definidas en `apps/web/.env.local.example`. Usa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` para el cliente. `SUPABASE_SECRET_KEY` y cualquier service role key deben mantenerse solo en servidor y nunca exponerse como `NEXT_PUBLIC_*`.
 
 ### Vercel
 
