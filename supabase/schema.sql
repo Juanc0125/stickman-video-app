@@ -6,6 +6,7 @@ create table public.videos (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   topic text not null check (char_length(topic) between 1 and 500),
+  source_url text,
   script text not null default '',
   video_url text,
   status public.video_status not null default 'borrador',

@@ -1,21 +1,27 @@
 import { NextResponse } from 'next/server';
-import { canTransition, transitions, videos } from '../store';
+import { renderVideo, updateVideoStatus } from '../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
-    const video = videos.get(id);
     const body = await request.json().catch(() => null) as { action?: unknown } | null;
     const action = typeof body?.action === 'string' ? body.action : '';
-    const nextStatus = transitions[action];
 
-    if (!video) return NextResponse.json({ error: 'Video no encontrado.' }, { status: 404 });
-    if (!nextStatus || !canTransition(video.status, nextStatus)) {
-        return NextResponse.json({ error: `Transicion no permitida desde ${video.status}.` }, { status: 409 });
+    if (!action) {
+        return NextResponse.json({ error: 'La accion es obligatoria.' }, { status: 400 });
     }
 
-    const updated = { ...video, status: nextStatus };
-    videos.set(id, updated);
-    return NextResponse.json({ video: updated });
+    try {
+        if (action === 'render') {
+            const video = await renderVideo(id);
+            return NextResponse.json({ video });
+        }
+        const updated = await updateVideoStatus(id, action);
+        return NextResponse.json({ video: updated });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        const status = message === 'Video no encontrado.' ? 404 : 409;
+        return NextResponse.json({ error: message }, { status });
+    }
 }

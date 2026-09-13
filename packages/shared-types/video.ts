@@ -8,6 +8,7 @@ export interface Video {
     id: string;
     user_id: string;
     topic: string;
+    source_url: string | null;
     script: string;
     video_url: string | null;
     status: VideoStatus;

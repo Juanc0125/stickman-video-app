@@ -4,6 +4,7 @@ out/
 dist/
 build/
 coverage/
+apps/render-worker/renders/
 
 .env
 .env.*
