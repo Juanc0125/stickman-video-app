@@ -2,9 +2,18 @@
   "name": "stickman-video-app",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/web"],
+  "workspaces": [
+    "apps/web",
+    "apps/render-worker"
+  ],
   "scripts": {
-    "build": "npm run build --workspace web",
+    "dev:web": "npm run dev --workspace web",
+    "dev:worker": "npm run dev --workspace @stickman-video-app/render-worker",
+    "build": "npm run build --workspace web && npm run build --workspace @stickman-video-app/render-worker",
+    "build:web": "npm run build --workspace web",
+    "build:worker": "npm run build --workspace @stickman-video-app/render-worker",
+    "start:web": "npm run start --workspace web",
+    "start:worker": "npm run start --workspace @stickman-video-app/render-worker",
     "lint": "npm run lint --workspace web"
   },
   "dependencies": {

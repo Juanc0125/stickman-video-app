@@ -16,7 +16,7 @@ function providerKey(provider: AiProvider) {
 async function requestOpenAi(system: string, messages: { role: 'user' | 'assistant'; content: string }[], maxTokens: number): Promise<string> {
     const response = await fetch(process.env.LLM_API_URL ?? 'https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${providerKey('openai')}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${providerKey('openai') ?? ''}` },
         body: JSON.stringify({ model: process.env.LLM_MODEL ?? 'gpt-4o-mini', temperature: 0.6, max_tokens: maxTokens, messages: [{ role: 'system', content: system }, ...messages] }),
         signal: AbortSignal.timeout(30000),
     });

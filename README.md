@@ -37,7 +37,10 @@ cd apps/render-worker
 npm run dev
 ```
 
-El worker actualmente imprime `worker listo`. La integracion con FFmpeg se anadira en una etapa posterior.
+El worker expone `GET /health`, `POST /render` y `GET /renders/<filename>`. Usa FFmpeg
+para generar los MP4 y escucha en el puerto definido por `PORT` (8080 por defecto).
+En produccion debe desplegarse como un servicio separado del frontend y con un
+almacenamiento persistente para `apps/render-worker/renders`.
 
 ## Estado de aprobacion
 
@@ -71,6 +74,8 @@ Configura en Vercel las mismas variables definidas en `apps/web/.env.local.examp
 ### Vercel
 
 En Vercel importa el repositorio usando la raiz del repositorio como **Root Directory**. El archivo `vercel.json` de la raiz instala el workspace y compila `apps/web`, incluyendo `packages/shared-types`.
+Configura `RENDER_WORKER_URL` con la URL HTTPS publica del servicio del worker;
+en produccion no se permite usar el valor local `http://localhost:8080`.
 
 Tambien puedes enlazar y desplegar con CLI:
 
@@ -81,3 +86,16 @@ npx vercel --prod
 ```
 
 El flujo actual usa almacenamiento demo en memoria para validar el producto sin claves. La persistencia real se activa al conectar las rutas a Supabase y configurar las variables de entorno.
+
+### Validacion de despliegue
+
+Antes de aprobar produccion:
+
+1. Comprueba `GET <RENDER_WORKER_URL>/health` y verifica `{ "ok": true }`.
+2. Ejecuta `npm run build` desde la raiz.
+3. En Vercel, confirma que `RENDER_WORKER_URL` apunta al worker desplegado, no a `localhost`.
+4. Crea un video, apruebalo y ejecuta el render; confirma que el MP4 servido por `/renders/` se reproduce.
+
+El worker aun guarda los MP4 en el filesystem local. Para produccion multi-instancia,
+migra esos archivos a Supabase Storage, S3, R2 u otro object storage persistente antes
+de depender de los videos tras un redeploy.

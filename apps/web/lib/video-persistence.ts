@@ -250,7 +250,11 @@ export async function renderVideo(id: string) {
     if (!video) throw new Error('Video no encontrado.');
     if (video.status !== 'aprobado') throw new Error('Solo se pueden generar videos aprobados.');
 
-    const workerUrl = process.env.RENDER_WORKER_URL ?? 'http://localhost:8080';
+    const configuredWorkerUrl = process.env.RENDER_WORKER_URL?.trim();
+    if (!configuredWorkerUrl && process.env.NODE_ENV === 'production') {
+        throw new Error('RENDER_WORKER_URL es obligatoria en produccion.');
+    }
+    const workerUrl = (configuredWorkerUrl || 'http://localhost:8080').replace(/\/+$/, '');
     const response = await fetch(`${workerUrl}/render`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
