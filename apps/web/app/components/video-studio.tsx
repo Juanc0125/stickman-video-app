@@ -1,21 +1,22 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-
-type Property = {
-    id: string;
-    title: string;
-    location: string;
-    price: number;
-    type: string;
-    beds: number;
-    baths: number;
-    area: number;
-    image: string;
-    tag: string;
-};
+import type { Property } from '@shared-types/property';
 
 type ChatMessage = { role: 'assistant' | 'user'; text: string };
+type AssistantLanguage = 'es' | 'en' | 'zh' | 'ar' | 'fr';
+
+const LANGUAGE_OPTIONS: { value: AssistantLanguage; label: string; locale: string }[] = [
+    { value: 'es', label: 'Español', locale: 'es-CO' },
+    { value: 'en', label: 'English', locale: 'en-US' },
+    { value: 'zh', label: '中文', locale: 'zh-CN' },
+    { value: 'ar', label: 'العربية', locale: 'ar-SA' },
+    { value: 'fr', label: 'Français', locale: 'fr-FR' },
+];
+
+function localeFor(language: AssistantLanguage) {
+    return LANGUAGE_OPTIONS.find((option) => option.value === language)?.locale ?? 'es-CO';
+}
 type VideoRecord = { id: string; topic: string; status: string };
 type SpeechRecognitionInstance = { lang: string; interimResults: boolean; continuous: boolean; onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
@@ -27,19 +28,13 @@ declare global {
     }
 }
 
-const properties: Property[] = [
-    { id: 'urq-01', title: 'Casa Patio del Prado', location: 'Chapinero Alto, Bogotá', price: 1680000000, type: 'Casa', beds: 4, baths: 3, area: 245, image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1000&q=85', tag: 'Selección Urquijo' },
-    { id: 'urq-02', title: 'Apartamento Brisa Norte', location: 'El Poblado, Medellín', price: 895000000, type: 'Apartamento', beds: 3, baths: 2, area: 128, image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1000&q=85', tag: 'Nuevo' },
-    { id: 'urq-03', title: 'Loft 72 / 14', location: 'Zona G, Bogotá', price: 620000000, type: 'Loft', beds: 2, baths: 2, area: 86, image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1000&q=85', tag: 'Listo para habitar' },
-    { id: 'urq-04', title: 'Villa Agua Clara', location: 'Rionegro, Antioquia', price: 1240000000, type: 'Casa', beds: 5, baths: 4, area: 310, image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=85', tag: 'Exclusiva' },
-];
-
 const money = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
 
 export default function VideoStudio() {
     const [activeView, setActiveView] = useState<'explore' | 'owner'>('explore');
     const [query, setQuery] = useState('');
     const [type, setType] = useState('Todos');
+    const [properties, setProperties] = useState<Property[]>([]);
     const [cart, setCart] = useState<Property[]>([]);
     const [cartOpen, setCartOpen] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
@@ -48,6 +43,7 @@ export default function VideoStudio() {
     const [chatBusy, setChatBusy] = useState(false);
     const [listening, setListening] = useState(false);
     const [voiceEnabled, setVoiceEnabled] = useState(true);
+    const [language, setLanguage] = useState<AssistantLanguage>('es');
     const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', text: 'Hola, soy Stickman. Puedo encontrar propiedades según tu presupuesto, comparar opciones y coordinar una visita con un asesor humano.' }]);
     const [videos, setVideos] = useState<VideoRecord[]>([]);
     const [studioTopic, setStudioTopic] = useState('');
@@ -55,6 +51,7 @@ export default function VideoStudio() {
 
     useEffect(() => {
         fetch('/api/videos').then((response) => response.json()).then((data: { videos?: VideoRecord[] }) => setVideos(data.videos ?? [])).catch(() => setVideos([]));
+        fetch('/api/properties').then((response) => response.json()).then((data: { properties?: Property[] }) => setProperties(data.properties ?? [])).catch(() => setProperties([]));
     }, []);
 
     const filteredProperties = properties.filter((property) => {
@@ -78,7 +75,7 @@ export default function VideoStudio() {
             return;
         }
         const recognition = new Recognition();
-        recognition.lang = 'es-CO';
+        recognition.lang = localeFor(language);
         recognition.interimResults = false;
         recognition.continuous = false;
         recognition.onresult = (event) => {
@@ -99,14 +96,14 @@ export default function VideoStudio() {
         setMessages((current) => [...current, { role: 'user', text: clean }]);
         setChatBusy(true);
         try {
-            const response = await fetch('/api/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: clean, language: 'es', messages: messages.map((message) => ({ role: message.role, content: message.text })) }) });
+            const response = await fetch('/api/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: clean, language, messages: messages.map((message) => ({ role: message.role, content: message.text })) }) });
             const data = await response.json() as { reply?: string };
             const reply = data.reply ?? 'Puedo ayudarte a comparar propiedades o agendar una llamada.';
             setMessages((current) => [...current, { role: 'assistant', text: reply }]);
             if (voiceEnabled && 'speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(reply);
-                utterance.lang = 'es-CO';
+                utterance.lang = localeFor(language);
                 utterance.rate = .96;
                 window.speechSynthesis.speak(utterance);
             }
@@ -153,13 +150,230 @@ export default function VideoStudio() {
             <footer id="contacto" className="site-footer"><div className="footer-brand"><a className="brand" href="#inicio"><span className="stickman-logo" aria-hidden="true"><span className="logo-head" /><span className="logo-body" /><span className="logo-arm logo-arm-left" /><span className="logo-arm logo-arm-right" /><span className="logo-leg logo-leg-left" /><span className="logo-leg logo-leg-right" /></span><span><strong>STICKMAN URQUIJO</strong><small>BROKERS DE INMUEBLES</small></span></a><p>Tu próxima dirección empieza con una conversación.</p></div><div className="footer-column"><b>Hablemos</b><a href="tel:+576015802040">+57 601 580 2040</a><a href="mailto:hola@urquijobrokers.com">hola@urquijobrokers.com</a><span>Lun–Sáb · 8:00–18:00</span></div><div className="footer-column"><b>Encuéntranos</b><a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram ↗</a><a href="https://facebook.com" target="_blank" rel="noreferrer">Facebook ↗</a><a href="https://x.com" target="_blank" rel="noreferrer">X / Twitter ↗</a></div><div className="footer-column"><b>Atención</b><span>Call center humano + AI</span><span>Seguridad y privacidad</span><span>© 2026 Urquijo</span></div></footer>
             <button className="stickman-companion" onClick={() => setChatOpen(true)} type="button" aria-label="Abrir conversación con Stickman"><span className="companion-figure"><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
 
-            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card"><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
+            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card"><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button><select className="language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del asistente">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
             {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><section className="side-panel" role="dialog" aria-modal="true" aria-label="Mi bolsa" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="eyebrow">Tu proceso de compra</span><h2>Mi bolsa <small>{cart.length} guardadas</small></h2></div><button onClick={() => setCartOpen(false)} type="button" aria-label="Cerrar bolsa">×</button></div>{cart.length === 0 ? <div className="empty-bag"><span>⌂</span><p>Aún no has guardado propiedades.</p><button className="button button-primary" onClick={() => setCartOpen(false)} type="button">Seguir explorando</button></div> : <><div className="bag-list">{cart.map((property) => <div className="bag-item" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span><strong>{money(property.price)}</strong></div><button onClick={() => setCart((current) => current.filter((item) => item.id !== property.id))} type="button">×</button></div>)}</div><div className="bag-next"><p>Próximo paso</p><b>Solicitar recorrido privado</b><button className="button button-primary" onClick={() => setChatOpen(true)} type="button">Hablar con un asesor →</button></div></>}</section></div>}
             {loginOpen && <div className="overlay" role="presentation" onClick={() => setLoginOpen(false)}><section className="login-modal" role="dialog" aria-modal="true" aria-label="Iniciar sesión" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setLoginOpen(false)} type="button">×</button><span className="login-mark">S</span><p className="eyebrow">Tu espacio Urquijo</p><h2>Todo tu proceso,<br /><em>en un solo lugar.</em></h2><p>Guarda propiedades, revisa solicitudes, documentos, pagos y el seguimiento de tus visitas.</p><input placeholder="Correo electrónico" type="email" /><input placeholder="Contraseña" type="password" /><button className="button button-primary" onClick={() => setLoginOpen(false)} type="button">Entrar a mi cuenta →</button><small>¿Eres propietario? <button onClick={() => { setLoginOpen(false); setActiveView('owner'); }} type="button">Gestiona tu inventario</button></small></section></div>}
         </main>
     );
 }
 
+type PropertyFormValues = {
+    title: string;
+    location: string;
+    price: number;
+    type: string;
+    beds: number;
+    baths: number;
+    area: number;
+    image: string;
+    tag: string;
+    stock: number;
+    status: string;
+};
+
 function OwnerDashboard({ onBack }: { onBack: () => void }) {
-    return <section className="owner-dashboard"><div className="owner-welcome"><button className="back-link" onClick={onBack} type="button">← Volver al catálogo</button><p className="eyebrow">Portal de propietarios</p><h1>Buenos días, <em>Camila.</em></h1><p>Todo lo que pasa con tu propiedad, en una vista clara.</p><button className="button button-primary" type="button">Publicar nueva propiedad +</button></div><div className="owner-stats"><div><span>Propiedades activas</span><b>04</b><small>+1 este mes</small></div><div><span>Solicitudes nuevas</span><b>12</b><small className="warm">3 requieren respuesta</small></div><div><span>Visitas agendadas</span><b>08</b><small>Próxima hoy · 16:30</small></div><div><span>Interesados</span><b>47</b><small>+18% vs. mes anterior</small></div></div><div className="owner-content"><section className="owner-table"><div className="owner-heading"><div><p className="eyebrow">Inventario</p><h2>Tus propiedades</h2></div><button type="button">Ver reportes ↗</button></div>{properties.slice(0, 3).map((property) => <div className="owner-property" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span></div><span className="owner-status">ACTIVA</span><strong>{money(property.price)}</strong><button type="button">•••</button></div>)}</section><aside className="owner-activity"><p className="eyebrow">Seguimiento en vivo</p><h2>Lo que necesita tu atención.</h2><div><span className="activity-dot coral" /><p><b>Nueva solicitud</b><br />Andrés quiere visitar Casa Patio del Prado <small>Hace 18 min</small></p></div><div><span className="activity-dot mint" /><p><b>Pago confirmado</b><br />Reserva procesada correctamente <small>Hoy · 09:42</small></p></div><div><span className="activity-dot yellow" /><p><b>Reclamo abierto</b><br />Ticket #URQ-204 requiere respuesta <small>Ayer · 17:20</small></p></div><button className="text-link" type="button">Ver centro de operaciones →</button></aside></div></section>;
+    const [status, setStatus] = useState<'checking' | 'locked' | 'unlocked'>('checking');
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+    const [loginBusy, setLoginBusy] = useState(false);
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [formOpen, setFormOpen] = useState(false);
+    const [editing, setEditing] = useState<Property | null>(null);
+    const [formError, setFormError] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    async function loadProperties() {
+        const response = await fetch('/api/admin/properties');
+        if (response.status === 401) { setStatus('locked'); return; }
+        const data = await response.json() as { properties?: Property[] };
+        setProperties(data.properties ?? []);
+        setStatus('unlocked');
+    }
+
+    useEffect(() => {
+        fetch('/api/admin/properties')
+            .then((response) => response.status === 401 ? null : response.json())
+            .then((data: { properties?: Property[] } | null) => {
+                if (!data) { setStatus('locked'); return; }
+                setProperties(data.properties ?? []);
+                setStatus('unlocked');
+            })
+            .catch(() => setStatus('locked'));
+    }, []);
+
+    async function handleLogin(event: FormEvent) {
+        event.preventDefault();
+        setLoginError('');
+        setLoginBusy(true);
+        try {
+            const response = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({})) as { error?: string };
+                setLoginError(data.error ?? 'No se pudo iniciar sesión.');
+                return;
+            }
+            setPassword('');
+            await loadProperties();
+        } finally {
+            setLoginBusy(false);
+        }
+    }
+
+    async function handleLogout() {
+        await fetch('/api/admin/logout', { method: 'POST' });
+        setStatus('locked');
+        setProperties([]);
+    }
+
+    function openCreateForm() {
+        setEditing(null);
+        setFormError('');
+        setFormOpen(true);
+    }
+
+    function openEditForm(property: Property) {
+        setEditing(property);
+        setFormError('');
+        setFormOpen(true);
+    }
+
+    async function handleDelete(property: Property) {
+        if (!window.confirm(`¿Eliminar "${property.title}"? Esta acción no se puede deshacer.`)) return;
+        const response = await fetch(`/api/admin/properties/${property.id}`, { method: 'DELETE' });
+        if (response.ok) setProperties((current) => current.filter((item) => item.id !== property.id));
+    }
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setSaving(true);
+        setFormError('');
+        const form = new FormData(event.currentTarget);
+        const payload: PropertyFormValues = {
+            title: String(form.get('title') ?? ''),
+            location: String(form.get('location') ?? ''),
+            price: Number(form.get('price') ?? 0),
+            type: String(form.get('type') ?? 'Casa'),
+            beds: Number(form.get('beds') ?? 0),
+            baths: Number(form.get('baths') ?? 0),
+            area: Number(form.get('area') ?? 0),
+            image: String(form.get('image') ?? ''),
+            tag: String(form.get('tag') ?? ''),
+            stock: Number(form.get('stock') ?? 1),
+            status: String(form.get('status') ?? 'activa'),
+        };
+
+        try {
+            const response = editing
+                ? await fetch(`/api/admin/properties/${editing.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                : await fetch('/api/admin/properties', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+            const data = await response.json() as { property?: Property; error?: string };
+            if (!response.ok || !data.property) { setFormError(data.error ?? 'No se pudo guardar.'); return; }
+
+            const saved = data.property;
+            setProperties((current) => editing
+                ? current.map((item) => item.id === saved.id ? saved : item)
+                : [saved, ...current]);
+            setFormOpen(false);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (status === 'checking') {
+        return <section className="owner-dashboard"><p className="eyebrow">Cargando…</p></section>;
+    }
+
+    if (status === 'locked') {
+        return <section className="owner-dashboard">
+            <div className="owner-welcome">
+                <button className="back-link" onClick={onBack} type="button">← Volver al catálogo</button>
+                <p className="eyebrow">Portal de administrador</p>
+                <h1>Acceso <em>restringido.</em></h1>
+                <p>Ingresa la contraseña de administrador para gestionar el inventario de propiedades.</p>
+            </div>
+            <form className="admin-login-form" onSubmit={handleLogin}>
+                <input type="password" placeholder="Contraseña de administrador" value={password} onChange={(event) => setPassword(event.target.value)} autoFocus />
+                <button className="button button-primary" type="submit" disabled={loginBusy}>{loginBusy ? 'Entrando…' : 'Entrar →'}</button>
+                {loginError && <small className="form-feedback">{loginError}</small>}
+            </form>
+        </section>;
+    }
+
+    const activeCount = properties.filter((property) => property.status === 'activa').length;
+    const totalStock = properties.reduce((sum, property) => sum + property.stock, 0);
+
+    return <section className="owner-dashboard">
+        <div className="owner-welcome">
+            <button className="back-link" onClick={onBack} type="button">← Volver al catálogo</button>
+            <p className="eyebrow">Portal de administrador</p>
+            <h1>Panel de <em>control.</em></h1>
+            <p>Gestiona el inventario de propiedades en tiempo real.</p>
+            <div className="owner-actions">
+                <button className="button button-primary" onClick={openCreateForm} type="button">Publicar nueva propiedad +</button>
+                <button className="button button-quiet" onClick={handleLogout} type="button">Cerrar sesión</button>
+            </div>
+        </div>
+        <div className="owner-stats">
+            <div><span>Propiedades activas</span><b>{String(activeCount).padStart(2, '0')}</b><small>de {properties.length} totales</small></div>
+            <div><span>Stock total</span><b>{totalStock}</b><small>unidades disponibles</small></div>
+            <div><span>Solicitudes</span><b>—</b><small>Próximamente</small></div>
+            <div><span>Reclamos</span><b>—</b><small>Próximamente</small></div>
+        </div>
+        <div className="admin-nav-pills">
+            <span className="pill-active">Propiedades</span>
+            <span className="pill-soon">Solicitudes</span>
+            <span className="pill-soon">Reclamos</span>
+            <span className="pill-soon">Cálculos</span>
+            <span className="pill-soon">Ingresos</span>
+            <span className="pill-soon">Innovación</span>
+        </div>
+        <section className="owner-table owner-table-full">
+            <div className="owner-heading"><div><p className="eyebrow">Inventario</p><h2>Tus propiedades ({properties.length})</h2></div></div>
+            {properties.length === 0 && <p className="empty-inventory">No hay propiedades todavía. Crea la primera con &quot;Publicar nueva propiedad&quot;.</p>}
+            {properties.map((property) => <div className="owner-property" key={property.id}>
+                <img src={property.image} alt="" />
+                <div><b>{property.title}</b><span>{property.location} · stock: {property.stock}</span></div>
+                <span className={`owner-status status-${property.status}`}>{property.status.toUpperCase()}</span>
+                <strong>{money(property.price)}</strong>
+                <div className="owner-property-actions">
+                    <button onClick={() => openEditForm(property)} type="button">Editar</button>
+                    <button className="btn-delete" onClick={() => handleDelete(property)} type="button">Eliminar</button>
+                </div>
+            </div>)}
+        </section>
+
+        {formOpen && <div className="overlay" role="presentation" onClick={() => setFormOpen(false)}>
+            <section className="login-modal admin-form" role="dialog" aria-modal="true" aria-label={editing ? 'Editar propiedad' : 'Nueva propiedad'} onClick={(event) => event.stopPropagation()}>
+                <button className="modal-close" onClick={() => setFormOpen(false)} type="button">×</button>
+                <p className="eyebrow">{editing ? 'Editar propiedad' : 'Nueva propiedad'}</p>
+                <h2>{editing ? editing.title : 'Publicar propiedad'}</h2>
+                <form className="admin-property-form" onSubmit={handleSubmit}>
+                    <input name="title" placeholder="Título" defaultValue={editing?.title} required />
+                    <input name="location" placeholder="Ubicación" defaultValue={editing?.location} required />
+                    <div className="form-row">
+                        <input name="price" type="number" min="0" placeholder="Precio (COP)" defaultValue={editing?.price} required />
+                        <select name="type" defaultValue={editing?.type ?? 'Casa'}>
+                            <option>Casa</option><option>Apartamento</option><option>Loft</option><option>Lote</option><option>Oficina</option><option>Local</option>
+                        </select>
+                    </div>
+                    <div className="form-row">
+                        <input name="beds" type="number" min="0" placeholder="Habitaciones" defaultValue={editing?.beds} required />
+                        <input name="baths" type="number" min="0" placeholder="Baños" defaultValue={editing?.baths} required />
+                        <input name="area" type="number" min="0" placeholder="Área m²" defaultValue={editing?.area} required />
+                    </div>
+                    <input name="image" placeholder="URL de imagen" defaultValue={editing?.image} required />
+                    <input name="tag" placeholder="Etiqueta (ej. Nuevo, Exclusiva)" defaultValue={editing?.tag} />
+                    <div className="form-row">
+                        <input name="stock" type="number" min="0" placeholder="Stock" defaultValue={editing?.stock ?? 1} required />
+                        <select name="status" defaultValue={editing?.status ?? 'activa'}>
+                            <option value="activa">Activa</option><option value="reservada">Reservada</option><option value="vendida">Vendida</option><option value="arrendada">Arrendada</option>
+                        </select>
+                    </div>
+                    <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+                    {formError && <small className="form-feedback">{formError}</small>}
+                </form>
+            </section>
+        </div>}
+    </section>;
 }

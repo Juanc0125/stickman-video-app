@@ -49,6 +49,31 @@ worker responde con la URL publica del bucket. Sin esas variables, el worker sig
 guardando los MP4 en `apps/render-worker/renders` y sirviendolos via `/renders/<filename>`,
 pero esos archivos no sobreviven un redeploy del contenedor.
 
+## Catalogo de propiedades y panel de administrador
+
+Las propiedades viven en la tabla `properties` de Supabase (migracion
+`supabase/migrations/20260917000000_properties.sql`), con RLS: el publico solo
+puede leer filas con `status = 'activa'` y `stock > 0`; toda escritura pasa por
+las rutas `/api/admin/*` usando el cliente con service role, que ignora RLS.
+Sin Supabase configurado, cae a un fallback en memoria sembrado con 4 propiedades
+de ejemplo (mismo patron que el resto del proyecto).
+
+El panel de administrador (boton "Soy propietario" en el header) esta protegido
+por una contrasena compartida en `ADMIN_PASSWORD` (server-side). Al entrar sin
+sesion valida, se pide la contrasena; al validarla se guarda una cookie firmada
+(HMAC, 12 horas) que autoriza las rutas `/api/admin/properties*`. Desde ahi se
+pueden crear, editar (incluye stock y estado: activa/reservada/vendida/arrendada)
+y eliminar propiedades. Las secciones de solicitudes, reclamos, calculos, ingresos
+e innovacion aparecen como pestanas "Proximamente": aun no tienen backend.
+
+## Asistente Stickman multi-idioma
+
+El chat de `/api/assistant` soporta español, ingles, mandarin, arabe y frances
+(selector de idioma dentro del drawer del chat). El dictado por voz (`SpeechRecognition`)
+y la lectura en voz alta (`speechSynthesis`) tambien cambian de locale segun el
+idioma elegido; ambos son APIs nativas del navegador (mejor soporte en Chrome/Edge),
+no dependen de ningun servicio de TTS externo.
+
 ## Estado de aprobacion
 
 Los videos comparten estos estados: `borrador`, `pendiente_aprobacion`, `aprobado` y `publicado`.
