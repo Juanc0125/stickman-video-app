@@ -7,7 +7,9 @@ const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 export function getSupabaseClient(options?: { serviceRole?: boolean }) {
     const url = supabaseUrl;
-    const key = options?.serviceRole ? process.env.SUPABASE_SERVICE_ROLE_KEY : supabasePublishableKey;
+    const key = options?.serviceRole
+        ? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
+        : supabasePublishableKey;
 
     if (!url || !key) return null;
 
