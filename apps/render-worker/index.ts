@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
+import { createClient } from '@supabase/supabase-js';
 
 type RenderScene = {
 	order: number;
@@ -19,6 +20,39 @@ type RenderJob = {
 
 const port = Number(process.env.PORT ?? 8080);
 const renderDirectory = join(process.cwd(), 'renders');
+const storageBucket = process.env.SUPABASE_RENDERS_BUCKET ?? 'renders';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const storageClient = supabaseUrl && supabaseServiceRoleKey
+	? createClient(supabaseUrl, supabaseServiceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
+	: null;
+
+if (!storageClient) {
+	console.warn('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
+}
+
+async function uploadToSupabase(filePath: string, filename: string): Promise<string | null> {
+	if (!storageClient) return null;
+
+	try {
+		const fileBuffer = await readFile(filePath);
+		const { error: uploadError } = await storageClient.storage.from(storageBucket).upload(filename, fileBuffer, {
+			contentType: 'video/mp4',
+			upsert: true,
+		});
+		if (uploadError) throw uploadError;
+
+		const { data } = storageClient.storage.from(storageBucket).getPublicUrl(filename);
+		if (!data?.publicUrl) throw new Error('No se obtuvo una URL publica del bucket.');
+
+		await unlink(filePath).catch(() => undefined);
+		return data.publicUrl;
+	} catch (error) {
+		console.warn('Fallo al subir el render a Supabase Storage, se conserva en disco local.', error);
+		return null;
+	}
+}
 
 function escapeFilterText(value: string) {
 	return value.replace(/[\\':]/g, '\\$&').replace(/\r?\n/g, ' ');
@@ -96,7 +130,9 @@ async function render(job: RenderJob) {
 			outputPath,
 		]);
 
-		return { job_id: jobId, filename: `${jobId}.mp4`, output_path: outputPath };
+		const filename = `${jobId}.mp4`;
+		const uploadedUrl = await uploadToSupabase(outputPath, filename);
+		return { job_id: jobId, filename, output_path: outputPath, url: uploadedUrl, persisted: uploadedUrl !== null };
 	} finally {
 		await rm(jobDirectory, { recursive: true, force: true });
 	}

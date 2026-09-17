@@ -45,9 +45,15 @@ async function ensureDemoUser(): Promise<string | null> {
 
     let user = users.users.find((entry) => entry.email === demoEmail);
     if (!user) {
+        const demoPassword = process.env.DEMO_USER_PASSWORD;
+        if (!demoPassword) {
+            console.warn('DEMO_USER_PASSWORD no esta configurada; no se puede crear el usuario demo.');
+            return null;
+        }
+
         const { data: created, error: createError } = await client.auth.admin.createUser({
             email: demoEmail,
-            password: 'DemoPass123!',
+            password: demoPassword,
             email_confirm: true,
             user_metadata: { name: 'Demo user' },
         });
@@ -260,12 +266,14 @@ export async function renderVideo(id: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, scenes: video.scenes }),
     });
-    const result = await response.json() as { filename?: unknown; error?: unknown };
+    const result = await response.json() as { filename?: unknown; url?: unknown; error?: unknown };
     if (!response.ok || typeof result.filename !== 'string') {
         throw new Error(typeof result.error === 'string' ? result.error : 'No se pudo generar el video.');
     }
 
-    const videoUrl = `${workerUrl}/renders/${encodeURIComponent(result.filename)}`;
+    const videoUrl = typeof result.url === 'string'
+        ? result.url
+        : `${workerUrl}/renders/${encodeURIComponent(result.filename)}`;
     const databaseClient = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
     if (databaseClient) {
         const { data: updated, error } = await databaseClient.from('videos').update({ video_url: videoUrl }).eq('id', id).select('*').single();

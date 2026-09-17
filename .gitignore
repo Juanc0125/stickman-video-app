@@ -15,6 +15,5 @@ apps/render-worker/renders/
 .DS_Store
 Thumbs.db
 .vercel
-.env*
 .supabase/
 supabase/.temp/

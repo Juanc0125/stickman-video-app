@@ -39,8 +39,15 @@ npm run dev
 
 El worker expone `GET /health`, `POST /render` y `GET /renders/<filename>`. Usa FFmpeg
 para generar los MP4 y escucha en el puerto definido por `PORT` (8080 por defecto).
-En produccion debe desplegarse como un servicio separado del frontend y con un
-almacenamiento persistente para `apps/render-worker/renders`.
+En produccion debe desplegarse como un servicio separado del frontend.
+
+Si configuras `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` (ver
+`apps/render-worker/.env.local.example`), cada MP4 generado se sube automaticamente
+al bucket de Supabase Storage indicado en `SUPABASE_RENDERS_BUCKET` (por defecto
+`renders`, debe existir y ser publico) y se borra del disco local tras subirlo; el
+worker responde con la URL publica del bucket. Sin esas variables, el worker sigue
+guardando los MP4 en `apps/render-worker/renders` y sirviendolos via `/renders/<filename>`,
+pero esos archivos no sobreviven un redeploy del contenedor.
 
 ## Estado de aprobacion
 
@@ -71,6 +78,11 @@ npx supabase db push
 
 Configura en Vercel las mismas variables definidas en `apps/web/.env.local.example`. Usa `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` para el cliente. `SUPABASE_SECRET_KEY` y cualquier service role key deben mantenerse solo en servidor y nunca exponerse como `NEXT_PUBLIC_*`.
 
+El usuario demo de Supabase se crea con la contrasena definida en `DEMO_USER_PASSWORD`
+(server-side, nunca `NEXT_PUBLIC_*`). Genera un valor aleatorio distinto por entorno;
+si la variable falta, el flujo de creacion de usuario demo se omite en vez de usar una
+contrasena fija.
+
 ### Vercel
 
 En Vercel importa el repositorio usando la raiz del repositorio como **Root Directory**. El archivo `vercel.json` de la raiz instala el workspace y compila `apps/web`, incluyendo `packages/shared-types`.
@@ -96,6 +108,6 @@ Antes de aprobar produccion:
 3. En Vercel, confirma que `RENDER_WORKER_URL` apunta al worker desplegado, no a `localhost`.
 4. Crea un video, apruebalo y ejecuta el render; confirma que el MP4 servido por `/renders/` se reproduce.
 
-El worker aun guarda los MP4 en el filesystem local. Para produccion multi-instancia,
-migra esos archivos a Supabase Storage, S3, R2 u otro object storage persistente antes
-de depender de los videos tras un redeploy.
+Para produccion multi-instancia, configura `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
+en el servicio del worker (ver seccion "Render worker") para que los MP4 se persistan
+en Supabase Storage en vez del filesystem local del contenedor.
