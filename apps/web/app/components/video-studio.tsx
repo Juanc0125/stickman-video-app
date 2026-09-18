@@ -2,21 +2,10 @@
 
 import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import type { Property } from '@shared-types/property';
+import { createTranslator, dirFor, LANGUAGE_OPTIONS, localeFor, type SiteLanguage } from '../../lib/translations';
 
 type ChatMessage = { role: 'assistant' | 'user'; text: string };
-type AssistantLanguage = 'es' | 'en' | 'zh' | 'ar' | 'fr';
-
-const LANGUAGE_OPTIONS: { value: AssistantLanguage; label: string; locale: string }[] = [
-    { value: 'es', label: 'Español', locale: 'es-CO' },
-    { value: 'en', label: 'English', locale: 'en-US' },
-    { value: 'zh', label: '中文', locale: 'zh-CN' },
-    { value: 'ar', label: 'العربية', locale: 'ar-SA' },
-    { value: 'fr', label: 'Français', locale: 'fr-FR' },
-];
-
-function localeFor(language: AssistantLanguage) {
-    return LANGUAGE_OPTIONS.find((option) => option.value === language)?.locale ?? 'es-CO';
-}
+type AssistantLanguage = SiteLanguage;
 type VideoRecord = { id: string; topic: string; status: string };
 type SpeechRecognitionInstance = { lang: string; interimResults: boolean; continuous: boolean; onresult: ((event: { results: { [index: number]: { [index: number]: { transcript: string } } } }) => void) | null; onend: (() => void) | null; start: () => void; stop: () => void };
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
@@ -44,7 +33,8 @@ export default function VideoStudio() {
     const [listening, setListening] = useState(false);
     const [voiceEnabled, setVoiceEnabled] = useState(true);
     const [language, setLanguage] = useState<AssistantLanguage>('es');
-    const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', text: 'Hola, soy Stickman. Puedo encontrar propiedades según tu presupuesto, comparar opciones y coordinar una visita con un asesor humano.' }]);
+    const t = createTranslator(language);
+    const [messages, setMessages] = useState<ChatMessage[]>([{ role: 'assistant', text: t('chat.welcomeMessage') }]);
     const [videos, setVideos] = useState<VideoRecord[]>([]);
     const [studioTopic, setStudioTopic] = useState('');
     const [studioMessage, setStudioMessage] = useState('');
@@ -53,6 +43,14 @@ export default function VideoStudio() {
     const [companionTilt, setCompanionTilt] = useState({ x: 0, y: 0 });
     const [companionHovering, setCompanionHovering] = useState(false);
     const [salesmanTilt, setSalesmanTilt] = useState({ x: 0, y: 0 });
+    const [calculatorOpen, setCalculatorOpen] = useState(false);
+    const [calcAmount, setCalcAmount] = useState(300000000);
+    const [calcRate, setCalcRate] = useState(12);
+    const [calcYears, setCalcYears] = useState(20);
+    const [companionIntro, setCompanionIntro] = useState(true);
+    const [musicPlaying, setMusicPlaying] = useState(false);
+    const [musicError, setMusicError] = useState(false);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
     const companionDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null);
     const companionJustDraggedRef = useRef(false);
 
@@ -60,6 +58,22 @@ export default function VideoStudio() {
         fetch('/api/videos').then((response) => response.json()).then((data: { videos?: VideoRecord[] }) => setVideos(data.videos ?? [])).catch(() => setVideos([]));
         fetch('/api/properties').then((response) => response.json()).then((data: { properties?: Property[] }) => setProperties(data.properties ?? [])).catch(() => setProperties([]));
     }, []);
+
+    useEffect(() => {
+        try {
+            const saved = window.localStorage.getItem('stickman-site-language');
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage no existe en el servidor; restaurar el idioma guardado solo puede pasar tras montar en el cliente.
+            if (saved && LANGUAGE_OPTIONS.some((option) => option.value === saved)) setLanguage(saved as AssistantLanguage);
+        } catch {
+            // ignorar si localStorage no esta disponible
+        }
+    }, []);
+
+    useEffect(() => {
+        document.documentElement.lang = language;
+        document.documentElement.dir = dirFor(language);
+        try { window.localStorage.setItem('stickman-site-language', language); } catch { /* ignore */ }
+    }, [language]);
 
     useEffect(() => {
         function clamp(pos: { x: number; y: number }) {
@@ -82,6 +96,11 @@ export default function VideoStudio() {
         }
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        const timeout = setTimeout(() => setCompanionIntro(false), 1600);
+        return () => clearTimeout(timeout);
     }, []);
 
     function handleCompanionPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -151,11 +170,32 @@ export default function VideoStudio() {
         setSalesmanTilt({ x: 0, y: 0 });
     }
 
+    function toggleMusic() {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (musicPlaying) {
+            audio.pause();
+            setMusicPlaying(false);
+            return;
+        }
+        setMusicError(false);
+        audio.volume = 0.35;
+        audio.play().then(() => setMusicPlaying(true)).catch(() => setMusicError(true));
+    }
+
     const filteredProperties = properties.filter((property) => {
         const matchesType = type === 'Todos' || property.type === type;
         const text = `${property.title} ${property.location}`.toLowerCase();
         return matchesType && text.includes(query.toLowerCase());
     });
+
+    const calcMonthlyRate = calcRate / 100 / 12;
+    const calcMonths = Math.max(1, calcYears) * 12;
+    const calcPayment = calcMonthlyRate > 0
+        ? (calcAmount * calcMonthlyRate * Math.pow(1 + calcMonthlyRate, calcMonths)) / (Math.pow(1 + calcMonthlyRate, calcMonths) - 1)
+        : calcAmount / calcMonths;
+    const calcTotal = calcPayment * calcMonths;
+    const calcInterest = calcTotal - calcAmount;
 
     function addToCart(property: Property) {
         setCart((current) => current.some((item) => item.id === property.id) ? current : [...current, property]);
@@ -168,7 +208,7 @@ export default function VideoStudio() {
         }
         const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
         if (!Recognition) {
-            setMessages((current) => [...current, { role: 'assistant', text: 'Tu navegador no habilita dictado por voz. Puedes escribirme o llamar al +57 601 580 2040.' }]);
+            setMessages((current) => [...current, { role: 'assistant', text: t('chat.noSpeechSupport') }]);
             return;
         }
         const recognition = new Recognition();
@@ -195,7 +235,7 @@ export default function VideoStudio() {
         try {
             const response = await fetch('/api/assistant', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: clean, language, messages: messages.map((message) => ({ role: message.role, content: message.text })) }) });
             const data = await response.json() as { reply?: string };
-            const reply = data.reply ?? 'Puedo ayudarte a comparar propiedades o agendar una llamada.';
+            const reply = data.reply ?? t('chat.genericFallback');
             setMessages((current) => [...current, { role: 'assistant', text: reply }]);
             if (voiceEnabled && 'speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -205,7 +245,7 @@ export default function VideoStudio() {
                 window.speechSynthesis.speak(utterance);
             }
         } catch {
-            setMessages((current) => [...current, { role: 'assistant', text: 'Ahora mismo no puedo conectarme. Un asesor humano puede ayudarte en el +57 601 580 2040.' }]);
+            setMessages((current) => [...current, { role: 'assistant', text: t('chat.connectionError') }]);
         } finally {
             setChatBusy(false);
         }
@@ -216,7 +256,7 @@ export default function VideoStudio() {
         event.preventDefault();
         if (!studioTopic.trim()) return;
         const response = await fetch('/api/videos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: `Inmueble: ${studioTopic}`, referenceUrl: 'https://urquijobrokers.com' }) });
-        setStudioMessage(response.ok ? 'Brief creado para revisión del equipo.' : 'No se pudo crear el brief.');
+        setStudioMessage(response.ok ? t('studio.successMsg') : t('studio.errorMsg'));
         if (response.ok) setStudioTopic('');
     }
 
@@ -227,26 +267,26 @@ export default function VideoStudio() {
                     <span className="brand-avatar"><img src="/stickman-salesman.png" alt="" /></span>
                     <span><strong>STICKMAN URQUIJO</strong><small>BROKERS DE INMUEBLES</small></span>
                 </a>
-                <nav className="main-nav" aria-label="Navegación principal"><a href="#propiedades">Propiedades</a><a href="#herramientas">Herramientas</a><a href="#nosotros">La firma</a><a href="#contacto">Contacto</a></nav>
-                <div className="header-actions"><button className="owner-link" onClick={() => setActiveView(activeView === 'owner' ? 'explore' : 'owner')} type="button">{activeView === 'owner' ? 'Ver catálogo' : 'Soy propietario'}</button><button className="login-button" onClick={() => setLoginOpen(true)} type="button">Iniciar sesión</button><button className="cart-button" onClick={() => setCartOpen(true)} type="button" aria-label="Abrir carrito">Bolsa <b>{cart.length}</b></button></div>
+                <nav className="main-nav" aria-label="Navegación principal"><a href="#propiedades">{t('nav.propiedades')}</a><a href="#herramientas">{t('nav.herramientas')}</a><a href="#nosotros">{t('nav.firma')}</a><a href="#contacto">{t('nav.contacto')}</a></nav>
+                <div className="header-actions"><select className="site-language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del sitio">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><button className="owner-link" onClick={() => setActiveView(activeView === 'owner' ? 'explore' : 'owner')} type="button">{activeView === 'owner' ? t('header.verCatalogo') : t('header.administrador')}</button><button className="login-button" onClick={() => setLoginOpen(true)} type="button">{t('header.iniciarSesion')}</button><button className="cart-button" onClick={() => setCartOpen(true)} type="button" aria-label="Abrir carrito">{t('header.bolsa')} <b>{cart.length}</b></button></div>
             </header>
 
             {activeView === 'explore' ? <section id="inicio" className="hero-section">
-                <div className="hero-content"><p className="eyebrow">Decisiones inmobiliarias, mejor acompañadas</p><h1>Encuentra el lugar<br /><em>que se siente tuyo.</em></h1><p className="hero-copy">Somos los hermanos Urquijo: una firma boutique que combina criterio local, negociación transparente y tecnología para hacer más simple comprar, vender o invertir.</p><div className="hero-actions"><a className="button button-primary" href="#propiedades">Explorar propiedades <span>↗</span></a><button className="button button-quiet" onClick={() => setChatOpen(true)} type="button">Hablar con Stickman AI <span>✦</span></button></div><div className="trust-row"><span><b>15+</b> años de experiencia</span><span><b>480</b> operaciones acompañadas</span><span><b>4.9/5</b> satisfacción</span></div></div>
-                <div className="hero-image"><img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85" alt="Interior luminoso de una propiedad Urquijo" /><div className="hero-note"><span className="note-dot" /><span>Propiedad destacada<br /><strong>La calma también se compra</strong></span></div></div>
+                <div className="hero-content"><p className="eyebrow">{t('hero.eyebrow')}</p><h1>{t('hero.h1Line1')}<br /><em>{t('hero.h1Em')}</em></h1><p className="hero-copy">{t('hero.copy')}</p><div className="hero-actions"><a className="button button-primary" href="#propiedades">{t('hero.ctaExplorar')} <span>↗</span></a><button className="button button-quiet" onClick={() => setChatOpen(true)} type="button">{t('hero.ctaHablar')} <span>✦</span></button></div><div className="trust-row"><span><b>15+</b> {t('hero.trust1Label')}</span><span><b>480</b> {t('hero.trust2Label')}</span><span><b>4.9/5</b> {t('hero.trust3Label')}</span></div></div>
+                <div className="hero-image"><img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85" alt="Interior luminoso de una propiedad Urquijo" /><div className="hero-note"><span className="note-dot" /><span>{t('heroNote.label')}<br /><strong>{t('heroNote.title')}</strong></span></div></div>
             </section> : <OwnerDashboard onBack={() => setActiveView('explore')} />}
 
-            {activeView === 'explore' && <><section id="propiedades" className="properties-section"><div className="section-intro"><div><p className="eyebrow">Inventario curado · actualizado hoy</p><h2>Propiedades con una historia<br /><em>por contar.</em></h2></div><p>Desde tu primera búsqueda hasta la firma, te damos contexto para decidir con confianza.</p></div><div className="property-toolbar"><div className="search-field"><span>⌕</span><input aria-label="Buscar por ciudad o nombre" placeholder="Buscar ciudad, barrio o propiedad" value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="filter-tabs">{['Todos', 'Casa', 'Apartamento', 'Loft'].map((filter) => <button className={type === filter ? 'filter-active' : ''} key={filter} onClick={() => setType(filter)} type="button">{filter}</button>)}</div><span className="result-count">{filteredProperties.length} resultados</span></div><div className="property-grid">{filteredProperties.map((property) => <article className="property-card" key={property.id}><div className="property-image"><img src={property.image} alt={property.title} /><span className="property-tag">{property.tag}</span><button className="save-button" type="button" aria-label={`Guardar ${property.title}`}>♡</button></div><div className="property-card-body"><div className="property-title-row"><div><h3>{property.title}</h3><p>{property.location}</p></div><span className="property-type">{property.type}</span></div><div className="property-specs"><span><b>{property.beds}</b> hab.</span><span><b>{property.baths}</b> baños</span><span><b>{property.area}</b> m²</span></div><div className="property-footer"><strong>{money(property.price)}</strong><button onClick={() => addToCart(property)} type="button">{cart.some((item) => item.id === property.id) ? 'En tu bolsa ✓' : 'Agregar a bolsa +'}</button></div></div></article>)}</div></section>
+            {activeView === 'explore' && <><section id="propiedades" className="properties-section"><div className="section-intro"><div><p className="eyebrow">{t('properties.eyebrow')}</p><h2>{t('properties.h2Line1')}<br /><em>{t('properties.h2Em')}</em></h2></div><p>{t('properties.intro')}</p></div><div className="property-toolbar"><div className="search-field"><span>⌕</span><input aria-label="Buscar por ciudad o nombre" placeholder={t('properties.searchPlaceholder')} value={query} onChange={(event) => setQuery(event.target.value)} /></div><div className="filter-tabs"><button className={type === 'Todos' ? 'filter-active' : ''} onClick={() => setType('Todos')} type="button">{t('properties.filterTodos')}</button><button className={type === 'Casa' ? 'filter-active' : ''} onClick={() => setType('Casa')} type="button">{t('properties.filterCasa')}</button><button className={type === 'Apartamento' ? 'filter-active' : ''} onClick={() => setType('Apartamento')} type="button">{t('properties.filterApartamento')}</button><button className={type === 'Loft' ? 'filter-active' : ''} onClick={() => setType('Loft')} type="button">{t('properties.filterLoft')}</button></div><span className="result-count">{filteredProperties.length} {t('properties.resultadosSuffix')}</span></div><div className="property-grid">{filteredProperties.map((property) => <article className="property-card" key={property.id}><div className="property-image"><img src={property.image} alt={property.title} /><span className="property-tag">{property.tag}</span><button className="save-button" type="button" aria-label={`${t('property.save')} ${property.title}`}>♡</button></div><div className="property-card-body"><div className="property-title-row"><div><h3>{property.title}</h3><p>{property.location}</p></div><span className="property-type">{property.type}</span></div><div className="property-specs"><span><b>{property.beds}</b> {t('property.habAbbrev')}</span><span><b>{property.baths}</b> {t('property.banosAbbrev')}</span><span><b>{property.area}</b> {t('property.areaUnit')}</span></div><div className="property-footer"><strong>{money(property.price)}</strong><button onClick={() => addToCart(property)} type="button">{cart.some((item) => item.id === property.id) ? t('property.inBag') : t('property.addToBag')}</button></div></div></article>)}</div></section>
 
-                <section id="herramientas" className="tools-section"><div className="section-intro compact"><div><p className="eyebrow">Herramientas Urquijo + Stickman</p><h2>Menos vueltas.<br /><em>Más claridad.</em></h2></div><p>Inspiradas en las mejores experiencias de brokers digitales, reunimos en un solo lugar lo que necesitas para avanzar.</p></div><div className="tools-grid"><article className="tool-card tool-dark"><span className="tool-icon">✦</span><h3>Stickman AI</h3><p>Un asesor que entiende tu conversación, filtra el inventario y te conecta con una persona cuando la necesitas.</p><button onClick={() => setChatOpen(true)} type="button">Empezar conversación →</button></article><article className="tool-card"><span className="tool-icon">◎</span><h3>Calcula tu capacidad</h3><p>Conoce una cuota orientativa para llegar preparado a tu próxima visita.</p><a href="#calculadora">Abrir calculadora →</a></article><article className="tool-card"><span className="tool-icon">⌂</span><h3>Compra sin perderte</h3><p>Guarda opciones en tu bolsa y sigue visitas, documentos, ofertas y próximos pasos.</p><button onClick={() => setCartOpen(true)} type="button">Ver mi bolsa →</button></article></div></section>
+                <section id="herramientas" className="tools-section"><div className="section-intro compact"><div><p className="eyebrow">{t('tools.eyebrow')}</p><h2>{t('tools.h2Line1')}<br /><em>{t('tools.h2Em')}</em></h2></div><p>{t('tools.intro')}</p></div><div className="tools-grid"><article className="tool-card tool-dark"><span className="tool-icon">✦</span><h3>{t('tools.card1Title')}</h3><p>{t('tools.card1Desc')}</p><button onClick={() => setChatOpen(true)} type="button">{t('tools.card1Cta')}</button></article><article className="tool-card"><span className="tool-icon">◎</span><h3>{t('tools.card2Title')}</h3><p>{t('tools.card2Desc')}</p><button onClick={() => setCalculatorOpen(true)} type="button">{t('tools.card2Cta')}</button></article><article className="tool-card"><span className="tool-icon">⌂</span><h3>{t('tools.card3Title')}</h3><p>{t('tools.card3Desc')}</p><button onClick={() => setCartOpen(true)} type="button">{t('tools.card3Cta')}</button></article></div></section>
 
-                <section id="nosotros" className="about-section"><div className="about-stamp"><span className="stickman-mini" /> U + S / 2011</div><div><p className="eyebrow">Una firma de hermanos</p><h2>El criterio humano<br />sigue siendo <em>la diferencia.</em></h2><p>Urquijo Brokers nació entre dos hermanos y una convicción: una propiedad no es una ficha, es el comienzo de una etapa. Combinamos sensibilidad arquitectónica, datos honestos y negociación firme para cuidar cada decisión.</p><a className="text-link" href="#contacto">Conoce nuestra forma de trabajar ↗</a></div><div className="about-facts"><div><b>01</b><span>Escuchamos antes de recomendar.</span></div><div><b>02</b><span>Mostramos el contexto completo.</span></div><div><b>03</b><span>Seguimos contigo hasta después de la firma.</span></div></div></section>
+                <section id="nosotros" className="about-section"><div className="about-stamp"><span className="stickman-mini" /> U + S / 2011</div><div><p className="eyebrow">{t('about.eyebrow')}</p><h2>{t('about.h2Line1')}<br /><em>{t('about.h2Em')}</em></h2><p>{t('about.body')}</p><a className="text-link" href="#contacto">{t('about.linkText')}</a></div><div className="about-facts"><div><b>01</b><span>{t('about.fact1')}</span></div><div><b>02</b><span>{t('about.fact2')}</span></div><div><b>03</b><span>{t('about.fact3')}</span></div></div></section>
 
-                <section className="studio-section"><div><p className="eyebrow">Urquijo content desk</p><h2>Una propiedad bien contada<br /><em>encuentra a su gente.</em></h2><p>Genera un brief para que nuestro equipo cree un video de venta con Stickman AI. Todo contenido pasa por revisión humana antes de publicarse.</p></div><form onSubmit={createStudioBrief}><label htmlFor="studio-topic">¿Qué propiedad quieres presentar?</label><input id="studio-topic" placeholder="Ej. Apartamento con terraza en El Poblado" value={studioTopic} onChange={(event) => setStudioTopic(event.target.value)} /><button className="button button-primary" type="submit">Crear brief AI →</button>{studioMessage && <small className="form-feedback">{studioMessage} {videos.length ? `· ${videos.length} briefs en cola` : ''}</small>}</form></section></>}
+                <section className="studio-section"><div><p className="eyebrow">{t('studio.eyebrow')}</p><h2>{t('studio.h2Line1')}<br /><em>{t('studio.h2Em')}</em></h2><p>{t('studio.body')}</p></div><form onSubmit={createStudioBrief}><label htmlFor="studio-topic">{t('studio.label')}</label><input id="studio-topic" placeholder={t('studio.placeholder')} value={studioTopic} onChange={(event) => setStudioTopic(event.target.value)} /><button className="button button-primary" type="submit">{t('studio.button')}</button>{studioMessage && <small className="form-feedback">{studioMessage} {videos.length ? `· ${videos.length} ${t('studio.queueSuffix')}` : ''}</small>}</form></section></>}
 
-            <footer id="contacto" className="site-footer"><div className="footer-brand"><a className="brand" href="#inicio"><span className="stickman-logo" aria-hidden="true"><span className="logo-head" /><span className="logo-body" /><span className="logo-arm logo-arm-left" /><span className="logo-arm logo-arm-right" /><span className="logo-leg logo-leg-left" /><span className="logo-leg logo-leg-right" /></span><span><strong>STICKMAN URQUIJO</strong><small>BROKERS DE INMUEBLES</small></span></a><p>Tu próxima dirección empieza con una conversación.</p></div><div className="footer-column"><b>Hablemos</b><a href="tel:+576015802040">+57 601 580 2040</a><a href="mailto:hola@urquijobrokers.com">hola@urquijobrokers.com</a><span>Lun–Sáb · 8:00–18:00</span></div><div className="footer-column"><b>Encuéntranos</b><a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram ↗</a><a href="https://facebook.com" target="_blank" rel="noreferrer">Facebook ↗</a><a href="https://x.com" target="_blank" rel="noreferrer">X / Twitter ↗</a></div><div className="footer-column"><b>Atención</b><span>Call center humano + AI</span><span>Seguridad y privacidad</span><span>© 2026 Urquijo</span></div></footer>
+            <footer id="contacto" className="site-footer"><div className="footer-brand"><a className="brand" href="#inicio"><span className="stickman-logo" aria-hidden="true"><span className="logo-head" /><span className="logo-body" /><span className="logo-arm logo-arm-left" /><span className="logo-arm logo-arm-right" /><span className="logo-leg logo-leg-left" /><span className="logo-leg logo-leg-right" /></span><span><strong>STICKMAN URQUIJO</strong><small>BROKERS DE INMUEBLES</small></span></a><p>{t('footer.tagline')}</p></div><div className="footer-column"><b>{t('footer.col1Title')}</b><a href="tel:+576015802040">+57 601 580 2040</a><a href="mailto:hola@urquijobrokers.com">hola@urquijobrokers.com</a><span>{t('footer.hours')}</span></div><div className="footer-column"><b>{t('footer.col2Title')}</b><a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram ↗</a><a href="https://facebook.com" target="_blank" rel="noreferrer">Facebook ↗</a><a href="https://x.com" target="_blank" rel="noreferrer">X / Twitter ↗</a></div><div className="footer-column"><b>{t('footer.col3Title')}</b><span>{t('footer.callcenter')}</span><span>{t('footer.security')}</span><span>{t('footer.copyright')}</span></div></footer>
             <button
-                className={`stickman-companion${companionDragging ? ' dragging' : ''}`}
+                className={`stickman-companion${companionDragging ? ' dragging' : ''}${companionIntro ? ' intro' : ''}`}
                 style={companionPos ? { left: companionPos.x, top: companionPos.y, right: 'auto', bottom: 'auto' } : undefined}
                 onPointerDown={handleCompanionPointerDown}
                 onPointerMove={handleCompanionPointerMove}
@@ -256,12 +296,16 @@ export default function VideoStudio() {
                 onPointerLeave={handleCompanionPointerLeave}
                 onClick={handleCompanionClick}
                 type="button"
-                aria-label="Abrir conversación con Stickman. Mantén presionado y arrastra para moverlo por la pantalla."
-            ><span className={`companion-figure${companionHovering ? ' tilting' : ''}`} style={companionHovering ? { transform: `rotateX(${companionTilt.x}deg) rotateY(${companionTilt.y}deg) translateZ(14px)` } : undefined}><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
+                aria-label={t('companion.ariaLabel')}
+            ><span className={`companion-figure${companionHovering ? ' tilting' : ''}`} style={companionHovering ? { transform: `rotateX(${companionTilt.x}deg) rotateY(${companionTilt.y}deg) translateZ(14px)` } : undefined}><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>{t('companion.label')}</b><small>{t('companion.sublabel')}</small></span><span className="companion-pulse" /></button>
 
-            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card" onPointerMove={handleSalesmanPointerMove} onPointerLeave={handleSalesmanPointerLeave}><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" style={{ transform: `rotateX(${salesmanTilt.x}deg) rotateY(${salesmanTilt.y}deg)` }} /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button><select className="language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del asistente">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
-            {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><section className="side-panel" role="dialog" aria-modal="true" aria-label="Mi bolsa" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="eyebrow">Tu proceso de compra</span><h2>Mi bolsa <small>{cart.length} guardadas</small></h2></div><button onClick={() => setCartOpen(false)} type="button" aria-label="Cerrar bolsa">×</button></div>{cart.length === 0 ? <div className="empty-bag"><span>⌂</span><p>Aún no has guardado propiedades.</p><button className="button button-primary" onClick={() => setCartOpen(false)} type="button">Seguir explorando</button></div> : <><div className="bag-list">{cart.map((property) => <div className="bag-item" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span><strong>{money(property.price)}</strong></div><button onClick={() => setCart((current) => current.filter((item) => item.id !== property.id))} type="button">×</button></div>)}</div><div className="bag-next"><p>Próximo paso</p><b>Solicitar recorrido privado</b><button className="button button-primary" onClick={() => setChatOpen(true)} type="button">Hablar con un asesor →</button></div></>}</section></div>}
-            {loginOpen && <div className="overlay" role="presentation" onClick={() => setLoginOpen(false)}><section className="login-modal" role="dialog" aria-modal="true" aria-label="Iniciar sesión" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setLoginOpen(false)} type="button">×</button><span className="login-mark">S</span><p className="eyebrow">Tu espacio Urquijo</p><h2>Todo tu proceso,<br /><em>en un solo lugar.</em></h2><p>Guarda propiedades, revisa solicitudes, documentos, pagos y el seguimiento de tus visitas.</p><input placeholder="Correo electrónico" type="email" /><input placeholder="Contraseña" type="password" /><button className="button button-primary" onClick={() => setLoginOpen(false)} type="button">Entrar a mi cuenta →</button><small>¿Eres propietario? <button onClick={() => { setLoginOpen(false); setActiveView('owner'); }} type="button">Gestiona tu inventario</button></small></section></div>}
+            <audio ref={audioRef} src="/audio/smooth-jazz-loop.mp3" loop preload="none" />
+            <button className={`music-toggle${musicPlaying ? ' playing' : ''}`} onClick={toggleMusic} type="button" aria-label={musicPlaying ? t('music.pause') : t('music.play')} title={musicError ? t('music.error') : undefined}>{musicPlaying ? '♪' : '♪'}<span className="music-bars" aria-hidden="true"><i /><i /><i /></span></button>
+
+            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> {t('chat.title')}</span><h2>{t('chat.heading')}</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label={t('chat.close')}>×</button></div><div className="salesman-card" onPointerMove={handleSalesmanPointerMove} onPointerLeave={handleSalesmanPointerLeave}><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" style={{ transform: `rotateX(${salesmanTilt.x}deg) rotateY(${salesmanTilt.y}deg)` }} /><div><b>{t('chat.salesmanGreeting')}</b><span>{t('chat.salesmanSub')}</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? t('chat.listeningLabel') : t('chat.talkLabel')}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? t('chat.voiceOn') : t('chat.voiceOff')}</button></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput(t('chat.quick1'))} type="button">{t('chat.quick1')}</button><button onClick={() => setChatInput(t('chat.quick2'))} type="button">{t('chat.quick2')}</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder={t('chat.placeholder')} value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label={t('chat.dictateAria')}>🎙</button><button type="submit">↑</button></form><small className="human-note">{t('chat.humanNote')}<a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
+            {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><section className="side-panel" role="dialog" aria-modal="true" aria-label="Mi bolsa" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="eyebrow">{t('cart.eyebrow')}</span><h2>{t('cart.heading')} <small>{cart.length} {t('cart.savedSuffix')}</small></h2></div><button onClick={() => setCartOpen(false)} type="button" aria-label={t('cart.close')}>×</button></div>{cart.length === 0 ? <div className="empty-bag"><span>⌂</span><p>{t('cart.emptyText')}</p><button className="button button-primary" onClick={() => setCartOpen(false)} type="button">{t('cart.emptyCta')}</button></div> : <><div className="bag-list">{cart.map((property) => <div className="bag-item" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span><strong>{money(property.price)}</strong></div><button onClick={() => setCart((current) => current.filter((item) => item.id !== property.id))} type="button">×</button></div>)}</div><div className="bag-next"><p>{t('cart.nextStepLabel')}</p><b>{t('cart.nextStepTitle')}</b><button className="button button-primary" onClick={() => setChatOpen(true)} type="button">{t('cart.nextStepCta')}</button></div></>}</section></div>}
+            {loginOpen && <div className="overlay" role="presentation" onClick={() => setLoginOpen(false)}><section className="login-modal" role="dialog" aria-modal="true" aria-label="Iniciar sesión" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setLoginOpen(false)} type="button">×</button><span className="login-mark">S</span><p className="eyebrow">{t('login.eyebrow')}</p><h2>{t('login.h2Line1')}<br /><em>{t('login.h2Em')}</em></h2><p>{t('login.body')}</p><input placeholder={t('login.emailPlaceholder')} type="email" /><input placeholder={t('login.passwordPlaceholder')} type="password" /><button className="button button-primary" onClick={() => setLoginOpen(false)} type="button">{t('login.submit')}</button><small>{t('login.adminQuestion')} <button onClick={() => { setLoginOpen(false); setActiveView('owner'); }} type="button">{t('login.adminCta')}</button></small></section></div>}
+            {calculatorOpen && <div className="overlay" role="presentation" onClick={() => setCalculatorOpen(false)}><section className="login-modal calculator-modal" role="dialog" aria-modal="true" aria-label={t('calculator.h2Line1')} onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setCalculatorOpen(false)} type="button">×</button><p className="eyebrow">{t('calculator.eyebrow')}</p><h2>{t('calculator.h2Line1')}<br /><em>{t('calculator.h2Em')}</em></h2><p>{t('calculator.body')}</p><label>{t('calculator.amountLabel')}<input type="number" min="0" value={calcAmount} onChange={(event) => setCalcAmount(Number(event.target.value) || 0)} /></label><label>{t('calculator.rateLabel')}<input type="number" min="0" step="0.1" value={calcRate} onChange={(event) => setCalcRate(Number(event.target.value) || 0)} /></label><label>{t('calculator.yearsLabel')}<input type="number" min="1" value={calcYears} onChange={(event) => setCalcYears(Number(event.target.value) || 1)} /></label><div className="calc-result"><div><span>{t('calculator.monthlyLabel')}</span><b>{money(calcPayment)}</b></div><div><span>{t('calculator.totalLabel')}</span><b>{money(calcTotal)}</b></div><div><span>{t('calculator.interestLabel')}</span><b>{money(calcInterest)}</b></div></div><small className="calc-disclaimer">{t('calculator.disclaimer')}</small><button className="button button-primary" onClick={() => { setCalculatorOpen(false); setChatOpen(true); }} type="button">{t('calculator.ctaTalk')}</button></section></div>}
         </main>
     );
 }
