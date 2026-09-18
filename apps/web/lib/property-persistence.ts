@@ -124,6 +124,35 @@ function createInMemory(input: Partial<PropertyInput>): Property {
     return property;
 }
 
+export async function bulkCreateProperties(inputs: PropertyInput[]): Promise<Property[]> {
+    const client = getSupabaseClient({ serviceRole: true });
+
+    if (client) {
+        try {
+            const { data, error } = await client.from('properties').insert(inputs.map((input) => ({
+                title: input.title,
+                location: input.location,
+                price: input.price,
+                type: input.type,
+                beds: input.beds,
+                baths: input.baths,
+                area: input.area,
+                image: input.image,
+                tag: input.tag ?? '',
+                stock: input.stock,
+                status: input.status ?? 'activa',
+            }))).select();
+
+            if (error) throw error;
+            return (data ?? []).map(toProperty);
+        } catch (error) {
+            console.warn('Fallo la importacion masiva en Supabase, usando fallback en memoria.', error);
+        }
+    }
+
+    return inputs.map((input) => createInMemory(input));
+}
+
 export async function createProperty(input: Partial<PropertyInput>): Promise<Property> {
     const parsed = input as PropertyInput;
     const client = getSupabaseClient({ serviceRole: true });

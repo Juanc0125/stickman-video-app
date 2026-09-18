@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import type { Property } from '@shared-types/property';
 import { createTranslator, dirFor, LANGUAGE_OPTIONS, localeFor, type SiteLanguage } from '../../lib/translations';
+import { csvToPropertyRows } from '../../lib/csv';
 
 type ChatMessage = { role: 'assistant' | 'user'; text: string };
 type AssistantLanguage = SiteLanguage;
@@ -334,6 +335,8 @@ function OwnerDashboard({ onBack }: { onBack: () => void }) {
     const [editing, setEditing] = useState<Property | null>(null);
     const [formError, setFormError] = useState('');
     const [saving, setSaving] = useState(false);
+    const [importBusy, setImportBusy] = useState(false);
+    const [importResult, setImportResult] = useState<{ count: number; rowErrors: string[] } | null>(null);
 
     async function loadProperties() {
         const response = await fetch('/api/admin/properties');
@@ -394,6 +397,32 @@ function OwnerDashboard({ onBack }: { onBack: () => void }) {
         if (!window.confirm(`¿Eliminar "${property.title}"? Esta acción no se puede deshacer.`)) return;
         const response = await fetch(`/api/admin/properties/${property.id}`, { method: 'DELETE' });
         if (response.ok) setProperties((current) => current.filter((item) => item.id !== property.id));
+    }
+
+    async function handleCsvImport(event: ChangeEvent<HTMLInputElement>) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        setImportBusy(true);
+        setImportResult(null);
+        try {
+            const text = await file.text();
+            const rows = csvToPropertyRows(text);
+            if (rows.length === 0) {
+                setImportResult({ count: 0, rowErrors: ['El archivo esta vacio o no tiene el encabezado esperado.'] });
+                return;
+            }
+            const response = await fetch('/api/admin/properties/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rows }) });
+            const data = await response.json() as { created?: Property[]; count?: number; rowErrors?: string[]; error?: string };
+            if (!response.ok) { setImportResult({ count: 0, rowErrors: [data.error ?? 'Error desconocido', ...(data.rowErrors ?? [])] }); return; }
+            setImportResult({ count: data.count ?? 0, rowErrors: data.rowErrors ?? [] });
+            if (data.created?.length) setProperties((current) => [...data.created!, ...current]);
+        } catch {
+            setImportResult({ count: 0, rowErrors: ['No se pudo leer el archivo CSV.'] });
+        } finally {
+            setImportBusy(false);
+        }
     }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -464,8 +493,14 @@ function OwnerDashboard({ onBack }: { onBack: () => void }) {
             <p>Gestiona el inventario de propiedades en tiempo real.</p>
             <div className="owner-actions">
                 <button className="button button-primary" onClick={openCreateForm} type="button">Publicar nueva propiedad +</button>
+                <label className="button button-quiet file-button">{importBusy ? 'Importando…' : 'Importar CSV ↑'}<input type="file" accept=".csv,text/csv" onChange={handleCsvImport} disabled={importBusy} hidden /></label>
+                <a className="text-link csv-template-link" href="/plantilla-propiedades.csv" download>Descargar plantilla ↓</a>
                 <button className="button button-quiet" onClick={handleLogout} type="button">Cerrar sesión</button>
             </div>
+            {importResult && <div className={`import-feedback${importResult.rowErrors.length ? ' has-errors' : ''}`}>
+                <p>{importResult.count} propiedad{importResult.count === 1 ? '' : 'es'} importada{importResult.count === 1 ? '' : 's'} correctamente.</p>
+                {importResult.rowErrors.length > 0 && <ul>{importResult.rowErrors.map((rowError, index) => <li key={index}>{rowError}</li>)}</ul>}
+            </div>}
         </div>
         <div className="owner-stats">
             <div><span>Propiedades activas</span><b>{String(activeCount).padStart(2, '0')}</b><small>de {properties.length} totales</small></div>
