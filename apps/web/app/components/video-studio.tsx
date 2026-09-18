@@ -50,6 +50,9 @@ export default function VideoStudio() {
     const [studioMessage, setStudioMessage] = useState('');
     const [companionPos, setCompanionPos] = useState<{ x: number; y: number } | null>(null);
     const [companionDragging, setCompanionDragging] = useState(false);
+    const [companionTilt, setCompanionTilt] = useState({ x: 0, y: 0 });
+    const [companionHovering, setCompanionHovering] = useState(false);
+    const [salesmanTilt, setSalesmanTilt] = useState({ x: 0, y: 0 });
     const companionDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null);
     const companionJustDraggedRef = useRef(false);
 
@@ -90,7 +93,13 @@ export default function VideoStudio() {
 
     function handleCompanionPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
         const drag = companionDragRef.current;
-        if (!drag) return;
+        if (!drag) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            const px = (event.clientX - rect.left) / rect.width;
+            const py = (event.clientY - rect.top) / rect.height;
+            setCompanionTilt({ x: (0.5 - py) * 22, y: (px - 0.5) * 22 });
+            return;
+        }
         const deltaX = event.clientX - drag.startX;
         const deltaY = event.clientY - drag.startY;
         if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) drag.moved = true;
@@ -120,6 +129,26 @@ export default function VideoStudio() {
     function handleCompanionClick() {
         if (companionJustDraggedRef.current) { companionJustDraggedRef.current = false; return; }
         setChatOpen(true);
+    }
+
+    function handleCompanionPointerEnter() {
+        setCompanionHovering(true);
+    }
+
+    function handleCompanionPointerLeave() {
+        setCompanionHovering(false);
+        setCompanionTilt({ x: 0, y: 0 });
+    }
+
+    function handleSalesmanPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const px = (event.clientX - rect.left) / rect.width;
+        const py = (event.clientY - rect.top) / rect.height;
+        setSalesmanTilt({ x: (0.5 - py) * 20, y: (px - 0.5) * 20 });
+    }
+
+    function handleSalesmanPointerLeave() {
+        setSalesmanTilt({ x: 0, y: 0 });
     }
 
     const filteredProperties = properties.filter((property) => {
@@ -223,12 +252,14 @@ export default function VideoStudio() {
                 onPointerMove={handleCompanionPointerMove}
                 onPointerUp={handleCompanionPointerUp}
                 onPointerCancel={handleCompanionPointerUp}
+                onPointerEnter={handleCompanionPointerEnter}
+                onPointerLeave={handleCompanionPointerLeave}
                 onClick={handleCompanionClick}
                 type="button"
                 aria-label="Abrir conversación con Stickman. Mantén presionado y arrastra para moverlo por la pantalla."
-            ><span className="companion-figure"><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
+            ><span className={`companion-figure${companionHovering ? ' tilting' : ''}`} style={companionHovering ? { transform: `rotateX(${companionTilt.x}deg) rotateY(${companionTilt.y}deg) translateZ(14px)` } : undefined}><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
 
-            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card"><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button><select className="language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del asistente">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
+            {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card" onPointerMove={handleSalesmanPointerMove} onPointerLeave={handleSalesmanPointerLeave}><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" style={{ transform: `rotateX(${salesmanTilt.x}deg) rotateY(${salesmanTilt.y}deg)` }} /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button><select className="language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del asistente">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
             {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><section className="side-panel" role="dialog" aria-modal="true" aria-label="Mi bolsa" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="eyebrow">Tu proceso de compra</span><h2>Mi bolsa <small>{cart.length} guardadas</small></h2></div><button onClick={() => setCartOpen(false)} type="button" aria-label="Cerrar bolsa">×</button></div>{cart.length === 0 ? <div className="empty-bag"><span>⌂</span><p>Aún no has guardado propiedades.</p><button className="button button-primary" onClick={() => setCartOpen(false)} type="button">Seguir explorando</button></div> : <><div className="bag-list">{cart.map((property) => <div className="bag-item" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span><strong>{money(property.price)}</strong></div><button onClick={() => setCart((current) => current.filter((item) => item.id !== property.id))} type="button">×</button></div>)}</div><div className="bag-next"><p>Próximo paso</p><b>Solicitar recorrido privado</b><button className="button button-primary" onClick={() => setChatOpen(true)} type="button">Hablar con un asesor →</button></div></>}</section></div>}
             {loginOpen && <div className="overlay" role="presentation" onClick={() => setLoginOpen(false)}><section className="login-modal" role="dialog" aria-modal="true" aria-label="Iniciar sesión" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setLoginOpen(false)} type="button">×</button><span className="login-mark">S</span><p className="eyebrow">Tu espacio Urquijo</p><h2>Todo tu proceso,<br /><em>en un solo lugar.</em></h2><p>Guarda propiedades, revisa solicitudes, documentos, pagos y el seguimiento de tus visitas.</p><input placeholder="Correo electrónico" type="email" /><input placeholder="Contraseña" type="password" /><button className="button button-primary" onClick={() => setLoginOpen(false)} type="button">Entrar a mi cuenta →</button><small>¿Eres propietario? <button onClick={() => { setLoginOpen(false); setActiveView('owner'); }} type="button">Gestiona tu inventario</button></small></section></div>}
         </main>
