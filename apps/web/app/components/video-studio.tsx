@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import type { Property } from '@shared-types/property';
 
 type ChatMessage = { role: 'assistant' | 'user'; text: string };
@@ -48,11 +48,79 @@ export default function VideoStudio() {
     const [videos, setVideos] = useState<VideoRecord[]>([]);
     const [studioTopic, setStudioTopic] = useState('');
     const [studioMessage, setStudioMessage] = useState('');
+    const [companionPos, setCompanionPos] = useState<{ x: number; y: number } | null>(null);
+    const [companionDragging, setCompanionDragging] = useState(false);
+    const companionDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number; moved: boolean } | null>(null);
+    const companionJustDraggedRef = useRef(false);
 
     useEffect(() => {
         fetch('/api/videos').then((response) => response.json()).then((data: { videos?: VideoRecord[] }) => setVideos(data.videos ?? [])).catch(() => setVideos([]));
         fetch('/api/properties').then((response) => response.json()).then((data: { properties?: Property[] }) => setProperties(data.properties ?? [])).catch(() => setProperties([]));
     }, []);
+
+    useEffect(() => {
+        function clamp(pos: { x: number; y: number }) {
+            const width = 220;
+            const height = 60;
+            return {
+                x: Math.min(Math.max(pos.x, 8), Math.max(8, window.innerWidth - width)),
+                y: Math.min(Math.max(pos.y, 8), Math.max(8, window.innerHeight - height)),
+            };
+        }
+        try {
+            const saved = window.localStorage.getItem('stickman-companion-pos');
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage no existe en el servidor; restaurar la posicion guardada solo puede pasar tras montar en el cliente.
+            if (saved) setCompanionPos(clamp(JSON.parse(saved)));
+        } catch {
+            // localStorage puede fallar (modo privado, bloqueado); ignorar y usar la posicion por defecto.
+        }
+        function handleResize() {
+            setCompanionPos((current) => current ? clamp(current) : current);
+        }
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    function handleCompanionPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        companionDragRef.current = { startX: event.clientX, startY: event.clientY, originX: rect.left, originY: rect.top, moved: false };
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setCompanionDragging(true);
+    }
+
+    function handleCompanionPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+        const drag = companionDragRef.current;
+        if (!drag) return;
+        const deltaX = event.clientX - drag.startX;
+        const deltaY = event.clientY - drag.startY;
+        if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) drag.moved = true;
+        if (!drag.moved) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const nextX = Math.min(Math.max(drag.originX + deltaX, 8), Math.max(8, window.innerWidth - rect.width - 8));
+        const nextY = Math.min(Math.max(drag.originY + deltaY, 8), Math.max(8, window.innerHeight - rect.height - 8));
+        setCompanionPos({ x: nextX, y: nextY });
+    }
+
+    function handleCompanionPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+        const drag = companionDragRef.current;
+        companionDragRef.current = null;
+        setCompanionDragging(false);
+        if (drag?.moved) {
+            companionJustDraggedRef.current = true;
+            setCompanionPos((current) => {
+                if (current) {
+                    try { window.localStorage.setItem('stickman-companion-pos', JSON.stringify(current)); } catch { /* ignore */ }
+                }
+                return current;
+            });
+        }
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+    }
+
+    function handleCompanionClick() {
+        if (companionJustDraggedRef.current) { companionJustDraggedRef.current = false; return; }
+        setChatOpen(true);
+    }
 
     const filteredProperties = properties.filter((property) => {
         const matchesType = type === 'Todos' || property.type === type;
@@ -148,7 +216,17 @@ export default function VideoStudio() {
                 <section className="studio-section"><div><p className="eyebrow">Urquijo content desk</p><h2>Una propiedad bien contada<br /><em>encuentra a su gente.</em></h2><p>Genera un brief para que nuestro equipo cree un video de venta con Stickman AI. Todo contenido pasa por revisión humana antes de publicarse.</p></div><form onSubmit={createStudioBrief}><label htmlFor="studio-topic">¿Qué propiedad quieres presentar?</label><input id="studio-topic" placeholder="Ej. Apartamento con terraza en El Poblado" value={studioTopic} onChange={(event) => setStudioTopic(event.target.value)} /><button className="button button-primary" type="submit">Crear brief AI →</button>{studioMessage && <small className="form-feedback">{studioMessage} {videos.length ? `· ${videos.length} briefs en cola` : ''}</small>}</form></section></>}
 
             <footer id="contacto" className="site-footer"><div className="footer-brand"><a className="brand" href="#inicio"><span className="stickman-logo" aria-hidden="true"><span className="logo-head" /><span className="logo-body" /><span className="logo-arm logo-arm-left" /><span className="logo-arm logo-arm-right" /><span className="logo-leg logo-leg-left" /><span className="logo-leg logo-leg-right" /></span><span><strong>STICKMAN URQUIJO</strong><small>BROKERS DE INMUEBLES</small></span></a><p>Tu próxima dirección empieza con una conversación.</p></div><div className="footer-column"><b>Hablemos</b><a href="tel:+576015802040">+57 601 580 2040</a><a href="mailto:hola@urquijobrokers.com">hola@urquijobrokers.com</a><span>Lun–Sáb · 8:00–18:00</span></div><div className="footer-column"><b>Encuéntranos</b><a href="https://instagram.com" target="_blank" rel="noreferrer">Instagram ↗</a><a href="https://facebook.com" target="_blank" rel="noreferrer">Facebook ↗</a><a href="https://x.com" target="_blank" rel="noreferrer">X / Twitter ↗</a></div><div className="footer-column"><b>Atención</b><span>Call center humano + AI</span><span>Seguridad y privacidad</span><span>© 2026 Urquijo</span></div></footer>
-            <button className="stickman-companion" onClick={() => setChatOpen(true)} type="button" aria-label="Abrir conversación con Stickman"><span className="companion-figure"><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
+            <button
+                className={`stickman-companion${companionDragging ? ' dragging' : ''}`}
+                style={companionPos ? { left: companionPos.x, top: companionPos.y, right: 'auto', bottom: 'auto' } : undefined}
+                onPointerDown={handleCompanionPointerDown}
+                onPointerMove={handleCompanionPointerMove}
+                onPointerUp={handleCompanionPointerUp}
+                onPointerCancel={handleCompanionPointerUp}
+                onClick={handleCompanionClick}
+                type="button"
+                aria-label="Abrir conversación con Stickman. Mantén presionado y arrastra para moverlo por la pantalla."
+            ><span className="companion-figure"><img src="/stickman-salesman.png" alt="" /></span><span className="companion-label"><b>STICKMAN AI</b><small>¿Te ayudo a encontrar?</small></span><span className="companion-pulse" /></button>
 
             {chatOpen && <div className="overlay" role="presentation" onClick={() => setChatOpen(false)}><section className="assistant-drawer" role="dialog" aria-modal="true" aria-label="Asistente Stickman" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="live-pill"><i /> STICKMAN AI · SALESMAN</span><h2>Tu asesor, cuando quieras.</h2></div><button onClick={() => setChatOpen(false)} type="button" aria-label="Cerrar asistente">×</button></div><div className="salesman-card"><img src="/stickman-salesman.png" alt="Stickman, asesor inmobiliario" /><div><b>Hola, soy Stickman.</b><span>Háblame o escríbeme. Estoy listo para ayudarte a encontrar tu próxima propiedad.</span></div></div><div className="voice-controls"><button className={listening ? 'voice-active' : ''} onClick={toggleListening} type="button">{listening ? '● Escuchando...' : '◉ Hablar con Stickman'}</button><button className={voiceEnabled ? 'voice-on' : ''} onClick={() => setVoiceEnabled((enabled) => !enabled)} type="button" aria-label="Activar o desactivar respuestas habladas">{voiceEnabled ? '◖ Voz activa' : '◌ Voz apagada'}</button><select className="language-select" value={language} onChange={(event) => setLanguage(event.target.value as AssistantLanguage)} aria-label="Idioma del asistente">{LANGUAGE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div><div className="chat-messages">{messages.map((message, index) => <div className={`chat-bubble ${message.role}`} key={`${message.role}-${index}`}><span>{message.role === 'assistant' ? 'S' : 'T'}</span><p>{message.text}</p></div>)}{chatBusy && <div className="chat-bubble assistant"><span>S</span><p>Estoy pensando<span className="typing">...</span></p></div>}</div><div className="quick-prompts"><button onClick={() => setChatInput('Quiero comprar una casa de hasta 1.000 millones')} type="button">Buscar por presupuesto</button><button onClick={() => setChatInput('Quiero agendar una visita')} type="button">Agendar visita</button></div><form className="chat-input" onSubmit={sendMessage}><input autoFocus placeholder="Escribe tu pregunta..." value={chatInput} onChange={(event) => setChatInput(event.target.value)} /><button type="button" onClick={toggleListening} aria-label="Dictar pregunta">🎙</button><button type="submit">↑</button></form><small className="human-note">Si prefieres hablar con una persona: <a href="tel:+576015802040">llama a nuestro call center</a>.</small></section></div>}
             {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><section className="side-panel" role="dialog" aria-modal="true" aria-label="Mi bolsa" onClick={(event) => event.stopPropagation()}><div className="drawer-heading"><div><span className="eyebrow">Tu proceso de compra</span><h2>Mi bolsa <small>{cart.length} guardadas</small></h2></div><button onClick={() => setCartOpen(false)} type="button" aria-label="Cerrar bolsa">×</button></div>{cart.length === 0 ? <div className="empty-bag"><span>⌂</span><p>Aún no has guardado propiedades.</p><button className="button button-primary" onClick={() => setCartOpen(false)} type="button">Seguir explorando</button></div> : <><div className="bag-list">{cart.map((property) => <div className="bag-item" key={property.id}><img src={property.image} alt="" /><div><b>{property.title}</b><span>{property.location}</span><strong>{money(property.price)}</strong></div><button onClick={() => setCart((current) => current.filter((item) => item.id !== property.id))} type="button">×</button></div>)}</div><div className="bag-next"><p>Próximo paso</p><b>Solicitar recorrido privado</b><button className="button button-primary" onClick={() => setChatOpen(true)} type="button">Hablar con un asesor →</button></div></>}</section></div>}
