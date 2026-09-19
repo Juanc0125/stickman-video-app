@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Urquijo | Brokers de Inmuebles",
-  description: "Propiedades, criterio humano y tecnología para decidir mejor.",
+  title: "Video Ads Studio",
+  description: "Generador interno de videos cortos de marketing con IA.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
