@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
-import { renderVideo, updateVideoStatus } from '../../../../lib/video-persistence';
+import { renderVideo, updateScript, updateVideoStatus } from '../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
     const { id } = await context.params;
-    const body = await request.json().catch(() => null) as { action?: unknown } | null;
+    const body = await request.json().catch(() => null) as { action?: unknown; script?: unknown } | null;
+
+    // RF-008: manual script edit, identified by presence of `script` instead of `action`.
+    if (typeof body?.script === 'string') {
+        try {
+            const updated = await updateScript(id, body.script);
+            return NextResponse.json({ video: updated });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Error desconocido';
+            const status = message === 'Video no encontrado.' ? 404 : 500;
+            return NextResponse.json({ error: message }, { status });
+        }
+    }
+
     const action = typeof body?.action === 'string' ? body.action : '';
 
     if (!action) {
