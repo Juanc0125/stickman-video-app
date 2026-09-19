@@ -195,11 +195,6 @@ function wrapSubtitleText(text: string, maxLineLength = 40): string {
 	return lines.join('\n');
 }
 
-function drawbox(x: number, y: number, w: number, h: number, color: string, thickness: number | 'fill' = 'fill'): string {
-	const t = thickness === 'fill' ? 'fill' : String(thickness);
-	return `drawbox=x=${Math.round(x)}:y=${Math.round(y)}:w=${Math.round(w)}:h=${Math.round(h)}:color=${color}:t=${t}`;
-}
-
 // ---- Text rendering via libass instead of drawtext ----
 // The ffmpeg-static binary actually deployed to production does NOT have the
 // drawtext filter registered (confirmed live: `ffmpeg -filters` omits it,
@@ -273,16 +268,30 @@ function toFfmpegFilterPath(path: string): string {
 	return path.replace(/\\/g, '/').replace(/:/g, '\\:');
 }
 
+// One rectangle of the figure at one instant. `name` is stable for a given
+// (character, action): the same parts always come back in the same order, no
+// matter the phase, which is what lets the renderer label each drawbox once
+// and then retarget it over time - see buildSceneCommandScript().
+type NamedBox = { name: string; x: number; y: number; w: number; h: number; color: string; thickness: number | 'fill' };
+
+const GROUND_Y = LEG_Y + LEG_HEIGHT;
+
 /**
  * Builds a simple 2D stickman figure (RF-004: no 3D, no complex character art)
  * from drawbox primitives, with the arm/leg layout varied per SceneAction so
- * the seven RF-017 actions are visibly distinct poses.
+ * the seven RF-017 actions are visibly distinct.
  *
- * IMPORTANT: these are STATIC pose variants held for the whole scene duration -
- * there is no per-frame keyframing/animation in this V1 renderer, and that's
- * expected. Each action just picks a different fixed set of limb coordinates.
+ * `phase` is normalized 0..1 over one full animation cycle, so the pose is
+ * sampled evenly no matter how long the scene is or how often it's sampled.
+ * The pose maths runs in JS rather than in ffmpeg expressions because this
+ * ffmpeg-static build evaluates drawbox's x/y/w/h expressions ONCE at filter
+ * init instead of per frame (confirmed live: a `t`-based expression froze at
+ * -2147483648, an int32 overflow sentinel). Runtime sendcmd commands do take
+ * effect per frame, so the motion is delivered that way instead.
  */
-function buildFigureFilters(centerX: number, action: SceneAction, color = 'white'): string[] {
+function buildFigureBoxes(prefix: string, centerX: number, action: SceneAction, phase: number, color = 'white'): NamedBox[] {
+	const swing = Math.sin(2 * Math.PI * phase);
+
 	const headX = centerX - HEAD_SIZE / 2;
 	const torsoX = centerX - TORSO_WIDTH / 2;
 	const hipX = centerX - HIP_WIDTH / 2;
@@ -291,130 +300,220 @@ function buildFigureFilters(centerX: number, action: SceneAction, color = 'white
 	const leftShoulderX = centerX - TORSO_WIDTH / 2;
 	const rightShoulderX = centerX + TORSO_WIDTH / 2;
 
-	const filters: string[] = [
-		drawbox(headX, HEAD_Y, HEAD_SIZE, HEAD_SIZE, color),
-		drawbox(torsoX, NECK_Y, TORSO_WIDTH, TORSO_HEIGHT, color),
-	];
+	// The hips dip when the legs are spread and rise at mid-stride, so the
+	// whole upper body shares one vertical offset and the legs absorb it by
+	// shortening. That keeps the feet on the ground line instead of sliding
+	// the entire figure up and down the frame.
+	const dropAmplitude = action === 'caminar' ? 14 : action === 'sentarse' ? 3 : 7;
+	const drop = dropAmplitude * Math.abs(swing);
+	const shoulderY = SHOULDER_Y + drop;
+
+	const boxes: NamedBox[] = [];
+	const push = (name: string, x: number, y: number, w: number, h: number, thickness: number | 'fill' = 'fill') => {
+		boxes.push({
+			name: `${prefix}${name}`,
+			x: Math.round(x),
+			y: Math.round(y),
+			w: Math.max(1, Math.round(w)),
+			h: Math.max(1, Math.round(h)),
+			color,
+			thickness,
+		});
+	};
+
+	// Seen head-on, a stride reads as the legs spreading apart and coming back
+	// together twice per cycle (hence |swing|). The hip bar stretches to reach
+	// whatever stance the legs are in, so they never look detached from it.
+	const spread = action === 'caminar' ? 44 * Math.abs(swing) : 0;
+
+	push('head', headX, HEAD_Y + drop, HEAD_SIZE, HEAD_SIZE);
+	push('torso', torsoX, NECK_Y + drop, TORSO_WIDTH, TORSO_HEIGHT);
+	push('hip', hipX - spread, HIP_Y + drop, HIP_WIDTH + 2 * spread, HIP_HEIGHT);
 
 	if (action === 'sentarse') {
 		// Seated silhouette: legs bent at the knee (thigh out, shin down) and
-		// shorter overall than the standing legs.
+		// shorter overall than the standing legs. Deliberately still apart from
+		// the shared breathing dip - a seated pose swinging its legs looks wrong.
 		const thighLength = 70;
 		const shinLength = 90;
-		filters.push(
-			drawbox(hipX, HIP_Y, HIP_WIDTH, HIP_HEIGHT, color),
-			drawbox(legLeftX - thighLength + LEG_WIDTH, LEG_Y, thighLength, LEG_WIDTH, color),
-			drawbox(legLeftX - thighLength, LEG_Y, LEG_WIDTH, shinLength, color),
-			drawbox(legRightX, LEG_Y, thighLength, LEG_WIDTH, color),
-			drawbox(legRightX + thighLength - LEG_WIDTH, LEG_Y, LEG_WIDTH, shinLength, color),
-		);
+		const seatY = LEG_Y + drop;
+		push('legL1', legLeftX - thighLength + LEG_WIDTH, seatY, thighLength, LEG_WIDTH);
+		push('legL2', legLeftX - thighLength, seatY, LEG_WIDTH, shinLength);
+		push('legR1', legRightX, seatY, thighLength, LEG_WIDTH);
+		push('legR2', legRightX + thighLength - LEG_WIDTH, seatY, LEG_WIDTH, shinLength);
+	} else if (action === 'caminar') {
+		// Whichever leg is mid-step lifts clear of the ground line.
+		const legTop = LEG_Y + drop;
+		push('legL', legLeftX - spread, legTop, LEG_WIDTH, GROUND_Y - legTop - 30 * Math.max(0, swing));
+		push('legR', legRightX + spread, legTop, LEG_WIDTH, GROUND_Y - legTop - 30 * Math.max(0, -swing));
 	} else {
-		filters.push(
-			drawbox(hipX, HIP_Y, HIP_WIDTH, HIP_HEIGHT, color),
-			drawbox(legLeftX, LEG_Y, LEG_WIDTH, LEG_HEIGHT, color),
-			drawbox(legRightX, LEG_Y, LEG_WIDTH, LEG_HEIGHT, color),
-		);
+		const legTop = LEG_Y + drop;
+		push('legL', legLeftX, legTop, LEG_WIDTH, GROUND_Y - legTop);
+		push('legR', legRightX, legTop, LEG_WIDTH, GROUND_Y - legTop);
 	}
 
 	switch (action) {
 		case 'senalar': {
-			// Left arm hangs neutral, right arm raised diagonally outward (pointing).
-			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
+			// Left arm hangs neutral; right arm jabs the pointing gesture outward
+			// and back on a loop, like emphasizing a point while talking.
+			push('armL', leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, shoulderY, ARM_THICKNESS, ARM_LENGTH + 20);
 			const riserHeight = 40;
-			filters.push(
-				drawbox(rightShoulderX, SHOULDER_Y - riserHeight, ARM_THICKNESS, riserHeight, color),
-				drawbox(rightShoulderX, SHOULDER_Y - riserHeight, 100, ARM_THICKNESS, color),
-			);
+			push('armR1', rightShoulderX, shoulderY - riserHeight, ARM_THICKNESS, riserHeight);
+			push('armR2', rightShoulderX, shoulderY - riserHeight, 70 + 60 * Math.abs(swing), ARM_THICKNESS);
 			break;
 		}
 		case 'pensar': {
-			// Left arm hangs neutral, right arm bent up with a "hand" near the chin.
-			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
-			const riserTopY = HEAD_Y + HEAD_SIZE - 10;
-			filters.push(
-				drawbox(rightShoulderX, riserTopY, ARM_THICKNESS, SHOULDER_Y - riserTopY, color),
-				drawbox(centerX - 10, riserTopY, 20, 14, color),
-			);
+			// Left arm hangs neutral; the "thinking hand" taps near the chin.
+			push('armL', leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, shoulderY, ARM_THICKNESS, ARM_LENGTH + 20);
+			const riserTopY = HEAD_Y + HEAD_SIZE - 10 + drop;
+			push('armR1', rightShoulderX, riserTopY, ARM_THICKNESS, shoulderY - riserTopY);
+			push('armR2', centerX - 10 + 12 * swing, riserTopY + 10 * Math.abs(swing), 20, 14);
 			break;
 		}
 		case 'telefono': {
-			// Left arm hangs neutral, right arm bent up to the head with a small
-			// rectangle representing a phone held to the ear.
-			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
-			const riserTopY = HEAD_Y + 30;
-			filters.push(
-				drawbox(rightShoulderX, riserTopY, ARM_THICKNESS, SHOULDER_Y - riserTopY, color),
-				drawbox(centerX + HEAD_SIZE / 2 - 6, HEAD_Y + 10, 22, 34, color),
-			);
+			// Left arm hangs neutral; the phone rectangle held to the ear rocks
+			// with the nodding of an ongoing call.
+			push('armL', leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, shoulderY, ARM_THICKNESS, ARM_LENGTH + 20);
+			const riserTopY = HEAD_Y + 30 + drop;
+			push('armR1', rightShoulderX, riserTopY, ARM_THICKNESS, shoulderY - riserTopY);
+			push('phone', centerX + HEAD_SIZE / 2 - 6 + 8 * swing, HEAD_Y + 10 + drop, 22, 34);
+			break;
+		}
+		case 'mostrar_objeto': {
+			// Left arm neutral; right arm raises and lowers as if presenting
+			// something held up for the viewer to see.
+			push('armL1', leftShoulderX - ARM_LENGTH, shoulderY, ARM_LENGTH, ARM_THICKNESS);
+			push('armL2', leftShoulderX - ARM_LENGTH, shoulderY, ARM_THICKNESS, FOREARM_LENGTH);
+			const raiseY = shoulderY - 45 * Math.abs(swing);
+			push('armR1', rightShoulderX, raiseY, ARM_LENGTH, ARM_THICKNESS);
+			push('armR2', rightShoulderX + ARM_LENGTH - ARM_THICKNESS, raiseY, ARM_THICKNESS, FOREARM_LENGTH);
+			break;
+		}
+		case 'caminar': {
+			// Arms pump in opposite phase to each other. The upper segment stays
+			// anchored at the shoulder and changes length instead of sliding
+			// sideways - drawbox can only draw axis-aligned rectangles, so a
+			// swinging arm that kept its length would tear away from the torso.
+			const reachLeft = ARM_LENGTH + 26 * swing;
+			const reachRight = ARM_LENGTH - 26 * swing;
+			push('armL1', leftShoulderX - reachLeft, shoulderY, reachLeft, ARM_THICKNESS);
+			push('armL2', leftShoulderX - reachLeft, shoulderY, ARM_THICKNESS, FOREARM_LENGTH);
+			push('armR1', rightShoulderX, shoulderY, reachRight, ARM_THICKNESS);
+			push('armR2', rightShoulderX + reachRight - ARM_THICKNESS, shoulderY, ARM_THICKNESS, FOREARM_LENGTH);
 			break;
 		}
 		case 'hablar':
-		case 'caminar':
-		case 'mostrar_objeto':
 		default: {
-			// Standing neutral pose: both arms slightly out and down.
-			filters.push(
-				drawbox(leftShoulderX - ARM_LENGTH, SHOULDER_Y, ARM_LENGTH, ARM_THICKNESS, color),
-				drawbox(leftShoulderX - ARM_LENGTH, SHOULDER_Y, ARM_THICKNESS, FOREARM_LENGTH, color),
-				drawbox(rightShoulderX, SHOULDER_Y, ARM_LENGTH, ARM_THICKNESS, color),
-				drawbox(rightShoulderX + ARM_LENGTH - ARM_THICKNESS, SHOULDER_Y, ARM_THICKNESS, FOREARM_LENGTH, color),
-			);
+			// Standing neutral pose with both arms gesturing while talking.
+			const talkSway = 16 * swing;
+			push('armL1', leftShoulderX - ARM_LENGTH, shoulderY + talkSway, ARM_LENGTH, ARM_THICKNESS);
+			push('armL2', leftShoulderX - ARM_LENGTH, shoulderY + talkSway, ARM_THICKNESS, FOREARM_LENGTH);
+			push('armR1', rightShoulderX, shoulderY - talkSway, ARM_LENGTH, ARM_THICKNESS);
+			push('armR2', rightShoulderX + ARM_LENGTH - ARM_THICKNESS, shoulderY - talkSway, ARM_THICKNESS, FOREARM_LENGTH);
 			break;
 		}
 	}
 
-	return filters;
+	return boxes;
 }
 
 // RF-018: simple 2D visual elements. drawbox only draws rectangles, so each
 // prop is a labeled outline box placed to the side of the character(s).
-// Returns the box (drawbox filter) separately from its text label (a
-// TextOverlay, rendered via the libass path - see above).
-function buildPropFilters(prop: ScenePropType, accentColor: string, canvasWidth: number): { boxFilters: string[]; overlays: TextOverlay[] } {
-	if (prop === 'ninguno') return { boxFilters: [], overlays: [] };
-	const label = PROP_LABELS[prop];
-	if (!label) return { boxFilters: [], overlays: [] };
+// Returns the box separately from its text label (a TextOverlay, rendered via
+// the libass path - see above).
+function buildPropVisual(prop: ScenePropType, accentColor: string, canvasWidth: number): { box: NamedBox | null; overlays: TextOverlay[] } {
+	const label = prop === 'ninguno' ? undefined : PROP_LABELS[prop];
+	if (!label) return { box: null, overlays: [] };
 
 	const boxSize = 180;
 	const boxX = canvasWidth - boxSize - 90;
 	const boxY = HEAD_Y;
 
 	return {
-		boxFilters: [drawbox(boxX, boxY, boxSize, boxSize, accentColor, 4)],
+		box: { name: 'prop', x: boxX, y: boxY, w: boxSize, h: boxSize, color: accentColor, thickness: 4 },
 		overlays: [{ text: label, x: boxX, y: boxY + boxSize + 12, fontSize: 26, color: accentColor }],
 	};
 }
 
-function buildSceneFilters(params: {
-	index: number;
-	scene: RenderScene;
-	description: string;
-	width: number;
-	height: number;
-	textColor: string;
-}): { boxFilters: string[]; overlays: TextOverlay[] } {
-	const { index, scene, description, width, height, textColor } = params;
-	const boxFilters: string[] = [];
-	const overlays: TextOverlay[] = [];
-
-	boxFilters.push(...buildFigureFilters(FIGURE_CENTER_X, scene.action));
+// Every box drawn for a scene at one instant: the figure(s), the character
+// badge and the prop outline. Text is intentionally not here - it's built once
+// per scene by buildSceneTextOverlays() and burned in via libass, since
+// labels and subtitles don't move with the figure.
+function buildSceneBoxes(scene: RenderScene, phase: number, width: number, textColor: string): NamedBox[] {
+	const boxes = buildFigureBoxes('f0', FIGURE_CENTER_X, scene.action, phase);
 	if (scene.character === 'pareja') {
-		boxFilters.push(...buildFigureFilters(FIGURE_CENTER_X + PAREJA_OFFSET_X, scene.action));
+		// The partner is deliberately out of step so the two figures read as two
+		// people rather than one mirrored object.
+		boxes.push(...buildFigureBoxes('f1', FIGURE_CENTER_X + PAREJA_OFFSET_X, scene.action, (phase + 0.35) % 1));
 	}
 
-	const badgeColor = CHARACTER_BADGE_COLORS[scene.character] ?? CHARACTER_BADGE_COLORS.generico;
-	boxFilters.push(drawbox(FIGURE_CENTER_X + HEAD_SIZE / 2 + 10, HEAD_Y - 10, 30, 30, badgeColor));
+	// Rides along with the head's vertical offset so the badge never detaches.
+	const headDrop = boxes[0].y - HEAD_Y;
+	boxes.push({
+		name: 'badge',
+		x: Math.round(FIGURE_CENTER_X + HEAD_SIZE / 2 + 10),
+		y: Math.round(HEAD_Y - 10 + headDrop),
+		w: 30,
+		h: 30,
+		color: CHARACTER_BADGE_COLORS[scene.character] ?? CHARACTER_BADGE_COLORS.generico,
+		thickness: 'fill',
+	});
 
-	const propResult = buildPropFilters(scene.prop, textColor, width);
-	boxFilters.push(...propResult.boxFilters);
-	overlays.push(...propResult.overlays);
+	const prop = buildPropVisual(scene.prop, textColor, width).box;
+	if (prop) boxes.push(prop);
+
+	return boxes;
+}
+
+// How often the pose is resampled, and how long one full animation cycle
+// (e.g. one complete stride) lasts.
+const ANIMATION_FPS = 12;
+const ANIMATION_CYCLE_SECONDS = 1.1;
+
+function boxToFilter(box: NamedBox): string {
+	const thickness = box.thickness === 'fill' ? 'fill' : String(box.thickness);
+	return `drawbox@${box.name}=x=${box.x}:y=${box.y}:w=${box.w}:h=${box.h}:color=${box.color}:t=${thickness}`;
+}
+
+// Samples the pose ANIMATION_FPS times a second and emits a sendcmd script
+// that retargets only the box parameters that actually changed since the
+// previous sample. Unlike drawbox's own x/y/w/h expressions (init-only on this
+// build), sendcmd commands are applied while the filtergraph runs, so this is
+// what actually produces motion.
+function buildSceneCommandScript(scene: RenderScene, durationSeconds: number, width: number, textColor: string): string {
+	const lines: string[] = [];
+	let previous = buildSceneBoxes(scene, 0, width, textColor);
+
+	for (let sample = 1; sample / ANIMATION_FPS < durationSeconds; sample += 1) {
+		const time = sample / ANIMATION_FPS;
+		const current = buildSceneBoxes(scene, (time / ANIMATION_CYCLE_SECONDS) % 1, width, textColor);
+
+		const commands: string[] = [];
+		current.forEach((box, boxIndex) => {
+			const before = previous[boxIndex];
+			if (box.x !== before.x) commands.push(`drawbox@${box.name} x ${box.x}`);
+			if (box.y !== before.y) commands.push(`drawbox@${box.name} y ${box.y}`);
+			if (box.w !== before.w) commands.push(`drawbox@${box.name} w ${box.w}`);
+			if (box.h !== before.h) commands.push(`drawbox@${box.name} h ${box.h}`);
+		});
+
+		if (commands.length > 0) lines.push(`${time.toFixed(3)} ${commands.join(', ')};`);
+		previous = current;
+	}
+
+	return lines.join('\n');
+}
+
+function buildSceneTextOverlays(index: number, scene: RenderScene, description: string, width: number, height: number, textColor: string): TextOverlay[] {
+	const overlays: TextOverlay[] = [];
+	overlays.push(...buildPropVisual(scene.prop, textColor, width).overlays);
 
 	const characterLabel = String(scene.character || 'generico').toUpperCase();
 	overlays.push({ text: `ESCENA ${index + 1}`, x: 50, y: 45, fontSize: 34, color: textColor });
 	overlays.push({ text: characterLabel, x: 50, y: 95, fontSize: 24, color: textColor });
 	overlays.push({ text: description, x: 50, y: Math.round(height * 0.86), fontSize: 30, color: textColor });
 
-	return { boxFilters, overlays };
+	return overlays;
 }
 
 function getLogoOverlayPosition(position: LogoPosition | undefined): string {
@@ -507,10 +606,23 @@ async function render(job: RenderJob) {
 			const description = wrapSubtitleText(scene.description || `Escena ${index + 1}`);
 			const clipPath = join(jobDirectory, `scene-${index + 1}.mp4`);
 
-			const { boxFilters, overlays } = buildSceneFilters({ index, scene, description, width, height, textColor });
+			// The figure is drawn once as labeled drawbox instances holding the
+			// pose at phase 0; the sendcmd script then retargets those same boxes
+			// as the clip plays, which is what animates them.
+			const boxFilters = buildSceneBoxes(scene, 0, width, textColor).map(boxToFilter);
+			const commandScript = buildSceneCommandScript(scene, duration, width, textColor);
+			const filterParts: string[] = [];
+			if (commandScript.length > 0) {
+				const commandPath = join(jobDirectory, `scene-${index + 1}.cmd`);
+				await writeFile(commandPath, `${commandScript}\n`, 'utf8');
+				filterParts.push(`sendcmd=f='${toFfmpegFilterPath(commandPath)}'`);
+			}
+			filterParts.push(...boxFilters);
+
+			const overlays = buildSceneTextOverlays(index, scene, description, width, height, textColor);
 			const assPath = join(jobDirectory, `scene-${index + 1}.ass`);
 			await writeFile(assPath, buildAssSubtitleContent(overlays, duration, width, height), 'utf8');
-			const filter = [...boxFilters, `subtitles='${toFfmpegFilterPath(assPath)}':fontsdir='${toFfmpegFilterPath(FONT_DIRECTORY)}'`].join(',');
+			filterParts.push(`subtitles='${toFfmpegFilterPath(assPath)}':fontsdir='${toFfmpegFilterPath(FONT_DIRECTORY)}'`);
 
 			const audioUrl = typeof scene.audio_url === 'string' && scene.audio_url.trim().length > 0
 				? scene.audio_url.trim()
@@ -529,7 +641,7 @@ async function render(job: RenderJob) {
 				'-f', 'lavfi',
 				'-i', `color=c=${backgroundColor}:s=${width}x${height}:r=30:d=${duration}`,
 				...audioInputArgs,
-				'-vf', filter,
+				'-vf', filterParts.join(','),
 				'-map', '0:v',
 				'-map', '1:a',
 				'-c:v', 'libx264',
