@@ -17,6 +17,16 @@ import { createClient } from '@supabase/supabase-js';
 const FONT_DIRECTORY = join(dirname(require.resolve('dejavu-fonts-ttf/package.json')), 'ttf');
 const FONT_FAMILY = 'DejaVu Sans';
 
+// Containers on Railway (and similar platforms) commonly report the HOST's
+// full CPU count via nproc/sysconf even though a much stricter cgroup
+// limit actually applies - x264's default thread count follows that
+// reported count (e.g. "threads=60" was observed live), which can over-
+// allocate encoder buffers/threads and get the process OOM-killed almost
+// immediately (confirmed live: ffmpeg was killed by signal within ~6s).
+// Pinning a small explicit thread count avoids this regardless of what
+// the container reports.
+const ENCODER_THREADS = Number(process.env.FFMPEG_THREADS ?? 2);
+
 type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
 type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
 type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
@@ -442,6 +452,7 @@ async function applyLogoOverlayOrFallback(sourcePath: string, destinationPath: s
 			'-map', '[outv]',
 			'-map', '0:a',
 			'-c:v', 'libx264',
+			'-threads', String(ENCODER_THREADS),
 			'-c:a', 'copy',
 			'-pix_fmt', 'yuv420p',
 			'-movflags', '+faststart',
@@ -522,6 +533,7 @@ async function render(job: RenderJob) {
 				'-map', '0:v',
 				'-map', '1:a',
 				'-c:v', 'libx264',
+				'-threads', String(ENCODER_THREADS),
 				'-c:a', 'aac',
 				'-shortest',
 				'-pix_fmt', 'yuv420p',
