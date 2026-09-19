@@ -92,7 +92,13 @@ async function ensureDemoUser(): Promise<string | null> {
 }
 
 async function readFromSupabase(): Promise<VideoRecord[]> {
-    const client = getSupabaseClient();
+    // Reads use the service-role client too: this is an internal tool with a
+    // single shared demo user and no per-request Supabase auth session, so the
+    // "auth.uid() = user_id" RLS select policy would otherwise block every
+    // read (0 rows, not an error) even though the rows genuinely exist -
+    // access control for this app happens at the Next.js API route layer, not
+    // via Supabase RLS.
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
     if (!client) return Array.from(mockVideos.values());
 
     try {
@@ -111,7 +117,7 @@ async function readFromSupabase(): Promise<VideoRecord[]> {
 }
 
 async function findVideoRecord(id: string): Promise<VideoRecord | null> {
-    const client = getSupabaseClient();
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
     if (client) {
         try {
             const { data: videoData, error: videoError } = await client.from('videos').select('*').eq('id', id).single();
@@ -397,7 +403,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
 }
 
 async function patchInSupabase(id: string, action: string): Promise<VideoRecord> {
-    const client = getSupabaseClient();
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
     if (!client) {
         const video = mockVideos.get(id);
         if (!video) throw new Error('Video no encontrado.');
