@@ -72,6 +72,11 @@ if (!storageClient) {
 	console.warn('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
 }
 
+// Surfaced on /health so it's possible to tell "storage was never configured"
+// apart from "storage is configured but uploads are failing" without shell
+// access to the container. Never holds credential values.
+let lastStorageError: string | null = null;
+
 // ---- Platform output dimensions (RF-014) ----
 // Reels, TikTok and Shorts are all vertical short-form video with no real
 // dimension difference between them, so all three map to the same 9:16 canvas.
@@ -165,8 +170,10 @@ async function uploadToSupabase(filePath: string, filename: string): Promise<str
 		if (!data?.publicUrl) throw new Error('No se obtuvo una URL publica del bucket.');
 
 		await unlink(filePath).catch(() => undefined);
+		lastStorageError = null;
 		return data.publicUrl;
 	} catch (error) {
+		lastStorageError = error instanceof Error ? error.message : String(error);
 		console.warn('Fallo al subir el render a Supabase Storage, se conserva en disco local.', error);
 		return null;
 	}
@@ -693,7 +700,13 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 
 const server = createServer(async (request, response) => {
 	if (request.method === 'GET' && request.url === '/health') {
-		sendJson(response, 200, { ok: true, service: 'render-worker' });
+		sendJson(response, 200, {
+			ok: true,
+			service: 'render-worker',
+			storage: storageClient ? 'supabase' : 'local-disk',
+			bucket: storageBucket,
+			last_storage_error: lastStorageError,
+		});
 		return;
 	}
 
