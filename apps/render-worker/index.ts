@@ -152,13 +152,9 @@ async function uploadToSupabase(filePath: string, filename: string): Promise<str
 	}
 }
 
-function escapeFilterText(value: string) {
-	return value.replace(/[\\':]/g, '\\$&').replace(/\r?\n/g, ' ');
-}
-
-// Ffmpeg drawtext renders an embedded literal newline (0x0A) as a line break.
-// This is a cheap nice-to-have for long subtitles - not real word wrapping,
-// just a manual break every ~40 chars at a word boundary.
+// Inserts a literal newline every ~40 chars at a word boundary; escapeAssText()
+// turns each "\n" into the ASS hard-break "\N" when the .ass file is built.
+// This is a cheap nice-to-have for long subtitles, not real word wrapping.
 function wrapSubtitleText(text: string, maxLineLength = 40): string {
 	const words = text.split(' ').filter((word) => word.length > 0);
 	if (words.length === 0) return text;
@@ -182,6 +178,79 @@ function wrapSubtitleText(text: string, maxLineLength = 40): string {
 function drawbox(x: number, y: number, w: number, h: number, color: string, thickness: number | 'fill' = 'fill'): string {
 	const t = thickness === 'fill' ? 'fill' : String(thickness);
 	return `drawbox=x=${Math.round(x)}:y=${Math.round(y)}:w=${Math.round(w)}:h=${Math.round(h)}:color=${color}:t=${t}`;
+}
+
+// ---- Text rendering via libass instead of drawtext ----
+// The ffmpeg-static binary actually deployed to production does NOT have the
+// drawtext filter registered (confirmed live: `ffmpeg -filters` omits it,
+// despite the printed configure line listing --enable-libfreetype), even
+// though libass IS present (--enable-libass). All on-screen text is
+// therefore burned in via the `subtitles` filter reading a small per-scene
+// .ass file, using \pos/\an/\fs/\c override tags to reproduce the exact
+// same x/y positions and colors the drawtext-based version used - this is a
+// rendering-mechanism swap only, not a layout change.
+type TextOverlay = { text: string; x: number; y: number; fontSize: number; color: string };
+
+function toAssColor(ffmpegHexColor: string): string {
+	const hex = ffmpegHexColor.replace(/^0x/, '').padStart(6, '0');
+	const r = hex.slice(0, 2);
+	const g = hex.slice(2, 4);
+	const b = hex.slice(4, 6);
+	return `&H00${b}${g}${r}&`;
+}
+
+function formatAssTime(totalSeconds: number): string {
+	const clamped = Math.max(0, totalSeconds);
+	const hours = Math.floor(clamped / 3600);
+	const minutes = Math.floor((clamped % 3600) / 60);
+	const seconds = Math.floor(clamped % 60);
+	const centiseconds = Math.round((clamped - Math.floor(clamped)) * 100);
+	const pad2 = (n: number) => String(n).padStart(2, '0');
+	return `${hours}:${pad2(minutes)}:${pad2(seconds)}.${pad2(centiseconds)}`;
+}
+
+function escapeAssText(value: string): string {
+	// ASS Dialogue text is a single line: braces start override blocks, and
+	// real newlines aren't valid - the wrapSubtitleText() word-wrap already
+	// inserted literal "\n" characters, which become the ASS hard-break "\N".
+	return value
+		.replace(/[{}]/g, '')
+		.replace(/\r?\n/g, '\\N');
+}
+
+function buildAssSubtitleContent(overlays: TextOverlay[], durationSeconds: number, width: number, height: number): string {
+	const header = [
+		'[Script Info]',
+		'ScriptType: v4.00+',
+		`PlayResX: ${width}`,
+		`PlayResY: ${height}`,
+		'ScaledBorderAndShadow: yes',
+		'',
+		'[V4+ Styles]',
+		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
+		'Style: Default,Arial,28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,7,0,0,0,1',
+		'',
+		'[Events]',
+		'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
+	].join('\n');
+
+	const end = formatAssTime(durationSeconds);
+	const lines = overlays.map((overlay) => {
+		// \an7 anchors the position tag to the top-left corner of the text,
+		// matching drawtext's x/y-is-top-left-corner semantics exactly.
+		const tags = `{\\an7\\pos(${Math.round(overlay.x)},${Math.round(overlay.y)})\\fs${Math.round(overlay.fontSize)}\\c${toAssColor(overlay.color)}}`;
+		return `Dialogue: 0,0:00:00.00,${end},Default,,0,0,0,,${tags}${escapeAssText(overlay.text)}`;
+	});
+
+	return `${header}\n${lines.join('\n')}\n`;
+}
+
+// ffmpeg's subtitles filter takes the file path as a filter option value,
+// where ':' and '\' need escaping for the filtergraph parser (relevant on
+// Windows paths during local dev; Linux production paths have no drive-
+// letter colon but the escaping is harmless either way).
+function toFfmpegFilterPath(path: string): string {
+	return path.replace(/\\/g, '/').replace(/:/g, '\\:');
 }
 
 /**
@@ -279,19 +348,21 @@ function buildFigureFilters(centerX: number, action: SceneAction, color = 'white
 
 // RF-018: simple 2D visual elements. drawbox only draws rectangles, so each
 // prop is a labeled outline box placed to the side of the character(s).
-function buildPropFilters(prop: ScenePropType, accentColor: string, canvasWidth: number): string[] {
-	if (prop === 'ninguno') return [];
+// Returns the box (drawbox filter) separately from its text label (a
+// TextOverlay, rendered via the libass path - see above).
+function buildPropFilters(prop: ScenePropType, accentColor: string, canvasWidth: number): { boxFilters: string[]; overlays: TextOverlay[] } {
+	if (prop === 'ninguno') return { boxFilters: [], overlays: [] };
 	const label = PROP_LABELS[prop];
-	if (!label) return [];
+	if (!label) return { boxFilters: [], overlays: [] };
 
 	const boxSize = 180;
 	const boxX = canvasWidth - boxSize - 90;
 	const boxY = HEAD_Y;
 
-	return [
-		drawbox(boxX, boxY, boxSize, boxSize, accentColor, 4),
-		`drawtext=text='${label}':fontcolor=${accentColor}:fontsize=26:x=${boxX}:y=${boxY + boxSize + 12}`,
-	];
+	return {
+		boxFilters: [drawbox(boxX, boxY, boxSize, boxSize, accentColor, 4)],
+		overlays: [{ text: label, x: boxX, y: boxY + boxSize + 12, fontSize: 26, color: accentColor }],
+	};
 }
 
 function buildSceneFilters(params: {
@@ -301,26 +372,29 @@ function buildSceneFilters(params: {
 	width: number;
 	height: number;
 	textColor: string;
-}): string[] {
+}): { boxFilters: string[]; overlays: TextOverlay[] } {
 	const { index, scene, description, width, height, textColor } = params;
-	const filters: string[] = [];
+	const boxFilters: string[] = [];
+	const overlays: TextOverlay[] = [];
 
-	filters.push(...buildFigureFilters(FIGURE_CENTER_X, scene.action));
+	boxFilters.push(...buildFigureFilters(FIGURE_CENTER_X, scene.action));
 	if (scene.character === 'pareja') {
-		filters.push(...buildFigureFilters(FIGURE_CENTER_X + PAREJA_OFFSET_X, scene.action));
+		boxFilters.push(...buildFigureFilters(FIGURE_CENTER_X + PAREJA_OFFSET_X, scene.action));
 	}
 
 	const badgeColor = CHARACTER_BADGE_COLORS[scene.character] ?? CHARACTER_BADGE_COLORS.generico;
-	filters.push(drawbox(FIGURE_CENTER_X + HEAD_SIZE / 2 + 10, HEAD_Y - 10, 30, 30, badgeColor));
+	boxFilters.push(drawbox(FIGURE_CENTER_X + HEAD_SIZE / 2 + 10, HEAD_Y - 10, 30, 30, badgeColor));
 
-	filters.push(...buildPropFilters(scene.prop, textColor, width));
+	const propResult = buildPropFilters(scene.prop, textColor, width);
+	boxFilters.push(...propResult.boxFilters);
+	overlays.push(...propResult.overlays);
 
-	const characterLabel = escapeFilterText(String(scene.character || 'generico').toUpperCase());
-	filters.push(`drawtext=text='ESCENA ${index + 1}':fontcolor=${textColor}:fontsize=34:x=50:y=45`);
-	filters.push(`drawtext=text='${characterLabel}':fontcolor=${textColor}:fontsize=24:x=50:y=95`);
-	filters.push(`drawtext=text='${description}':fontcolor=${textColor}:fontsize=30:x=50:y=${Math.round(height * 0.86)}`);
+	const characterLabel = String(scene.character || 'generico').toUpperCase();
+	overlays.push({ text: `ESCENA ${index + 1}`, x: 50, y: 45, fontSize: 34, color: textColor });
+	overlays.push({ text: characterLabel, x: 50, y: 95, fontSize: 24, color: textColor });
+	overlays.push({ text: description, x: 50, y: Math.round(height * 0.86), fontSize: 30, color: textColor });
 
-	return filters;
+	return { boxFilters, overlays };
 }
 
 function getLogoOverlayPosition(position: LogoPosition | undefined): string {
@@ -407,10 +481,15 @@ async function render(job: RenderJob) {
 		for (let index = 0; index < scenes.length; index += 1) {
 			const scene = scenes[index];
 			const duration = Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1));
-			const description = wrapSubtitleText(escapeFilterText(scene.description || `Escena ${index + 1}`));
+			// No drawtext-oriented escaping needed anymore - text goes through
+			// the ASS subtitle path now, escaped separately in escapeAssText().
+			const description = wrapSubtitleText(scene.description || `Escena ${index + 1}`);
 			const clipPath = join(jobDirectory, `scene-${index + 1}.mp4`);
 
-			const filter = buildSceneFilters({ index, scene, description, width, height, textColor }).join(',');
+			const { boxFilters, overlays } = buildSceneFilters({ index, scene, description, width, height, textColor });
+			const assPath = join(jobDirectory, `scene-${index + 1}.ass`);
+			await writeFile(assPath, buildAssSubtitleContent(overlays, duration, width, height), 'utf8');
+			const filter = [...boxFilters, `subtitles='${toFfmpegFilterPath(assPath)}'`].join(',');
 
 			const audioUrl = typeof scene.audio_url === 'string' && scene.audio_url.trim().length > 0
 				? scene.audio_url.trim()
@@ -481,36 +560,6 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 const server = createServer(async (request, response) => {
 	if (request.method === 'GET' && request.url === '/health') {
 		sendJson(response, 200, { ok: true, service: 'render-worker' });
-		return;
-	}
-
-	// TEMPORARY diagnostic route - remove once the drawtext-availability
-	// question is resolved. Reports the resolved ffmpeg binary path and
-	// whether the drawtext filter is registered in it.
-	if (request.method === 'GET' && request.url === '/debug-ffmpeg') {
-		const binaryPath = process.env.FFMPEG_PATH ?? ffmpegPath ?? 'ffmpeg';
-		try {
-			const output = await new Promise<string>((resolve, reject) => {
-				const child = spawn(binaryPath, ['-hide_banner', '-filters']);
-				let out = '';
-				child.stdout.on('data', (chunk: Buffer) => { out += chunk.toString(); });
-				child.stderr.on('data', (chunk: Buffer) => { out += chunk.toString(); });
-				child.on('error', reject);
-				child.on('close', () => resolve(out));
-			});
-			const hasDrawtext = /\bdrawtext\b/.test(output);
-			const versionOutput = await new Promise<string>((resolve, reject) => {
-				const child = spawn(binaryPath, ['-version']);
-				let out = '';
-				child.stdout.on('data', (chunk: Buffer) => { out += chunk.toString(); });
-				child.stderr.on('data', (chunk: Buffer) => { out += chunk.toString(); });
-				child.on('error', reject);
-				child.on('close', () => resolve(out));
-			});
-			sendJson(response, 200, { binaryPath, hasDrawtext, filtersOutputTail: output.slice(-3000), versionOutput: versionOutput.slice(0, 1500) });
-		} catch (error) {
-			sendJson(response, 500, { binaryPath, error: error instanceof Error ? error.message : String(error) });
-		}
 		return;
 	}
 
