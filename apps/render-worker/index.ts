@@ -484,6 +484,36 @@ const server = createServer(async (request, response) => {
 		return;
 	}
 
+	// TEMPORARY diagnostic route - remove once the drawtext-availability
+	// question is resolved. Reports the resolved ffmpeg binary path and
+	// whether the drawtext filter is registered in it.
+	if (request.method === 'GET' && request.url === '/debug-ffmpeg') {
+		const binaryPath = process.env.FFMPEG_PATH ?? ffmpegPath ?? 'ffmpeg';
+		try {
+			const output = await new Promise<string>((resolve, reject) => {
+				const child = spawn(binaryPath, ['-hide_banner', '-filters']);
+				let out = '';
+				child.stdout.on('data', (chunk: Buffer) => { out += chunk.toString(); });
+				child.stderr.on('data', (chunk: Buffer) => { out += chunk.toString(); });
+				child.on('error', reject);
+				child.on('close', () => resolve(out));
+			});
+			const hasDrawtext = /\bdrawtext\b/.test(output);
+			const versionOutput = await new Promise<string>((resolve, reject) => {
+				const child = spawn(binaryPath, ['-version']);
+				let out = '';
+				child.stdout.on('data', (chunk: Buffer) => { out += chunk.toString(); });
+				child.stderr.on('data', (chunk: Buffer) => { out += chunk.toString(); });
+				child.on('error', reject);
+				child.on('close', () => resolve(out));
+			});
+			sendJson(response, 200, { binaryPath, hasDrawtext, filtersOutputTail: output.slice(-3000), versionOutput: versionOutput.slice(0, 1500) });
+		} catch (error) {
+			sendJson(response, 500, { binaryPath, error: error instanceof Error ? error.message : String(error) });
+		}
+		return;
+	}
+
 	if (request.method === 'GET' && request.url?.startsWith('/renders/')) {
 		const filename = request.url.slice('/renders/'.length);
 		if (!/^[a-zA-Z0-9-]+\.mp4$/.test(filename)) {
