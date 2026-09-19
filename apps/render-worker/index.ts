@@ -1,20 +1,40 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
 
+type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
+type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
+type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
+type Platform = 'reels' | 'tiktok' | 'shorts';
+type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
 type RenderScene = {
 	order: number;
+	character: CharacterType;
+	action: SceneAction;
+	prop: ScenePropType;
 	description: string;
 	duration_seconds: number;
+	audio_url: string | null;
+};
+
+type Branding = {
+	logo_url: string | null;
+	logo_position: LogoPosition;
+	primary_color: string;
+	secondary_color: string;
+	font_family: string;
 };
 
 type RenderJob = {
 	id?: string;
+	platform: Platform;
+	branding: Branding;
 	scenes: RenderScene[];
 };
 
@@ -31,6 +51,84 @@ const storageClient = supabaseUrl && supabaseServiceRoleKey
 if (!storageClient) {
 	console.warn('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
 }
+
+// ---- Platform output dimensions (RF-014) ----
+// Reels, TikTok and Shorts are all vertical short-form video with no real
+// dimension difference between them, so all three map to the same 9:16 canvas.
+const PLATFORM_DIMENSIONS: Record<Platform, { width: number; height: number }> = {
+	reels: { width: 1080, height: 1920 },
+	tiktok: { width: 1080, height: 1920 },
+	shorts: { width: 1080, height: 1920 },
+};
+
+const DEFAULT_BRANDING: Branding = {
+	logo_url: null,
+	logo_position: 'top-left',
+	primary_color: '#17202a',
+	secondary_color: '#ffffff',
+	font_family: 'Arial',
+};
+
+// ---- Branding colors (RF-026/RF-027 application, not capture) ----
+const DEFAULT_BACKGROUND_COLOR = '0x17202a';
+const DEFAULT_TEXT_COLOR = '0xffffff';
+const HEX_COLOR_PATTERN = /^#?[0-9a-fA-F]{6}$/;
+
+function toFfmpegHexColor(value: unknown, fallback: string): string {
+	if (typeof value === 'string' && HEX_COLOR_PATTERN.test(value.trim())) {
+		return `0x${value.trim().replace(/^#/, '')}`;
+	}
+	return fallback;
+}
+
+// ---- Canvas layout for the 1080x1920 vertical (9:16) stickman scene ----
+const HEAD_SIZE = 90;
+const HEAD_Y = 480;
+const NECK_Y = HEAD_Y + HEAD_SIZE; // 570 - top of torso
+const SHOULDER_Y = NECK_Y + 20; // 590
+const TORSO_WIDTH = 12;
+const TORSO_HEIGHT = 260;
+const HIP_Y = NECK_Y + TORSO_HEIGHT; // 830
+const HIP_WIDTH = 140;
+const HIP_HEIGHT = 12;
+const LEG_WIDTH = 12;
+const LEG_HEIGHT = 270;
+const LEG_Y = HIP_Y + HIP_HEIGHT; // 842
+const ARM_THICKNESS = 12;
+const ARM_LENGTH = 70;
+const FOREARM_LENGTH = 70;
+// Small horizontal gap so a hanging "off" arm reads as a separate limb next to
+// the torso instead of visually fusing with it (both are ARM_THICKNESS wide).
+const HANGING_ARM_GAP = 8;
+// Horizontal offset used to draw a second, smaller-in-spirit figure next to the
+// first one for character: 'pareja' so a couple genuinely reads as two figures.
+const PAREJA_OFFSET_X = 190;
+// The main figure is drawn left-of-center so there's always clear room on the
+// right side of the frame for the prop box (RF-018), even for 'pareja' scenes.
+const FIGURE_CENTER_X = 378;
+
+// Small accent color per character type, used as a "badge" visual tag (RF-004).
+// drawbox can only draw rectangles, so distinct silhouettes per type aren't
+// attempted - only this badge + an uppercase drawtext label identify the type.
+const CHARACTER_BADGE_COLORS: Record<CharacterType, string> = {
+	broker: '0x2e86de',
+	cliente: '0x27ae60',
+	pareja: '0xe67e22',
+	hombre: '0x8e44ad',
+	mujer: '0xe84393',
+	generico: '0x95a5a6',
+};
+
+const PROP_LABELS: Partial<Record<ScenePropType, string>> = {
+	casa: 'CASA',
+	carro: 'CARRO',
+	banco: 'BANCO',
+	telefono: 'TELEFONO',
+	documento: 'DOCUMENTO',
+	dinero: 'DINERO',
+	grafico: 'GRAFICO',
+	oficina: 'OFICINA',
+};
 
 async function uploadToSupabase(filePath: string, filename: string): Promise<string | null> {
 	if (!storageClient) return null;
@@ -58,6 +156,220 @@ function escapeFilterText(value: string) {
 	return value.replace(/[\\':]/g, '\\$&').replace(/\r?\n/g, ' ');
 }
 
+// Ffmpeg drawtext renders an embedded literal newline (0x0A) as a line break.
+// This is a cheap nice-to-have for long subtitles - not real word wrapping,
+// just a manual break every ~40 chars at a word boundary.
+function wrapSubtitleText(text: string, maxLineLength = 40): string {
+	const words = text.split(' ').filter((word) => word.length > 0);
+	if (words.length === 0) return text;
+
+	const lines: string[] = [];
+	let currentLine = '';
+	for (const word of words) {
+		if (currentLine.length === 0) {
+			currentLine = word;
+		} else if (currentLine.length + 1 + word.length <= maxLineLength) {
+			currentLine += ` ${word}`;
+		} else {
+			lines.push(currentLine);
+			currentLine = word;
+		}
+	}
+	if (currentLine.length > 0) lines.push(currentLine);
+	return lines.join('\n');
+}
+
+function drawbox(x: number, y: number, w: number, h: number, color: string, thickness: number | 'fill' = 'fill'): string {
+	const t = thickness === 'fill' ? 'fill' : String(thickness);
+	return `drawbox=x=${Math.round(x)}:y=${Math.round(y)}:w=${Math.round(w)}:h=${Math.round(h)}:color=${color}:t=${t}`;
+}
+
+/**
+ * Builds a simple 2D stickman figure (RF-004: no 3D, no complex character art)
+ * from drawbox primitives, with the arm/leg layout varied per SceneAction so
+ * the seven RF-017 actions are visibly distinct poses.
+ *
+ * IMPORTANT: these are STATIC pose variants held for the whole scene duration -
+ * there is no per-frame keyframing/animation in this V1 renderer, and that's
+ * expected. Each action just picks a different fixed set of limb coordinates.
+ */
+function buildFigureFilters(centerX: number, action: SceneAction, color = 'white'): string[] {
+	const headX = centerX - HEAD_SIZE / 2;
+	const torsoX = centerX - TORSO_WIDTH / 2;
+	const hipX = centerX - HIP_WIDTH / 2;
+	const legLeftX = centerX - HIP_WIDTH / 2;
+	const legRightX = centerX + HIP_WIDTH / 2 - LEG_WIDTH;
+	const leftShoulderX = centerX - TORSO_WIDTH / 2;
+	const rightShoulderX = centerX + TORSO_WIDTH / 2;
+
+	const filters: string[] = [
+		drawbox(headX, HEAD_Y, HEAD_SIZE, HEAD_SIZE, color),
+		drawbox(torsoX, NECK_Y, TORSO_WIDTH, TORSO_HEIGHT, color),
+	];
+
+	if (action === 'sentarse') {
+		// Seated silhouette: legs bent at the knee (thigh out, shin down) and
+		// shorter overall than the standing legs.
+		const thighLength = 70;
+		const shinLength = 90;
+		filters.push(
+			drawbox(hipX, HIP_Y, HIP_WIDTH, HIP_HEIGHT, color),
+			drawbox(legLeftX - thighLength + LEG_WIDTH, LEG_Y, thighLength, LEG_WIDTH, color),
+			drawbox(legLeftX - thighLength, LEG_Y, LEG_WIDTH, shinLength, color),
+			drawbox(legRightX, LEG_Y, thighLength, LEG_WIDTH, color),
+			drawbox(legRightX + thighLength - LEG_WIDTH, LEG_Y, LEG_WIDTH, shinLength, color),
+		);
+	} else {
+		filters.push(
+			drawbox(hipX, HIP_Y, HIP_WIDTH, HIP_HEIGHT, color),
+			drawbox(legLeftX, LEG_Y, LEG_WIDTH, LEG_HEIGHT, color),
+			drawbox(legRightX, LEG_Y, LEG_WIDTH, LEG_HEIGHT, color),
+		);
+	}
+
+	switch (action) {
+		case 'senalar': {
+			// Left arm hangs neutral, right arm raised diagonally outward (pointing).
+			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
+			const riserHeight = 40;
+			filters.push(
+				drawbox(rightShoulderX, SHOULDER_Y - riserHeight, ARM_THICKNESS, riserHeight, color),
+				drawbox(rightShoulderX, SHOULDER_Y - riserHeight, 100, ARM_THICKNESS, color),
+			);
+			break;
+		}
+		case 'pensar': {
+			// Left arm hangs neutral, right arm bent up with a "hand" near the chin.
+			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
+			const riserTopY = HEAD_Y + HEAD_SIZE - 10;
+			filters.push(
+				drawbox(rightShoulderX, riserTopY, ARM_THICKNESS, SHOULDER_Y - riserTopY, color),
+				drawbox(centerX - 10, riserTopY, 20, 14, color),
+			);
+			break;
+		}
+		case 'telefono': {
+			// Left arm hangs neutral, right arm bent up to the head with a small
+			// rectangle representing a phone held to the ear.
+			filters.push(drawbox(leftShoulderX - ARM_THICKNESS - HANGING_ARM_GAP, SHOULDER_Y, ARM_THICKNESS, ARM_LENGTH + 20, color));
+			const riserTopY = HEAD_Y + 30;
+			filters.push(
+				drawbox(rightShoulderX, riserTopY, ARM_THICKNESS, SHOULDER_Y - riserTopY, color),
+				drawbox(centerX + HEAD_SIZE / 2 - 6, HEAD_Y + 10, 22, 34, color),
+			);
+			break;
+		}
+		case 'hablar':
+		case 'caminar':
+		case 'mostrar_objeto':
+		default: {
+			// Standing neutral pose: both arms slightly out and down.
+			filters.push(
+				drawbox(leftShoulderX - ARM_LENGTH, SHOULDER_Y, ARM_LENGTH, ARM_THICKNESS, color),
+				drawbox(leftShoulderX - ARM_LENGTH, SHOULDER_Y, ARM_THICKNESS, FOREARM_LENGTH, color),
+				drawbox(rightShoulderX, SHOULDER_Y, ARM_LENGTH, ARM_THICKNESS, color),
+				drawbox(rightShoulderX + ARM_LENGTH - ARM_THICKNESS, SHOULDER_Y, ARM_THICKNESS, FOREARM_LENGTH, color),
+			);
+			break;
+		}
+	}
+
+	return filters;
+}
+
+// RF-018: simple 2D visual elements. drawbox only draws rectangles, so each
+// prop is a labeled outline box placed to the side of the character(s).
+function buildPropFilters(prop: ScenePropType, accentColor: string, canvasWidth: number): string[] {
+	if (prop === 'ninguno') return [];
+	const label = PROP_LABELS[prop];
+	if (!label) return [];
+
+	const boxSize = 180;
+	const boxX = canvasWidth - boxSize - 90;
+	const boxY = HEAD_Y;
+
+	return [
+		drawbox(boxX, boxY, boxSize, boxSize, accentColor, 4),
+		`drawtext=text='${label}':fontcolor=${accentColor}:fontsize=26:x=${boxX}:y=${boxY + boxSize + 12}`,
+	];
+}
+
+function buildSceneFilters(params: {
+	index: number;
+	scene: RenderScene;
+	description: string;
+	width: number;
+	height: number;
+	textColor: string;
+}): string[] {
+	const { index, scene, description, width, height, textColor } = params;
+	const filters: string[] = [];
+
+	filters.push(...buildFigureFilters(FIGURE_CENTER_X, scene.action));
+	if (scene.character === 'pareja') {
+		filters.push(...buildFigureFilters(FIGURE_CENTER_X + PAREJA_OFFSET_X, scene.action));
+	}
+
+	const badgeColor = CHARACTER_BADGE_COLORS[scene.character] ?? CHARACTER_BADGE_COLORS.generico;
+	filters.push(drawbox(FIGURE_CENTER_X + HEAD_SIZE / 2 + 10, HEAD_Y - 10, 30, 30, badgeColor));
+
+	filters.push(...buildPropFilters(scene.prop, textColor, width));
+
+	const characterLabel = escapeFilterText(String(scene.character || 'generico').toUpperCase());
+	filters.push(`drawtext=text='ESCENA ${index + 1}':fontcolor=${textColor}:fontsize=34:x=50:y=45`);
+	filters.push(`drawtext=text='${characterLabel}':fontcolor=${textColor}:fontsize=24:x=50:y=95`);
+	filters.push(`drawtext=text='${description}':fontcolor=${textColor}:fontsize=30:x=50:y=${Math.round(height * 0.86)}`);
+
+	return filters;
+}
+
+function getLogoOverlayPosition(position: LogoPosition | undefined): string {
+	switch (position) {
+		case 'top-right': return 'W-w-24:24';
+		case 'bottom-left': return '24:H-h-24';
+		case 'bottom-right': return 'W-w-24:H-h-24';
+		case 'top-left':
+		default: return '24:24';
+	}
+}
+
+// Applies the brand logo (RF-026 application) as an overlay on the final,
+// already-concatenated video. If the logo URL is unreachable or ffmpeg fails
+// on it, this degrades gracefully to the un-logo'd video instead of failing
+// the whole render, matching this file's existing resilience-over-hard-failure
+// convention (see uploadToSupabase above).
+async function applyLogoOverlayOrFallback(sourcePath: string, destinationPath: string, branding: Branding): Promise<void> {
+	const logoUrl = typeof branding.logo_url === 'string' && branding.logo_url.trim().length > 0
+		? branding.logo_url.trim()
+		: null;
+
+	if (!logoUrl) {
+		await rename(sourcePath, destinationPath);
+		return;
+	}
+
+	try {
+		const overlayPosition = getLogoOverlayPosition(branding.logo_position);
+		await runFfmpeg([
+			'-y',
+			'-i', sourcePath,
+			'-i', logoUrl,
+			'-filter_complex', `[1:v]scale=160:-1[logo];[0:v][logo]overlay=${overlayPosition}[outv]`,
+			'-map', '[outv]',
+			'-map', '0:a',
+			'-c:v', 'libx264',
+			'-c:a', 'copy',
+			'-pix_fmt', 'yuv420p',
+			'-movflags', '+faststart',
+			destinationPath,
+		]);
+	} catch (error) {
+		console.warn('Fallo al aplicar el logo de marca sobre el render final, se conserva el video sin logo.', error);
+		await unlink(destinationPath).catch(() => undefined);
+		await rename(sourcePath, destinationPath);
+	}
+}
+
 function runFfmpeg(args: string[]) {
 	return new Promise<void>((resolve, reject) => {
 		const childProcess = spawn(process.env.FFMPEG_PATH ?? ffmpegPath ?? 'ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -83,6 +395,11 @@ async function render(job: RenderJob) {
 	const jobDirectory = join(renderDirectory, jobId);
 	await mkdir(jobDirectory, { recursive: true });
 
+	const branding = job.branding ?? DEFAULT_BRANDING;
+	const backgroundColor = toFfmpegHexColor(branding.primary_color, DEFAULT_BACKGROUND_COLOR);
+	const textColor = toFfmpegHexColor(branding.secondary_color, DEFAULT_TEXT_COLOR);
+	const { width, height } = PLATFORM_DIMENSIONS[job.platform] ?? PLATFORM_DIMENSIONS.reels;
+
 	try {
 		const clips: string[] = [];
 		const scenes = [...job.scenes].sort((first, second) => first.order - second.order);
@@ -90,25 +407,34 @@ async function render(job: RenderJob) {
 		for (let index = 0; index < scenes.length; index += 1) {
 			const scene = scenes[index];
 			const duration = Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1));
-			const description = escapeFilterText(scene.description || `Escena ${index + 1}`);
+			const description = wrapSubtitleText(escapeFilterText(scene.description || `Escena ${index + 1}`));
 			const clipPath = join(jobDirectory, `scene-${index + 1}.mp4`);
-			const filter = [
-				'drawbox=x=600:y=210:w=12:h=180:color=white:t=fill',
-				'drawbox=x=540:y=390:w=130:h=12:color=white:t=fill',
-				'drawbox=x=540:y=390:w=12:h=150:color=white:t=fill',
-				'drawbox=x=658:y=390:w=12:h=150:color=white:t=fill',
-				'drawbox=x=560:y=115:w=90:h=90:color=white:t=fill',
-				`drawtext=text='ESCENA ${index + 1}':fontcolor=white:fontsize=34:x=50:y=45`,
-				`drawtext=text='${description}':fontcolor=white:fontsize=28:x=50:y=650`,
-			].join(',');
+
+			const filter = buildSceneFilters({ index, scene, description, width, height, textColor }).join(',');
+
+			const audioUrl = typeof scene.audio_url === 'string' && scene.audio_url.trim().length > 0
+				? scene.audio_url.trim()
+				: null;
+
+			// Every clip gets both a video AND an audio stream - real audio when
+			// available, otherwise a silent anullsrc track of the same duration -
+			// so the concat demuxer below sees a uniform stream layout across all
+			// clips regardless of which scenes had TTS audio.
+			const audioInputArgs = audioUrl
+				? ['-i', audioUrl]
+				: ['-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${duration}`];
 
 			await runFfmpeg([
 				'-y',
 				'-f', 'lavfi',
-				'-i', `color=c=0x17202a:s=1280x720:r=30:d=${duration}`,
+				'-i', `color=c=${backgroundColor}:s=${width}x${height}:r=30:d=${duration}`,
+				...audioInputArgs,
 				'-vf', filter,
-				'-an',
+				'-map', '0:v',
+				'-map', '1:a',
 				'-c:v', 'libx264',
+				'-c:a', 'aac',
+				'-shortest',
 				'-pix_fmt', 'yuv420p',
 				'-movflags', '+faststart',
 				clipPath,
@@ -118,7 +444,7 @@ async function render(job: RenderJob) {
 
 		const concatPath = join(jobDirectory, 'concat.txt');
 		await writeFile(concatPath, clips.map((clip) => `file '${clip.replace(/'/g, "'\\''")}'`).join('\n'), 'utf8');
-		const outputPath = join(renderDirectory, `${jobId}.mp4`);
+		const concatOutputPath = join(jobDirectory, 'concat-output.mp4');
 
 		await runFfmpeg([
 			'-y',
@@ -127,8 +453,11 @@ async function render(job: RenderJob) {
 			'-i', concatPath,
 			'-c', 'copy',
 			'-movflags', '+faststart',
-			outputPath,
+			concatOutputPath,
 		]);
+
+		const outputPath = join(renderDirectory, `${jobId}.mp4`);
+		await applyLogoOverlayOrFallback(concatOutputPath, outputPath, branding);
 
 		const filename = `${jobId}.mp4`;
 		const uploadedUrl = await uploadToSupabase(outputPath, filename);
