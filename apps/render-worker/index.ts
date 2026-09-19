@@ -2,10 +2,20 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { createReadStream } from 'node:fs';
 import { access, mkdir, readFile, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
+
+// Bundled, redistributable font (no system fonts required). Railway's runtime
+// image has no fonts installed at all - without this, libass/fontconfig
+// falls back to scanning the whole system for a substitute for "Arial",
+// which hung long enough to get the ffmpeg process killed in production
+// (confirmed live: the render got killed mid-scene-1 with no video frames
+// ever produced). Pointing the subtitles filter's fontsdir directly at this
+// package's ttf/ folder skips system font discovery entirely.
+const FONT_DIRECTORY = join(dirname(require.resolve('dejavu-fonts-ttf/package.json')), 'ttf');
+const FONT_FAMILY = 'DejaVu Sans';
 
 type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
 type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
@@ -228,7 +238,7 @@ function buildAssSubtitleContent(overlays: TextOverlay[], durationSeconds: numbe
 		'',
 		'[V4+ Styles]',
 		'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-		'Style: Default,Arial,28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,7,0,0,0,1',
+		`Style: Default,${FONT_FAMILY},28,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,7,0,0,0,1`,
 		'',
 		'[Events]',
 		'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -489,7 +499,7 @@ async function render(job: RenderJob) {
 			const { boxFilters, overlays } = buildSceneFilters({ index, scene, description, width, height, textColor });
 			const assPath = join(jobDirectory, `scene-${index + 1}.ass`);
 			await writeFile(assPath, buildAssSubtitleContent(overlays, duration, width, height), 'utf8');
-			const filter = [...boxFilters, `subtitles='${toFfmpegFilterPath(assPath)}'`].join(',');
+			const filter = [...boxFilters, `subtitles='${toFfmpegFilterPath(assPath)}':fontsdir='${toFfmpegFilterPath(FONT_DIRECTORY)}'`].join(',');
 
 			const audioUrl = typeof scene.audio_url === 'string' && scene.audio_url.trim().length > 0
 				? scene.audio_url.trim()
