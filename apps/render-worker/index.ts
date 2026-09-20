@@ -8,6 +8,7 @@ import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
 import { createFrameCanvas, drawSceneFrame } from './drawing';
+import { ensureVoiceModel, mouthEnvelope, speak } from './voice';
 
 // Frames are drawn with a real 2D graphics context and piped to ffmpeg, so
 // this is the animation's frame rate as well as the output's.
@@ -239,8 +240,42 @@ function runFfmpegWithFrames(args: string[], frameCount: number, renderFrame: (f
 				}
 			}
 			childProcess.stdin.end();
-		})().catch((error) => fail(error instanceof Error ? error : new Error(String(error))));
+		})().catch((error) => {
+			// A write failure here is almost always ffmpeg having already exited
+			// (EPIPE/EOF), in which case its stderr holds the real reason and
+			// this error is only the symptom. Give 'close' a moment to report
+			// that instead, and fall back to the write error if it never fires.
+			setTimeout(() => fail(error instanceof Error ? error : new Error(String(error))), 400);
+		});
 	});
+}
+
+// 16-bit PCM mono WAV. The narration comes back as float samples and ffmpeg
+// needs a file, and this is small enough not to justify a dependency.
+async function writeWavFile(path: string, samples: Float32Array, sampleRate: number) {
+	const dataBytes = samples.length * 2;
+	const buffer = Buffer.alloc(44 + dataBytes);
+
+	buffer.write('RIFF', 0);
+	buffer.writeUInt32LE(36 + dataBytes, 4);
+	buffer.write('WAVE', 8);
+	buffer.write('fmt ', 12);
+	buffer.writeUInt32LE(16, 16);      // PCM header size
+	buffer.writeUInt16LE(1, 20);       // format: PCM
+	buffer.writeUInt16LE(1, 22);       // channels
+	buffer.writeUInt32LE(sampleRate, 24);
+	buffer.writeUInt32LE(sampleRate * 2, 28); // byte rate
+	buffer.writeUInt16LE(2, 32);       // block align
+	buffer.writeUInt16LE(16, 34);      // bits per sample
+	buffer.write('data', 36);
+	buffer.writeUInt32LE(dataBytes, 40);
+
+	for (let i = 0; i < samples.length; i += 1) {
+		const clamped = Math.max(-1, Math.min(1, samples[i]));
+		buffer.writeInt16LE(Math.round(clamped * 32767), 44 + i * 2);
+	}
+
+	await writeFile(path, buffer);
 }
 
 // Progress is written straight onto the video row, so it survives a worker
@@ -275,20 +310,39 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 
 		for (let index = 0; index < scenes.length; index += 1) {
 			const scene = scenes[index];
-			const duration = Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1));
+			const requestedDuration = Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1));
 			const clipPath = join(jobDirectory, `scene-${index + 1}.mp4`);
+			const narration = (scene.description || '').trim();
 
 			const audioUrl = typeof scene.audio_url === 'string' && scene.audio_url.trim().length > 0
 				? scene.audio_url.trim()
 				: null;
 
+			// Narrate locally unless the scene already carries audio from the
+			// app's own TTS. Doing it here rather than upstream also hands us the
+			// waveform, which is what drives the lip sync below.
+			const speech = audioUrl ? null : await speak(narration);
+
+			// A scene must never cut its own narration off mid-sentence, so
+			// speech length wins when it exceeds the planned duration.
+			const duration = speech
+				? Math.min(60, Math.max(requestedDuration, speech.durationSeconds + 0.35))
+				: requestedDuration;
+
 			// Every clip gets both a video AND an audio stream - real audio when
 			// available, otherwise a silent anullsrc track of the same duration -
 			// so the concat demuxer below sees a uniform stream layout across all
-			// clips regardless of which scenes had TTS audio.
-			const audioInputArgs = audioUrl
-				? ['-i', audioUrl]
-				: ['-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${duration}`];
+			// clips regardless of which scenes had narration.
+			let audioInputArgs: string[];
+			if (audioUrl) {
+				audioInputArgs = ['-i', audioUrl];
+			} else if (speech) {
+				const voicePath = join(jobDirectory, `scene-${index + 1}.wav`);
+				await writeWavFile(voicePath, speech.samples, speech.sampleRate);
+				audioInputArgs = ['-i', voicePath];
+			} else {
+				audioInputArgs = ['-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${duration}`];
+			}
 
 			const canvas = createFrameCanvas(width, height);
 			const context = canvas.getContext('2d');
@@ -297,10 +351,11 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 				character: scene.character,
 				action: scene.action,
 				prop: scene.prop,
-				description: scene.description || `Escena ${index + 1}`,
+				description: narration || `Escena ${index + 1}`,
 			};
 			const frameStyle = { width, height, background: backgroundColor, ink: textColor };
 			const frameCount = Math.max(1, Math.round(duration * FRAME_RATE));
+			const mouth = speech ? mouthEnvelope(speech, FRAME_RATE, frameCount) : null;
 
 			await runFfmpegWithFrames([
 				'-y',
@@ -322,7 +377,7 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 				'-movflags', '+faststart',
 				clipPath,
 			], frameCount, (frameIndex) => {
-				drawSceneFrame(context, frameScene, frameIndex / FRAME_RATE, duration, frameStyle);
+				drawSceneFrame(context, frameScene, frameIndex / FRAME_RATE, duration, frameStyle, mouth ? mouth[frameIndex] ?? 0 : null);
 				return Buffer.from(context.getImageData(0, 0, width, height).data);
 			});
 
@@ -450,4 +505,7 @@ const server = createServer(async (request, response) => {
 
 mkdir(renderDirectory, { recursive: true }).then(() => {
 	server.listen(port, () => console.log(`render worker escuchando en http://localhost:${port}`));
+	// Warm the voice model in the background: it is a ~67MB download on a cold
+	// container, and paying it here means the first render doesn't stall on it.
+	void ensureVoiceModel();
 });
