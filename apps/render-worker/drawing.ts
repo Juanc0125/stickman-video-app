@@ -685,3 +685,45 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 export function createFrameCanvas(width: number, height: number) {
 	return createCanvas(width, height);
 }
+
+/**
+ * The scene counter and subtitle on a transparent background, as a PNG.
+ *
+ * Used when the scene footage comes from an AI model instead of being drawn:
+ * there are no frames of ours to write the text onto, so it is composited over
+ * the generated clip with ffmpeg. Kept here so both paths lay the text out
+ * identically.
+ */
+export function renderTextOverlayPng(scene: FrameScene, style: FrameStyle): Buffer {
+	const { width, height, ink } = style;
+	const canvas = createCanvas(width, height);
+	const ctx = canvas.getContext('2d');
+
+	ctx.fillStyle = ink;
+	ctx.font = '38px "StickmanSans Bold", sans-serif';
+	ctx.textAlign = 'left';
+	ctx.textBaseline = 'top';
+	ctx.globalAlpha = 0.85;
+	ctx.fillText(`ESCENA ${scene.index + 1}`, 64, 74);
+	ctx.globalAlpha = 1;
+
+	const description = scene.description.trim();
+	if (description) {
+		ctx.font = '44px "StickmanSans", sans-serif';
+		const lines = wrapLines(ctx, description, width - 200);
+		const lineHeight = 60;
+		const blockHeight = lines.length * lineHeight;
+		const top = height - 220 - blockHeight;
+
+		ctx.fillStyle = 'rgba(0,0,0,0.55)';
+		roundRect(ctx, 56, top - 32, width - 112, blockHeight + 58, 18);
+		ctx.fill();
+
+		ctx.fillStyle = ink;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'top';
+		lines.forEach((line, i) => ctx.fillText(line, width / 2, top + i * lineHeight));
+	}
+
+	return canvas.toBuffer('image/png');
+}

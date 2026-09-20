@@ -7,8 +7,9 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
-import { createFrameCanvas, drawSceneFrame } from './drawing';
+import { createFrameCanvas, drawSceneFrame, renderTextOverlayPng } from './drawing';
 import { ensureVoiceModel, mouthEnvelope, speak } from './voice';
+import { aiVideoModel, buildScenePrompt, generateSceneVideo, isAiVideoEnabled } from './ai-video';
 
 // Frames are drawn with a real 2D graphics context and piped to ffmpeg, so
 // this is the animation's frame rate as well as the output's.
@@ -361,6 +362,51 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 			const frameCount = Math.max(1, Math.round(duration * FRAME_RATE));
 			const mouth = speech ? mouthEnvelope(speech, FRAME_RATE, frameCount) : null;
 
+			// When an AI model is configured, the scene's footage comes from it
+			// and we only add our own text and narration on top. Generation is
+			// best-effort: if it fails or is not configured, the scene is drawn
+			// instead, so a render always produces a video.
+			let generatedPath: string | null = null;
+			if (isAiVideoEnabled()) {
+				const candidate = join(jobDirectory, `scene-${index + 1}-ai.mp4`);
+				const prompt = buildScenePrompt(scene);
+				if (await generateSceneVideo(prompt, duration, candidate)) generatedPath = candidate;
+			}
+
+			if (generatedPath) {
+				const overlayPath = join(jobDirectory, `scene-${index + 1}-text.png`);
+				await writeFile(overlayPath, renderTextOverlayPng(frameScene, frameStyle));
+
+				// The generated clip rarely matches the narration exactly, so it
+				// is scaled to the canvas, padded if the aspect differs, and
+				// looped in case it came back shorter than the voice line.
+				await runFfmpeg([
+					'-y',
+					'-stream_loop', '-1',
+					'-i', generatedPath,
+					'-i', overlayPath,
+					...audioInputArgs,
+					'-filter_complex',
+					`[0:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${FRAME_RATE}[bg];`
+					+ `[bg][1:v]overlay=0:0[outv]`,
+					'-map', '[outv]',
+					'-map', '2:a',
+					'-t', String(duration),
+					'-c:v', 'libx264',
+					'-threads', String(ENCODER_THREADS),
+					'-preset', 'veryfast',
+					'-crf', '20',
+					'-c:a', 'aac',
+					'-pix_fmt', 'yuv420p',
+					'-movflags', '+faststart',
+					clipPath,
+				]);
+
+				clips.push(clipPath);
+				onProgress?.(Math.round(((index + 1) / scenes.length) * 90));
+				continue;
+			}
+
 			await runFfmpegWithFrames([
 				'-y',
 				'-f', 'rawvideo',
@@ -433,6 +479,7 @@ const server = createServer(async (request, response) => {
 			ok: true,
 			service: 'render-worker',
 			storage: storageClient ? 'supabase' : 'local-disk',
+			video_engine: isAiVideoEnabled() ? aiVideoModel() : 'canvas',
 			bucket: storageBucket,
 			last_storage_error: lastStorageError,
 		});
