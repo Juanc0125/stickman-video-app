@@ -38,6 +38,9 @@ const LIMB_WIDTH = 24;
 const TORSO_WIDTH = 36;
 
 const DEG = Math.PI / 180;
+// Facial features and the head outline keep their own dark tone, independent of
+// the brand colours, so a face stays legible whatever the client picks.
+const FACE_LINE = '#2c2620';
 
 interface Palette {
 	body: string;
@@ -90,6 +93,38 @@ interface Pose {
 	shoulderR: number; elbowR: number;
 	mouthOpen: number;
 	seated: boolean;
+}
+
+/**
+ * Motion that does not belong to any single action: the small involuntary
+ * movement that separates a living figure from a posed mannequin. Driven by
+ * absolute scene time rather than the action's loop phase, and offset per
+ * figure, so two characters in the same scene never breathe or blink in
+ * lockstep.
+ */
+interface LifeSigns {
+	breath: number;   // slow chest rise, in pixels
+	sway: number;     // weight shifting between the feet, in degrees of lean
+	eyeOpen: number;  // 1 open, 0 fully closed
+	headDrift: number;
+}
+
+function lifeSignsAt(t: number, seed: number): LifeSigns {
+	const breath = 3.4 * Math.sin((t / 3.1 + seed) * Math.PI * 2);
+	const sway = 1.5 * Math.sin((t / 5.3 + seed * 1.7) * Math.PI * 2);
+	const headDrift = 2.2 * Math.sin((t / 4.1 + seed * 2.3) * Math.PI * 2);
+
+	// Blinks are a fast close-open, roughly every 3.4s, offset per figure. The
+	// interval is deliberately not a round number so blinks never line up with
+	// the action loop.
+	const blinkEvery = 3.4;
+	const sinceBlink = (t + seed * blinkEvery) % blinkEvery;
+	const blinkDuration = 0.13;
+	const eyeOpen = sinceBlink < blinkDuration
+		? Math.abs(Math.cos((sinceBlink / blinkDuration) * Math.PI))
+		: 1;
+
+	return { breath, sway, eyeOpen, headDrift };
 }
 
 /**
@@ -217,7 +252,7 @@ function poseFor(action: SceneAction, phase: number, centerX: number): Pose {
 	return base;
 }
 
-function drawHead(ctx: SKRSContext2D, x: number, y: number, tilt: number, palette: Palette, mouthOpen: number, ink: string) {
+function drawHead(ctx: SKRSContext2D, x: number, y: number, tilt: number, palette: Palette, mouthOpen: number, eyeOpen: number) {
 	ctx.save();
 	ctx.translate(x, y);
 	ctx.rotate(tilt * DEG);
@@ -229,9 +264,12 @@ function drawHead(ctx: SKRSContext2D, x: number, y: number, tilt: number, palett
 		ctx.fill();
 	}
 
+	// Facial features use their own fixed dark tone rather than the brand ink:
+	// the ink is whatever secondary_color the client set, and white eyes on a
+	// skin-toned face are invisible.
 	ctx.fillStyle = '#f1d3b4';
-	ctx.strokeStyle = ink;
-	ctx.lineWidth = 6;
+	ctx.strokeStyle = FACE_LINE;
+	ctx.lineWidth = 5;
 	ctx.beginPath();
 	ctx.arc(0, 0, HEAD_RADIUS, 0, Math.PI * 2);
 	ctx.fill();
@@ -247,29 +285,53 @@ function drawHead(ctx: SKRSContext2D, x: number, y: number, tilt: number, palett
 		ctx.fill();
 	}
 
-	ctx.fillStyle = ink;
-	ctx.beginPath();
-	ctx.arc(-24, -8, 7, 0, Math.PI * 2);
-	ctx.arc(24, -8, 7, 0, Math.PI * 2);
-	ctx.fill();
+	// A blink squashes the eye vertically rather than hiding it, so the lids
+	// read as closing instead of the eyes popping out of existence.
+	ctx.fillStyle = FACE_LINE;
+	// Sat below the hairline: the hair cap fills down to y=-6, so eyes any
+	// higher get painted over by it.
+	const eyeRadius = 7;
+	const lidHeight = Math.max(0.9, eyeRadius * eyeOpen);
+	for (const eyeX of [-20, 20]) {
+		ctx.beginPath();
+		ctx.ellipse(eyeX, 8, eyeRadius, lidHeight, 0, 0, Math.PI * 2);
+		ctx.fill();
+	}
 
-	const mouthHeight = 4 + mouthOpen * 20;
+	const mouthHeight = 4 + mouthOpen * 22;
 	ctx.fillStyle = '#8c4a4a';
 	ctx.beginPath();
-	ctx.ellipse(0, 30, 18, mouthHeight / 2, 0, 0, Math.PI * 2);
+	ctx.ellipse(0, 36, 14 + mouthOpen * 4, mouthHeight / 2, 0, 0, Math.PI * 2);
 	ctx.fill();
 
 	ctx.restore();
 }
 
-function drawFigure(ctx: SKRSContext2D, character: CharacterType, action: SceneAction, phase: number, centerX: number, ink: string) {
+function drawFigure(
+	ctx: SKRSContext2D,
+	character: CharacterType,
+	action: SceneAction,
+	phase: number,
+	t: number,
+	centerX: number,
+	ink: string,
+	seed: number,
+	mouthOverride: number | null,
+) {
 	const palette = PALETTES[character] ?? PALETTES.generico;
 	const pose = poseFor(action, phase, centerX);
+	const life = lifeSignsAt(t, seed);
 
+	// Sitting has its own contact with the ground and walking already has its
+	// own vertical rhythm, so breath and weight shift only apply where they
+	// would not fight the action.
+	const idle = action !== 'caminar' && action !== 'sentarse';
 	const hipX = pose.hipX;
-	const hipY = pose.hipY;
-	const shoulderX = hipX + Math.sin(pose.lean * DEG) * TORSO;
-	const shoulderY = hipY - Math.cos(pose.lean * DEG) * TORSO;
+	const hipY = pose.hipY - (idle ? life.breath * 0.35 : 0);
+	const lean = pose.lean + (idle ? life.sway : 0);
+	const torsoLength = TORSO + (idle ? life.breath : 0);
+	const shoulderX = hipX + Math.sin(lean * DEG) * torsoLength;
+	const shoulderY = hipY - Math.cos(lean * DEG) * torsoLength;
 
 	// Legs first so the torso overlaps them at the hip.
 	const kneeL = segment(ctx, hipX, hipY, pose.thighL, THIGH, LIMB_WIDTH, palette.body);
@@ -299,9 +361,12 @@ function drawFigure(ctx: SKRSContext2D, character: CharacterType, action: SceneA
 	const elbowR = segment(ctx, shoulderX, shoulderY, pose.shoulderR, UPPER_ARM, LIMB_WIDTH, palette.body);
 	const handR = segment(ctx, elbowR.x, elbowR.y, pose.shoulderR + pose.elbowR, FOREARM, LIMB_WIDTH, palette.body);
 
-	const headX = shoulderX + Math.sin(pose.lean * DEG) * (NECK + HEAD_RADIUS);
-	const headY = shoulderY - Math.cos(pose.lean * DEG) * (NECK + HEAD_RADIUS);
-	drawHead(ctx, headX, headY, pose.headTilt + pose.lean, palette, pose.mouthOpen, ink);
+	// The head counter-rotates slightly against the body's lean, the way a
+	// person keeps their eyeline level, and drifts on its own slow cycle.
+	const headAngle = pose.headTilt + lean * 0.55 + life.headDrift;
+	const headX = shoulderX + Math.sin(headAngle * DEG) * (NECK + HEAD_RADIUS);
+	const headY = shoulderY - Math.cos(headAngle * DEG) * (NECK + HEAD_RADIUS);
+	drawHead(ctx, headX, headY, headAngle, palette, mouthOverride ?? pose.mouthOpen, life.eyeOpen);
 
 	// A handset in the raised hand makes 'telefono' unambiguous.
 	if (action === 'telefono') {
@@ -551,7 +616,7 @@ function drawShadow(ctx: SKRSContext2D, x: number, scale: number) {
  * scene, `duration` its full length; everything else is derived so the same
  * call renders any frame independently.
  */
-export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number, duration: number, style: FrameStyle) {
+export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number, duration: number, style: FrameStyle, mouth: number | null = null) {
 	const { width, height, ink } = style;
 	const cycleSeconds = scene.action === 'caminar' ? 1.0 : 2.2;
 	const phase = (t / cycleSeconds) % 1;
@@ -569,11 +634,13 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 	if (scene.character === 'pareja') {
 		drawShadow(ctx, figureX - 96, 0.85);
 		drawShadow(ctx, figureX + 108, 0.85);
-		drawFigure(ctx, 'mujer', scene.action, (phase + 0.42) % 1, figureX + 108, ink);
-		drawFigure(ctx, 'hombre', scene.action, phase, figureX - 96, ink);
+		// Only one of the two speaks, so the other listens instead of both
+		// mouthing the same line.
+		drawFigure(ctx, 'mujer', scene.action, (phase + 0.42) % 1, t, figureX + 108, ink, 0.57, mouth === null ? null : 0.06);
+		drawFigure(ctx, 'hombre', scene.action, phase, t, figureX - 96, ink, 0.13, mouth);
 	} else {
 		drawShadow(ctx, figureX, 1);
-		drawFigure(ctx, scene.character, scene.action, phase, figureX, ink);
+		drawFigure(ctx, scene.character, scene.action, phase, t, figureX, ink, 0.31, mouth);
 	}
 
 	// Scene counter, top left.
