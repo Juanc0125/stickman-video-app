@@ -464,6 +464,27 @@ export async function updateVideoStatus(id: string, action: string): Promise<Vid
     }
 }
 
+export async function deleteVideo(id: string): Promise<void> {
+    const video = await findVideoRecord(id);
+    if (!video) throw new Error('Video no encontrado.');
+
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
+    if (client) {
+        try {
+            // Scenes first: they reference the video, and deleting the parent
+            // while children exist fails unless the foreign key cascades.
+            const { error: scenesError } = await client.from('scenes').delete().eq('video_id', id);
+            if (scenesError) throw scenesError;
+            const { error } = await client.from('videos').delete().eq('id', id);
+            if (error) throw error;
+        } catch (error) {
+            console.warn('Fallo al eliminar el video en Supabase, usando fallback en memoria.', error);
+        }
+    }
+
+    mockVideos.delete(id);
+}
+
 export async function renderVideo(id: string): Promise<VideoRecord> {
     const video = await findVideoRecord(id);
     if (!video) throw new Error('Video no encontrado.');

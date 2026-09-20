@@ -136,3 +136,11 @@ export async function duplicateVideo(id: string, platform: Platform): Promise<Vi
     });
     return data.video;
 }
+
+export async function deleteVideo(id: string): Promise<void> {
+    const response = await fetch(`/api/videos/${id}`, { method: 'DELETE' });
+    if (!response.ok && response.status !== 204) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? 'No se pudo eliminar el video.');
+    }
+}

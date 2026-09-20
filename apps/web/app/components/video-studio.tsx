@@ -40,25 +40,45 @@ export default function VideoStudio() {
         setVideos((current) => current.map((entry) => (entry.id === video.id ? video : entry)));
     }
 
+    function handleDeleted(id: string) {
+        setVideos((current) => current.filter((entry) => entry.id !== id));
+        setSelectedId((current) => (current === id ? null : current));
+    }
+
     const selectedVideo = videos.find((video) => video.id === selectedId) ?? null;
 
+    // flex-1 on the wrapper matters: body is a flex column, so without it the
+    // wrapper only grows to fit its content and the page background stops
+    // midway down, leaving a bare strip underneath.
     return (
-        <main className="mx-auto max-w-6xl px-4 py-8">
-            <h1 className="mb-1 text-2xl font-semibold text-gray-900">Video Ads Studio</h1>
-            <p className="mb-6 text-sm text-gray-500">
-                Genera, revisa, aprueba y publica videos cortos de marketing hipotecario protagonizados por Stickman.
-            </p>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
-                <VideoList
-                    videos={videos}
-                    loading={loading}
-                    loadError={loadError}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                    onCreated={handleCreated}
-                />
-                <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
-            </div>
-        </main>
+        <div className="flex flex-1 flex-col bg-slate-100">
+            <header className="border-b border-slate-200 bg-[#17202a]">
+                <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-lg" />
+                    <div>
+                        <h1 className="text-lg font-semibold leading-tight text-white">Stickman</h1>
+                        <p className="text-xs text-slate-300">
+                            Videos cortos de marketing hipotecario
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <main className="mx-auto max-w-6xl px-4 py-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+                    <VideoList
+                        videos={videos}
+                        loading={loading}
+                        loadError={loadError}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        onCreated={handleCreated}
+                        onDeleted={handleDeleted}
+                    />
+                    <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
+                </div>
+            </main>
+        </div>
     );
 }

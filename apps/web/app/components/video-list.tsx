@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import type { Platform } from '@shared-types/video';
-import { createVideo, type VideoRecord } from './api';
+import { createVideo, deleteVideo, type VideoRecord } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
 import StatusBadge from './status-badge';
 
@@ -13,14 +13,35 @@ interface VideoListProps {
     selectedId: string | null;
     onSelect: (id: string) => void;
     onCreated: (video: VideoRecord) => void;
+    onDeleted: (id: string) => void;
 }
 
-export default function VideoList({ videos, loading, loadError, selectedId, onSelect, onCreated }: VideoListProps) {
+export default function VideoList({ videos, loading, loadError, selectedId, onSelect, onCreated, onDeleted }: VideoListProps) {
     const [topic, setTopic] = useState('');
     const [platform, setPlatform] = useState<Platform>('reels');
     const [duration, setDuration] = useState(30);
     const [creating, setCreating] = useState(false);
     const [formError, setFormError] = useState('');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [deleteError, setDeleteError] = useState('');
+
+    async function handleDelete(video: VideoRecord) {
+        const confirmed = window.confirm(
+            `Se eliminara "${video.topic}" y todas sus escenas. Esta accion no se puede deshacer. Continuar?`,
+        );
+        if (!confirmed) return;
+
+        setDeletingId(video.id);
+        setDeleteError('');
+        try {
+            await deleteVideo(video.id);
+            onDeleted(video.id);
+        } catch (err) {
+            setDeleteError(err instanceof Error ? err.message : 'No se pudo eliminar el video.');
+        } finally {
+            setDeletingId(null);
+        }
+    }
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -108,21 +129,41 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                 {!loading && !loadError && videos.length === 0 && (
                     <p className="text-sm text-gray-500">Aún no hay videos. Crea el primero arriba.</p>
                 )}
+                {deleteError && <p className="mb-2 text-sm text-red-600">{deleteError}</p>}
                 <ul className="space-y-2">
                     {videos.map((video) => (
-                        <li key={video.id}>
+                        <li
+                            key={video.id}
+                            className={`group relative rounded border transition ${
+                                video.id === selectedId ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'
+                            }`}
+                        >
                             <button
                                 type="button"
                                 onClick={() => onSelect(video.id)}
-                                className={`w-full rounded border px-3 py-2 text-left text-sm transition ${
-                                    video.id === selectedId ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'
-                                }`}
+                                className="w-full px-3 py-2 pr-10 text-left text-sm"
                             >
                                 <div className="font-medium line-clamp-1">{video.topic}</div>
                                 <div className="mt-1 flex items-center justify-between gap-2">
                                     <span className="text-xs text-gray-500">{PLATFORM_LABELS[video.platform]}</span>
                                     <StatusBadge status={video.status} />
                                 </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDelete(video)}
+                                disabled={deletingId === video.id}
+                                aria-label={`Eliminar ${video.topic}`}
+                                title="Eliminar video"
+                                className="absolute right-1.5 top-1.5 rounded p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100"
+                            >
+                                {deletingId === video.id ? (
+                                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-600" />
+                                ) : (
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                                        <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
+                                    </svg>
+                                )}
                             </button>
                         </li>
                     ))}
