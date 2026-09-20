@@ -358,7 +358,7 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 				prop: scene.prop,
 				description: narration || `Escena ${index + 1}`,
 			};
-			const frameStyle = { width, height, background: backgroundColor, ink: textColor };
+			const frameStyle = { width, height, background: backgroundColor, ink: textColor, fontFamily: branding.font_family };
 			const frameCount = Math.max(1, Math.round(duration * FRAME_RATE));
 			const mouth = speech ? mouthEnvelope(speech, FRAME_RATE, frameCount) : null;
 

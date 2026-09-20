@@ -3,7 +3,7 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import type { LogoPosition } from '@shared-types/video';
 import { updateBranding, uploadLogo, type BrandingPatch, type VideoRecord } from './api';
-import { LOGO_POSITION_OPTIONS } from './constants';
+import { FONT_OPTIONS, LOGO_POSITION_OPTIONS } from './constants';
 
 interface BrandingPanelProps {
     video: VideoRecord;
@@ -118,14 +118,19 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                 </div>
                 <div>
                     <label className="mb-1 block text-sm font-medium" htmlFor="font-family">Tipografía</label>
-                    <input
+                    {/* A select, not free text: only these four typefaces ship with the
+                        renderer, and a name it cannot honour would silently do nothing. */}
+                    <select
                         id="font-family"
-                        type="text"
-                        value={fontFamily}
+                        value={FONT_OPTIONS.some((option) => option.value === fontFamily) ? fontFamily : 'sans'}
                         onChange={(event) => setFontFamily(event.target.value)}
                         disabled={saving}
                         className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
-                    />
+                    >
+                        {FONT_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                    </select>
                 </div>
                 <div>
                     <label className="mb-1 block text-sm font-medium" htmlFor="logo-position">Posición del logo</label>

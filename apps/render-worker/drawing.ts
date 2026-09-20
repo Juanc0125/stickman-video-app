@@ -18,11 +18,50 @@ export interface FrameStyle {
 	height: number;
 	background: string;
 	ink: string;
+	/** Brand typeface (RF-026/RF-027). Resolved through resolveFontFamily(). */
+	fontFamily?: string;
 }
 
 const FONT_DIRECTORY = join(dirname(require.resolve('dejavu-fonts-ttf/package.json')), 'ttf');
-GlobalFonts.registerFromPath(join(FONT_DIRECTORY, 'DejaVuSans-Bold.ttf'), 'StickmanSans Bold');
-GlobalFonts.registerFromPath(join(FONT_DIRECTORY, 'DejaVuSans.ttf'), 'StickmanSans');
+
+// The bundled DejaVu set covers four visually distinct families, which is what
+// makes the brand typography setting mean something. Nothing proprietary can
+// be shipped here, so a brand asking for Arial gets the sans, Georgia the
+// serif, and so on - resolveFontFamily() does that mapping.
+const FONT_FILES: Record<string, { regular: string; bold: string }> = {
+	sans: { regular: 'DejaVuSans.ttf', bold: 'DejaVuSans-Bold.ttf' },
+	serif: { regular: 'DejaVuSerif.ttf', bold: 'DejaVuSerif-Bold.ttf' },
+	mono: { regular: 'DejaVuSansMono.ttf', bold: 'DejaVuSansMono-Bold.ttf' },
+	condensed: { regular: 'DejaVuSansCondensed.ttf', bold: 'DejaVuSansCondensed-Bold.ttf' },
+};
+
+for (const [key, files] of Object.entries(FONT_FILES)) {
+	GlobalFonts.registerFromPath(join(FONT_DIRECTORY, files.regular), `Stickman ${key}`);
+	GlobalFonts.registerFromPath(join(FONT_DIRECTORY, files.bold), `Stickman ${key} Bold`);
+}
+
+export const FONT_CHOICES = ['sans', 'serif', 'mono', 'condensed'] as const;
+export type FontChoice = (typeof FONT_CHOICES)[number];
+
+// Accepts either one of our own names or a real-world family name, so branding
+// saved before this existed ("Arial", "Georgia") keeps working.
+const FONT_ALIASES: Record<string, FontChoice> = {
+	arial: 'sans', helvetica: 'sans', verdana: 'sans', inter: 'sans', roboto: 'sans', 'sans-serif': 'sans',
+	georgia: 'serif', times: 'serif', 'times new roman': 'serif', garamond: 'serif', serif: 'serif',
+	courier: 'mono', 'courier new': 'mono', consolas: 'mono', monospace: 'mono',
+	'arial narrow': 'condensed', oswald: 'condensed',
+};
+
+export function resolveFontFamily(value: unknown): FontChoice {
+	const name = typeof value === 'string' ? value.trim().toLowerCase() : '';
+	if ((FONT_CHOICES as readonly string[]).includes(name)) return name as FontChoice;
+	return FONT_ALIASES[name] ?? 'sans';
+}
+
+function fontOf(style: FrameStyle, size: number, bold = false) {
+	const family = resolveFontFamily(style.fontFamily);
+	return `${size}px "Stickman ${family}${bold ? ' Bold' : ''}", sans-serif`;
+}
 
 // ---- Skeleton proportions, in canvas pixels at 1080x1920 ----
 const GROUND_Y = 1430;
@@ -519,7 +558,7 @@ function drawProp(ctx: SKRSContext2D, prop: ScenePropType, cx: number, cy: numbe
 			ctx.fill();
 			ctx.stroke();
 			ctx.fillStyle = '#1d7347';
-			ctx.font = '54px "StickmanSans Bold", sans-serif';
+			ctx.font = '54px "Stickman sans Bold", sans-serif';
 			ctx.textAlign = 'center';
 			ctx.textBaseline = 'middle';
 			ctx.fillText('$', 0, 2);
@@ -645,7 +684,7 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 
 	// Scene counter, top left.
 	ctx.fillStyle = ink;
-	ctx.font = '38px "StickmanSans Bold", sans-serif';
+	ctx.font = fontOf(style, 38, true);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
 	ctx.globalAlpha = 0.85;
@@ -655,7 +694,7 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 	// Subtitle block, bottom, on a panel so it stays readable over anything.
 	const description = scene.description.trim();
 	if (description) {
-		ctx.font = '44px "StickmanSans", sans-serif';
+		ctx.font = fontOf(style, 44);
 		const lines = wrapLines(ctx, description, width - 200);
 		const lineHeight = 60;
 		const blockHeight = lines.length * lineHeight;
@@ -700,7 +739,7 @@ export function renderTextOverlayPng(scene: FrameScene, style: FrameStyle): Buff
 	const ctx = canvas.getContext('2d');
 
 	ctx.fillStyle = ink;
-	ctx.font = '38px "StickmanSans Bold", sans-serif';
+	ctx.font = fontOf(style, 38, true);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
 	ctx.globalAlpha = 0.85;
@@ -709,7 +748,7 @@ export function renderTextOverlayPng(scene: FrameScene, style: FrameStyle): Buff
 
 	const description = scene.description.trim();
 	if (description) {
-		ctx.font = '44px "StickmanSans", sans-serif';
+		ctx.font = fontOf(style, 44);
 		const lines = wrapLines(ctx, description, width - 200);
 		const lineHeight = 60;
 		const blockHeight = lines.length * lineHeight;

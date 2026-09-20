@@ -70,3 +70,12 @@ export const STATUS_BADGE_CLASSES: Record<VideoStatus, string> = {
     aprobado: 'bg-blue-100 text-blue-800',
     publicado: 'bg-green-100 text-green-800',
 };
+
+// The four typefaces the renderer actually bundles. A brand can only pick from
+// these, so the field is a select rather than free text.
+export const FONT_OPTIONS = [
+    { value: 'sans', label: 'Sans (neutra, tipo Arial)' },
+    { value: 'serif', label: 'Serif (clásica, tipo Georgia)' },
+    { value: 'condensed', label: 'Condensada (estrecha, titulares)' },
+    { value: 'mono', label: 'Monoespaciada (técnica)' },
+] as const;
