@@ -66,13 +66,17 @@ const renderDirectory = join(process.cwd(), 'renders');
 const storageBucket = process.env.SUPABASE_RENDERS_BUCKET ?? 'renders';
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Accepts either name, matching the web app: Supabase now issues `sb_secret_`
+// keys, which projects tend to store as SUPABASE_SECRET_KEY, while older
+// setups use SUPABASE_SERVICE_ROLE_KEY. Reading only one of them silently
+// leaves the worker unable to report progress or upload.
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 const storageClient = supabaseUrl && supabaseServiceRoleKey
 	? createClient(supabaseUrl, supabaseServiceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
 	: null;
 
 if (!storageClient) {
-	console.warn('SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
+	console.warn('SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (o SUPABASE_SECRET_KEY) no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
 }
 
 // Surfaced on /health so it's possible to tell "storage was never configured"
