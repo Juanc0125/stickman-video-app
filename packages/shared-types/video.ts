@@ -21,6 +21,11 @@ export const DEFAULT_BRANDING: Branding = {
     font_family: 'Arial',
 };
 
+// Rendering is asynchronous: generating a scene with an AI model takes
+// minutes, so the request returns immediately and the worker reports progress
+// on the video row.
+export type RenderStatus = 'inactivo' | 'procesando' | 'listo' | 'error';
+
 export interface Video {
     id: string;
     user_id: string;
@@ -33,6 +38,9 @@ export interface Video {
     video_url: string | null;
     source_video_id: string | null; // set when duplicated from another video for a different platform (content reuse)
     created_at: string;
+    render_status: RenderStatus;
+    render_progress: number; // 0-100
+    render_error: string | null;
 }
 
 export interface Scene {

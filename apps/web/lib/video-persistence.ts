@@ -51,6 +51,9 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
         video_url: nullableString(video.video_url),
         source_video_id: nullableString(video.source_video_id),
         created_at: typeof video.created_at === 'string' ? video.created_at : new Date().toISOString(),
+        render_status: (video.render_status ?? 'inactivo') as Video['render_status'],
+        render_progress: Number(video.render_progress ?? 0),
+        render_error: nullableString(video.render_error),
         scenes: (scenes ?? []).map(toScene).sort((a, b) => a.order - b.order),
     };
 }
@@ -191,6 +194,9 @@ function buildLocalVideoRecord(topic: string, platform: Platform, targetDuration
         branding: { ...DEFAULT_BRANDING },
         video_url: null,
         source_video_id: null,
+        render_status: 'inactivo',
+        render_progress: 0,
+        render_error: null,
         created_at: new Date().toISOString(),
     };
     return { ...video, scenes: [] };
@@ -392,6 +398,9 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
         branding: { ...original.branding },
         video_url: null,
         source_video_id: original.id,
+        render_status: 'inactivo',
+        render_progress: 0,
+        render_error: null,
         created_at: new Date().toISOString(),
     };
     const record: VideoRecord = {
@@ -466,6 +475,11 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
     }
     const workerUrl = (configuredWorkerUrl || 'http://localhost:8080').replace(/\/+$/, '');
     const sortedScenes = [...video.scenes].sort((a, b) => a.order - b.order);
+
+    // The worker answers 202 as soon as it has accepted the job and then
+    // reports progress on the video row, so this only has to confirm the job
+    // was queued. A render can run for minutes once scenes come from an AI
+    // model - far longer than this request may stay open.
     const response = await fetch(`${workerUrl}/render`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -484,26 +498,30 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
             })),
         }),
     });
-    const result = await response.json() as { filename?: unknown; url?: unknown; error?: unknown };
-    if (!response.ok || typeof result.filename !== 'string') {
-        throw new Error(typeof result.error === 'string' ? result.error : 'No se pudo generar el video.');
+
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({})) as { error?: unknown };
+        throw new Error(typeof result.error === 'string' ? result.error : 'No se pudo encolar la generacion del video.');
     }
 
-    const videoUrl = typeof result.url === 'string'
-        ? result.url
-        : `${workerUrl}/renders/${encodeURIComponent(result.filename)}`;
+    const queued = {
+        render_status: 'procesando' as const,
+        render_progress: 0,
+        render_error: null,
+    };
+
     const databaseClient = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
     if (databaseClient) {
         try {
-            const { data: updated, error } = await databaseClient.from('videos').update({ video_url: videoUrl }).eq('id', id).select('*').single();
-            if (error || !updated) throw error ?? new Error('No se pudo guardar el video generado.');
+            const { data: updated, error } = await databaseClient.from('videos').update(queued).eq('id', id).select('*').single();
+            if (error || !updated) throw error ?? new Error('No se pudo marcar el video como en proceso.');
             return toVideoRecord(updated, video.scenes as unknown as DatabaseRow[]);
         } catch (error) {
-            console.warn('Fallo al guardar el video generado en Supabase, usando fallback en memoria.', error);
+            console.warn('Fallo al marcar el render como en proceso en Supabase, usando fallback en memoria.', error);
         }
     }
 
-    const updated = { ...video, video_url: videoUrl };
+    const updated = { ...video, ...queued };
     mockVideos.set(id, updated);
     return updated;
 }

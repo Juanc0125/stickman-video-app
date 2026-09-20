@@ -105,14 +105,40 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                 {video.status === 'aprobado' && (
                     <div className="space-y-3">
                         <p className="text-sm text-gray-600">El video fue aprobado. Ya puedes generar el archivo final.</p>
-                        <button
-                            type="button"
-                            onClick={() => runAction('render')}
-                            disabled={busy}
-                            className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {actionLoading === 'render' ? 'Generando video...' : video.video_url ? 'Regenerar video final' : 'Generar video'}
-                        </button>
+
+                        {video.render_status === 'procesando' ? (
+                            <div className="rounded border border-blue-200 bg-blue-50 p-3">
+                                <div className="mb-2 flex items-center justify-between">
+                                    <span className="text-sm font-medium text-blue-900">Generando el video...</span>
+                                    <span className="font-mono text-sm tabular-nums text-blue-900">{video.render_progress}%</span>
+                                </div>
+                                <div className="h-2 w-full overflow-hidden rounded bg-blue-100">
+                                    <div
+                                        className="h-full rounded bg-blue-600 transition-all duration-500"
+                                        style={{ width: `${Math.max(2, video.render_progress)}%` }}
+                                    />
+                                </div>
+                                <p className="mt-2 text-xs text-blue-800">
+                                    Puedes cerrar esta pantalla: el trabajo sigue en el servidor y el progreso se actualiza solo.
+                                </p>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => runAction('render')}
+                                disabled={busy}
+                                className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {actionLoading === 'render' ? 'Enviando...' : video.video_url ? 'Regenerar video final' : 'Generar video'}
+                            </button>
+                        )}
+
+                        {video.render_status === 'error' && video.render_error && (
+                            <div className="rounded border border-red-300 bg-red-50 p-3">
+                                <p className="text-sm font-medium text-red-900">No se pudo generar el video.</p>
+                                <p className="mt-1 break-words font-mono text-xs text-red-800">{video.render_error}</p>
+                            </div>
+                        )}
 
                         {video.video_url && (
                             <div className="space-y-2 rounded border border-gray-200 p-3">

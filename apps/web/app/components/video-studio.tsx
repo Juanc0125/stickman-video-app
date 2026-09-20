@@ -18,6 +18,19 @@ export default function VideoStudio() {
             .finally(() => setLoading(false));
     }, []);
 
+    // Rendering runs in the background on the worker, which reports progress on
+    // the video row - so while anything is rendering, keep refreshing the list.
+    const isRendering = videos.some((video) => video.render_status === 'procesando');
+    useEffect(() => {
+        if (!isRendering) return;
+        const timer = setInterval(() => {
+            fetchVideos()
+                .then((loaded) => setVideos(loaded))
+                .catch(() => undefined);
+        }, 4000);
+        return () => clearInterval(timer);
+    }, [isRendering]);
+
     function handleCreated(video: VideoRecord) {
         setVideos((current) => [video, ...current]);
         setSelectedId(video.id);
