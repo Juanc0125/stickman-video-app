@@ -5,6 +5,8 @@ dist/
 build/
 coverage/
 apps/render-worker/renders/
+# Voice model downloaded at runtime (~78MB) - never belongs in the repo.
+apps/render-worker/.voice-cache/
 
 .env
 .env.*
