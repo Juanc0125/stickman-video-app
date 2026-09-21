@@ -10,18 +10,32 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const envFile = join(repoRoot, '.env.local');
 
-if (existsSync(envFile)) {
+// Both locations are loaded because both look equally plausible to someone
+// adding a key: Next reads apps/web/.env.local on its own, while the worker
+// only ever sees what this script puts in the environment. Reading just one of
+// them means a variable can sit in the "wrong" file, correctly written, and
+// silently do nothing. The repo root is loaded last so it wins on conflicts.
+const envFiles = [join(repoRoot, 'apps', 'web', '.env.local'), join(repoRoot, '.env.local')];
+const loaded = [];
+
+for (const envFile of envFiles) {
+	if (!existsSync(envFile)) continue;
 	try {
 		process.loadEnvFile(envFile);
-		console.log('[stickman] configuracion cargada desde .env.local');
+		loaded.push(envFile.replace(`${repoRoot}\\`, '').replace(`${repoRoot}/`, ''));
 	} catch (error) {
-		console.warn('[stickman] no se pudo leer .env.local:', error.message);
+		console.warn(`[stickman] no se pudo leer ${envFile}:`, error.message);
 	}
+}
+
+if (loaded.length > 0) {
+	console.log(`[stickman] configuracion cargada desde: ${loaded.join(', ')}`);
 } else {
 	console.log('[stickman] sin .env.local - se usara almacenamiento en memoria (los videos se pierden al reiniciar)');
 }
+
+console.log(`[stickman] generacion con IA: ${process.env.FAL_KEY ? 'activada' : 'desactivada (sin FAL_KEY)'}`);
 
 const WORKER_PORT = process.env.WORKER_PORT ?? '8080';
 const WEB_PORT = process.env.WEB_PORT ?? '3000';
