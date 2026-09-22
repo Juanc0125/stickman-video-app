@@ -48,12 +48,15 @@ export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
         try {
             const result = await generateVoice(video.id);
             onUpdated(result.video);
-            if (!result.ttsConfigured) {
-                setVoiceNotice(
-                    'La síntesis de voz no está configurada en este entorno (faltan TTS_API_URL / TTS_API_KEY). ' +
-                    'Esto es normal fuera de producción: las escenas no tendrán audio hasta que se configure.',
-                );
-            }
+            setVoiceNotice(
+                result.ttsConfigured
+                    ? 'Voz generada con el servicio externo. El video usará este audio en vez de la voz local.'
+                    // Not a problem: the render worker narrates every scene with its own
+                    // offline voice. The external service is only an alternative voice.
+                    : 'No hace falta: el video ya se narra solo, con la voz en español del servidor de render. '
+                      + 'Este botón sirve únicamente si configuras un servicio de voz externo (TTS_API_URL / TTS_API_KEY) '
+                      + 'y prefieres esa voz a la incluida.',
+            );
         } catch (err) {
             setPanelError(err instanceof Error ? err.message : 'No se pudo generar la voz.');
         } finally {
@@ -78,9 +81,10 @@ export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
                         type="button"
                         onClick={handleGenerateVoice}
                         disabled={generatingVoice || scenes.length === 0}
-                        className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="El video ya se narra solo. Usa esto solo si configuras un servicio de voz externo."
+                        className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {generatingVoice ? 'Generando voz...' : 'Generar voz'}
+                        {generatingVoice ? 'Generando voz...' : 'Voz externa (opcional)'}
                     </button>
                 </div>
             </div>
