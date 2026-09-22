@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchVideos, type VideoRecord } from './api';
 import VideoList from './video-list';
 import VideoWorkspace from './video-workspace';
+import Assistant from './assistant';
 
 export default function VideoStudio() {
     const [videos, setVideos] = useState<VideoRecord[]>([]);
@@ -79,6 +80,13 @@ export default function VideoStudio() {
                     <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
                 </div>
             </main>
+
+            <Assistant
+                videos={videos}
+                selected={selectedVideo}
+                onCreated={handleCreated}
+                onUpdated={handleUpdated}
+            />
         </div>
     );
 }
