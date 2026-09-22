@@ -47,46 +47,66 @@ export default function VideoStudio() {
     }
 
     const selectedVideo = videos.find((video) => video.id === selectedId) ?? null;
+    const rendering = videos.filter((v) => v.render_status === 'procesando').length;
 
-    // flex-1 on the wrapper matters: body is a flex column, so without it the
-    // wrapper only grows to fit its content and the page background stops
-    // midway down, leaving a bare strip underneath.
     return (
-        <div className="flex flex-1 flex-col bg-slate-100">
-            <header className="border-b border-slate-200 bg-[#17202a]">
-                <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-lg" />
-                    <div>
-                        <h1 className="text-lg font-semibold leading-tight text-white">Stickman</h1>
-                        <p className="text-xs text-slate-300">
-                            Videos cortos de marketing hipotecario
-                        </p>
+        <div className="relative flex flex-1 flex-col">
+            {/* Fixed so the art stays put while the panels scroll over it. */}
+            <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0a0f18]">
+                <div
+                    className="backdrop-layer absolute inset-0 bg-cover bg-center opacity-90"
+                    style={{ backgroundImage: 'url(/backdrop/space.jpg)' }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f18]/30 via-transparent to-[#0a0f18]/85" />
+            </div>
+
+            <header className="glass-strong sticky top-0 z-20 border-b border-white/10">
+                <div className="mx-auto flex max-w-[110rem] items-center gap-3 px-5 py-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 ring-1 ring-sky-400/25">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/icons/icon-192.png" alt="" width={30} height={30} className="rounded-lg" />
+                    </span>
+                    <div className="flex-1">
+                        <h1 className="text-base font-semibold leading-tight tracking-tight text-white">Stickman</h1>
+                        <p className="text-xs text-slate-400">Videos cortos de marketing hipotecario</p>
+                    </div>
+                    <div className="hidden items-center gap-4 text-xs text-slate-400 sm:flex">
+                        <span><span className="font-mono text-base text-white">{videos.length}</span> videos</span>
+                        {rendering > 0 && (
+                            <span className="flex items-center gap-1.5 text-sky-300">
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400" />
+                                {rendering} generando
+                            </span>
+                        )}
                     </div>
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-4 py-6">
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
-                    <VideoList
-                        videos={videos}
-                        loading={loading}
-                        loadError={loadError}
-                        selectedId={selectedId}
-                        onSelect={setSelectedId}
-                        onCreated={handleCreated}
-                        onDeleted={handleDeleted}
-                    />
+            <main className="mx-auto w-full max-w-[110rem] flex-1 px-5 pb-10 pt-5">
+                {/* The assistant leads: it is how the studio is meant to be driven.
+                    The panels stay because approving is a deliberate human act and
+                    should not be something you can say by accident. */}
+                <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[26rem_1fr]">
+                    <div className="flex flex-col gap-5">
+                        <Assistant
+                            videos={videos}
+                            selected={selectedVideo}
+                            onCreated={handleCreated}
+                            onUpdated={handleUpdated}
+                        />
+                        <VideoList
+                            videos={videos}
+                            loading={loading}
+                            loadError={loadError}
+                            selectedId={selectedId}
+                            onSelect={setSelectedId}
+                            onCreated={handleCreated}
+                            onDeleted={handleDeleted}
+                        />
+                    </div>
                     <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
                 </div>
             </main>
-
-            <Assistant
-                videos={videos}
-                selected={selectedVideo}
-                onCreated={handleCreated}
-                onUpdated={handleUpdated}
-            />
         </div>
     );
 }

@@ -65,15 +65,15 @@ export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
     }
 
     return (
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="glass rounded-2xl p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Escenas</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Escenas</h3>
                 <div className="flex flex-wrap gap-2">
                     <button
                         type="button"
                         onClick={handleGenerateScenes}
                         disabled={generatingAll}
-                        className="rounded border border-gray-900 px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded border border-sky-400/50 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-sky-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {generatingAll ? 'Generando escenas...' : scenes.length > 0 ? 'Regenerar todas las escenas' : 'Generar escenas'}
                     </button>
@@ -82,28 +82,28 @@ export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
                         onClick={handleGenerateVoice}
                         disabled={generatingVoice || scenes.length === 0}
                         title="El video ya se narra solo. Usa esto solo si configuras un servicio de voz externo."
-                        className="rounded border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded border border-white/15 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {generatingVoice ? 'Generando voz...' : 'Voz externa (opcional)'}
                     </button>
                 </div>
             </div>
 
-            {panelError && <p className="mb-3 text-sm text-red-600">{panelError}</p>}
-            {voiceNotice && <p className="mb-3 rounded bg-blue-50 p-2 text-sm text-blue-800">{voiceNotice}</p>}
+            {panelError && <p className="mb-3 text-sm text-red-300">{panelError}</p>}
+            {voiceNotice && <p className="mb-3 rounded bg-sky-500/10 p-2 text-sm text-sky-200">{voiceNotice}</p>}
 
             {scenes.length === 0 ? (
-                <p className="text-sm text-gray-500">Aún no hay escenas. Genera el guion y pulsa &quot;Generar escenas&quot;.</p>
+                <p className="text-sm text-slate-400">Aún no hay escenas. Genera el guion y pulsa &quot;Generar escenas&quot;.</p>
             ) : (
                 <>
                     <div className="mb-4">
-                        <p className="mb-1 text-xs text-gray-500">Línea de tiempo (total aprox. {totalDuration.toFixed(1)}s)</p>
-                        <div className="flex h-3 w-full overflow-hidden rounded bg-gray-100">
+                        <p className="mb-1 text-xs text-slate-400">Línea de tiempo (total aprox. {totalDuration.toFixed(1)}s)</p>
+                        <div className="flex h-3 w-full overflow-hidden rounded bg-white/10">
                             {scenes.map((scene, index) => (
                                 <div
                                     key={scene.id}
                                     title={`Escena ${index + 1}: ${scene.duration_seconds}s`}
-                                    className={index % 2 === 0 ? 'h-full bg-gray-500' : 'h-full bg-gray-700'}
+                                    className={index % 2 === 0 ? 'h-full bg-white/50' : 'h-full bg-sky-400/70'}
                                     style={{ width: `${totalDuration > 0 ? (scene.duration_seconds / totalDuration) * 100 : 0}%` }}
                                 />
                             ))}
@@ -193,14 +193,14 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
     }
 
     return (
-        <li className="rounded border border-gray-200 p-3">
+        <li className="rounded border border-white/10 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-gray-500">Escena {index + 1} · {scene.duration_seconds}s</span>
+                <span className="text-xs font-semibold text-slate-400">Escena {index + 1} · {scene.duration_seconds}s</span>
                 <button
                     type="button"
                     onClick={handleRegenerate}
                     disabled={busy}
-                    className="rounded border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded border border-white/15 px-2.5 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {busyAction === 'regenerate' ? 'Regenerando con IA...' : 'Regenerar con IA'}
                 </button>
@@ -208,13 +208,13 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
 
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor={`character-${scene.id}`}>Personaje</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`character-${scene.id}`}>Personaje</label>
                     <select
                         id={`character-${scene.id}`}
                         value={scene.character}
                         onChange={(event) => handleCharacterChange(event.target.value as CharacterType)}
                         disabled={busy}
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
                     >
                         {CHARACTER_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -222,13 +222,13 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
                     </select>
                 </div>
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor={`action-${scene.id}`}>Acción</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`action-${scene.id}`}>Acción</label>
                     <select
                         id={`action-${scene.id}`}
                         value={scene.action}
                         onChange={(event) => handleActionChange(event.target.value as SceneAction)}
                         disabled={busy}
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
                     >
                         {ACTION_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -236,13 +236,13 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
                     </select>
                 </div>
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor={`prop-${scene.id}`}>Objeto</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`prop-${scene.id}`}>Objeto</label>
                     <select
                         id={`prop-${scene.id}`}
                         value={scene.prop}
                         onChange={(event) => handlePropChange(event.target.value as ScenePropType)}
                         disabled={busy}
-                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
                     >
                         {PROP_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -252,20 +252,20 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
             </div>
 
             <div className="mt-2">
-                <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor={`description-${scene.id}`}>Descripción / subtítulo</label>
+                <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`description-${scene.id}`}>Descripción / subtítulo</label>
                 <textarea
                     id={`description-${scene.id}`}
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     rows={2}
                     disabled={busy}
-                    className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                    className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
                 />
             </div>
 
             <div className="mt-2 flex flex-wrap items-end gap-3">
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600" htmlFor={`duration-${scene.id}`}>Duración (s)</label>
+                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`duration-${scene.id}`}>Duración (s)</label>
                     <input
                         id={`duration-${scene.id}`}
                         type="number"
@@ -274,14 +274,14 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
                         value={durationSeconds}
                         onChange={(event) => setDurationSeconds(Number(event.target.value))}
                         disabled={busy}
-                        className="w-28 rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-28 rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
                     />
                 </div>
                 <button
                     type="button"
                     onClick={handleSaveText}
                     disabled={busy || !textDirty}
-                    className="rounded bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-sky-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {busyAction === 'text' ? 'Guardando...' : 'Guardar cambios'}
                 </button>
@@ -293,7 +293,7 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
                 </div>
             )}
 
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
         </li>
     );
 }

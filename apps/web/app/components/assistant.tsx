@@ -51,7 +51,6 @@ function speak(text: string) {
 }
 
 export default function Assistant({ videos, selected, onCreated, onUpdated }: AssistantProps) {
-    const [open, setOpen] = useState(false);
     const [listening, setListening] = useState(false);
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState('');
@@ -194,54 +193,53 @@ export default function Assistant({ videos, selected, onCreated, onUpdated }: As
         setListening(true);
     }
 
-    if (!open) {
-        return (
-            <button
-                type="button"
-                onClick={() => setOpen(true)}
-                aria-label="Abrir asistente"
-                className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#17202a] text-white shadow-lg transition hover:scale-105"
-            >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/icon-192.png" alt="" width={38} height={38} className="rounded-full" />
-            </button>
-        );
-    }
-
     return (
-        <div className="fixed bottom-5 right-5 z-40 flex h-[32rem] w-[22rem] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border border-slate-300 bg-white shadow-2xl">
-            <header className="flex items-center gap-2 bg-[#17202a] px-3 py-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/icon-192.png" alt="" width={26} height={26} className="rounded" />
-                <span className="flex-1 text-sm font-semibold text-white">Asistente Stickman</span>
-                <button type="button" onClick={() => setOpen(false)} aria-label="Cerrar asistente" className="rounded px-2 py-0.5 text-slate-300 transition hover:bg-white/10 hover:text-white">×</button>
+        <section className="glass flex max-h-[34rem] min-h-[24rem] flex-col overflow-hidden rounded-2xl">
+            <header className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+                <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/15">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/icon-192.png" alt="" width={26} height={26} className="rounded-full" />
+                </span>
+                <span className="flex-1">
+                    <span className="block text-sm font-semibold text-white">Asistente</span>
+                    <span className="block text-xs text-slate-400">
+                        {listening ? 'Escuchando...' : busy ? 'Pensando...' : 'Hablame o escribeme'}
+                    </span>
+                </span>
+                <span className={`h-2 w-2 rounded-full ${busy ? 'bg-amber-400' : 'bg-emerald-400'}`} aria-hidden="true" />
             </header>
 
-            <div ref={transcriptRef} className="flex-1 space-y-2 overflow-y-auto bg-slate-50 p-3">
+            <div ref={transcriptRef} className="thin-scroll flex-1 space-y-3 overflow-y-auto p-4">
                 {turns.map((turn, index) => (
                     <div
                         key={index}
-                        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                            turn.who === 'tu' ? 'ml-auto bg-[#17202a] text-white' : 'bg-white text-slate-800 shadow-sm'
+                        className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                            turn.who === 'tu'
+                                ? 'ml-auto bg-sky-500/90 text-white'
+                                : 'border border-white/10 bg-white/5 text-slate-100'
                         }`}
                     >
                         {turn.text}
                     </div>
                 ))}
-                {busy && <div className="max-w-[85%] rounded-lg bg-white px-3 py-2 text-sm text-slate-400 shadow-sm">Pensando...</div>}
+                {busy && (
+                    <div className="max-w-[88%] rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-slate-400">
+                        Pensando...
+                    </div>
+                )}
             </div>
 
             <form
                 onSubmit={(event) => { event.preventDefault(); void send(input); }}
-                className="flex items-center gap-2 border-t border-slate-200 p-2"
+                className="flex items-center gap-2 border-t border-white/10 p-3"
             >
                 <button
                         type="button"
                         onClick={toggleMic}
                         disabled={busy}
                         aria-label={listening ? 'Dejar de escuchar' : 'Hablar'}
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition disabled:opacity-40 ${
-                            listening ? 'animate-pulse bg-red-600 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:opacity-40 ${
+                            listening ? 'listening-ring bg-red-500 text-white' : 'bg-white/10 text-slate-200 hover:bg-white/20'
                         }`}
                     >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
@@ -253,16 +251,16 @@ export default function Assistant({ videos, selected, onCreated, onUpdated }: As
                     onChange={(event) => setInput(event.target.value)}
                     disabled={busy}
                     placeholder={listening ? 'Escuchando...' : 'Escribe o pulsa el microfono'}
-                    className="min-w-0 flex-1 rounded border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+                    className="min-w-0 flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-400/60 focus:outline-none"
                 />
                 <button
                     type="submit"
                     disabled={busy || !input.trim()}
-                    className="shrink-0 rounded bg-[#17202a] px-3 py-1.5 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-40"
+                    className="shrink-0 rounded-full bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:opacity-40"
                 >
                     Enviar
                 </button>
             </form>
-        </div>
+        </section>
     );
 }

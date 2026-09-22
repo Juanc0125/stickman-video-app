@@ -84,8 +84,8 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
     }
 
     return (
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Marca (branding)</h3>
+        <section className="glass rounded-2xl p-4">
+            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Marca (branding)</h3>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
@@ -97,9 +97,9 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                             value={primaryColor}
                             onChange={(event) => setPrimaryColor(event.target.value)}
                             disabled={saving}
-                            className="h-9 w-14 cursor-pointer rounded border border-gray-300"
+                            className="h-9 w-14 cursor-pointer rounded border border-white/15"
                         />
-                        <span className="text-sm text-gray-500">{primaryColor}</span>
+                        <span className="text-sm text-slate-400">{primaryColor}</span>
                     </div>
                 </div>
                 <div>
@@ -111,9 +111,9 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                             value={secondaryColor}
                             onChange={(event) => setSecondaryColor(event.target.value)}
                             disabled={saving}
-                            className="h-9 w-14 cursor-pointer rounded border border-gray-300"
+                            className="h-9 w-14 cursor-pointer rounded border border-white/15"
                         />
-                        <span className="text-sm text-gray-500">{secondaryColor}</span>
+                        <span className="text-sm text-slate-400">{secondaryColor}</span>
                     </div>
                 </div>
                 <div>
@@ -125,7 +125,7 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                         value={FONT_OPTIONS.some((option) => option.value === fontFamily) ? fontFamily : 'sans'}
                         onChange={(event) => setFontFamily(event.target.value)}
                         disabled={saving}
-                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
                     >
                         {FONT_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -139,7 +139,7 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                         value={logoPosition}
                         onChange={(event) => setLogoPosition(event.target.value as LogoPosition)}
                         disabled={saving}
-                        className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                        className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
                     >
                         {LOGO_POSITION_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -148,23 +148,23 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                 </div>
             </div>
 
-            {saveError && <p className="mt-3 text-sm text-red-600">{saveError}</p>}
+            {saveError && <p className="mt-3 text-sm text-red-300">{saveError}</p>}
             <div className="mt-3">
                 <button
                     type="button"
                     onClick={handleSaveBranding}
                     disabled={saving || !dirty}
-                    className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {saving ? 'Guardando...' : 'Guardar cambios de marca'}
                 </button>
             </div>
 
-            <div className="mt-5 border-t border-gray-100 pt-4">
+            <div className="mt-5 border-t border-white/10 pt-4">
                 <label className="mb-1 block text-sm font-medium" htmlFor="logo-upload">Logo</label>
                 {branding.logo_url && (
                     // eslint-disable-next-line @next/next/no-img-element -- external/base64-derived Supabase Storage URL, not a static local asset.
-                    <img src={branding.logo_url} alt="Logo actual de la marca" className="mb-2 h-16 w-auto rounded border border-gray-200 bg-gray-50 object-contain p-1" />
+                    <img src={branding.logo_url} alt="Logo actual de la marca" className="mb-2 h-16 w-auto rounded border border-white/10 bg-white/5 object-contain p-1" />
                 )}
                 <input
                     id="logo-upload"
@@ -173,11 +173,11 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                     accept={ACCEPTED_LOGO_TYPES}
                     onChange={handleLogoChange}
                     disabled={uploading}
-                    className="block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-gray-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+                    className="block w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
                 />
-                <p className="mt-1 text-xs text-gray-500">PNG, JPG, WEBP o SVG. Máximo 2MB.</p>
-                {uploading && <p className="mt-1 text-sm text-gray-500">Subiendo logo...</p>}
-                {uploadError && <p className="mt-1 text-sm text-red-600">{uploadError}</p>}
+                <p className="mt-1 text-xs text-slate-400">PNG, JPG, WEBP o SVG. Máximo 2MB.</p>
+                {uploading && <p className="mt-1 text-sm text-slate-400">Subiendo logo...</p>}
+                {uploadError && <p className="mt-1 text-sm text-red-300">{uploadError}</p>}
             </div>
         </section>
     );

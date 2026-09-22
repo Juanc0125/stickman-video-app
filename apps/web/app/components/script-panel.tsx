@@ -32,28 +32,28 @@ export default function ScriptPanel({ video, onUpdated }: ScriptPanelProps) {
     }
 
     return (
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="glass rounded-2xl p-4">
             <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Guion</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Guion</h3>
                 {dirty && <span className="text-xs text-amber-600">Cambios sin guardar</span>}
             </div>
             <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 rows={8}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm leading-relaxed focus:border-gray-500 focus:outline-none"
+                className="w-full rounded border border-white/15 px-3 py-2 text-sm leading-relaxed focus:border-sky-400/60 focus:outline-none"
                 disabled={saving}
             />
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-slate-400">
                 Si editas el guion después de generar las escenas, recuerda pulsar &quot;Generar escenas&quot; de nuevo para que reflejen el cambio.
             </p>
-            {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
             <div className="mt-3">
                 <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving || !dirty}
-                    className="rounded bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {saving ? 'Guardando...' : 'Guardar guion'}
                 </button>

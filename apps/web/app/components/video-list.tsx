@@ -69,8 +69,8 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
 
     return (
         <div className="space-y-4">
-            <section className="rounded-lg border border-gray-200 bg-white p-4">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Crear nuevo video</h2>
+            <section className="glass rounded-2xl p-4">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Crear nuevo video</h2>
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
                         <label className="mb-1 block text-sm font-medium" htmlFor="new-video-topic">Tema</label>
@@ -80,7 +80,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                             value={topic}
                             onChange={(event) => setTopic(event.target.value)}
                             placeholder="Ej. Cómo elegir la mejor tasa hipotecaria"
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
                             disabled={creating}
                         />
                     </div>
@@ -90,7 +90,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                             id="new-video-platform"
                             value={platform}
                             onChange={(event) => setPlatform(event.target.value as Platform)}
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
                             disabled={creating}
                         >
                             {PLATFORM_OPTIONS.map((option) => (
@@ -107,35 +107,35 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                             step={1}
                             value={duration}
                             onChange={(event) => setDuration(Number(event.target.value))}
-                            className="w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-gray-500 focus:outline-none"
+                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
                             disabled={creating}
                         />
                     </div>
-                    {formError && <p className="text-sm text-red-600">{formError}</p>}
+                    {formError && <p className="text-sm text-red-300">{formError}</p>}
                     <button
                         type="submit"
                         disabled={creating}
-                        className="w-full rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="w-full rounded bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {creating ? 'Generando guion con IA...' : 'Crear video'}
                     </button>
                 </form>
             </section>
 
-            <section className="rounded-lg border border-gray-200 bg-white p-4">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Videos</h2>
-                {loading && <p className="text-sm text-gray-500">Cargando videos...</p>}
-                {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+            <section className="glass rounded-2xl p-4">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Videos</h2>
+                {loading && <p className="text-sm text-slate-400">Cargando videos...</p>}
+                {loadError && <p className="text-sm text-red-300">{loadError}</p>}
                 {!loading && !loadError && videos.length === 0 && (
-                    <p className="text-sm text-gray-500">Aún no hay videos. Crea el primero arriba.</p>
+                    <p className="text-sm text-slate-400">Aún no hay videos. Crea el primero arriba.</p>
                 )}
-                {deleteError && <p className="mb-2 text-sm text-red-600">{deleteError}</p>}
+                {deleteError && <p className="mb-2 text-sm text-red-300">{deleteError}</p>}
                 <ul className="space-y-2">
                     {videos.map((video) => (
                         <li
                             key={video.id}
                             className={`group relative rounded border transition ${
-                                video.id === selectedId ? 'border-gray-900 bg-gray-50' : 'border-gray-200 hover:bg-gray-50'
+                                video.id === selectedId ? 'border-sky-400/50 bg-white/5' : 'border-white/10 hover:bg-white/10'
                             }`}
                         >
                             <button
@@ -145,7 +145,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                             >
                                 <div className="font-medium line-clamp-1">{video.topic}</div>
                                 <div className="mt-1 flex items-center justify-between gap-2">
-                                    <span className="text-xs text-gray-500">{PLATFORM_LABELS[video.platform]}</span>
+                                    <span className="text-xs text-slate-400">{PLATFORM_LABELS[video.platform]}</span>
                                     <StatusBadge status={video.status} />
                                 </div>
                             </button>
@@ -155,10 +155,10 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                 disabled={deletingId === video.id}
                                 aria-label={`Eliminar ${video.topic}`}
                                 title="Eliminar video"
-                                className="absolute right-1.5 top-1.5 rounded p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100"
+                                className="absolute right-1.5 top-1.5 rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100"
                             >
                                 {deletingId === video.id ? (
-                                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-600" />
+                                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/15 border-t-red-600" />
                                 ) : (
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                                         <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />

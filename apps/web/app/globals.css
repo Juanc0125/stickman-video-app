@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --background: #f7f7f8;
-  --foreground: #1a1a1a;
-  --muted: #6b7280;
-  --border: #e5e7eb;
+  --background: #0a0f18;
+  --foreground: #e8eef7;
+  --muted: #8fa3bd;
+  --border: rgba(255, 255, 255, 0.10);
+  --accent: #4d9bff;
 }
 
 * {
@@ -38,4 +39,92 @@ button {
 
 a {
   color: inherit;
+}
+
+/* Form controls carry border and focus utilities but no background class, so
+   without this they fall back to the browser's white and go unreadable on the
+   dark ground. An element selector loses to any utility, so a panel that does
+   set its own background still wins. */
+input[type="text"],
+input[type="number"],
+input[type="search"],
+input[type="password"],
+select,
+textarea {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--foreground);
+}
+
+input[type="file"] {
+  color: var(--muted);
+}
+
+/* The dropdown list itself is drawn by the OS, which ignores the dark styling
+   on the <select> and would otherwise render white text on white. */
+select option {
+  background: #141c28;
+  color: var(--foreground);
+}
+
+::placeholder {
+  color: #64748b;
+}
+
+/* Frosted panel. Scoped to a class rather than applied to every <section> so a
+   panel can opt out. */
+.glass {
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.glass-strong {
+  background: rgba(10, 16, 26, 0.72);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Slow drift on the backdrop so a static screen still feels alive. Disabled
+   for anyone who asked the system for less motion. */
+@keyframes backdrop-drift {
+  0%, 100% { transform: scale(1.06) translate3d(0, 0, 0); }
+  50% { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
+}
+
+.backdrop-layer {
+  animation: backdrop-drift 48s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(77, 155, 255, 0.45); }
+  70% { box-shadow: 0 0 0 16px rgba(77, 155, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(77, 155, 255, 0); }
+}
+
+.listening-ring {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop-layer,
+  .listening-ring {
+    animation: none;
+  }
+}
+
+/* Thin scrollbars, so a scrolling transcript does not cut the panel with a
+   chunky light-coloured bar. */
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
