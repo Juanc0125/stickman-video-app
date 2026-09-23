@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getTemplate } from '@shared-types/templates';
 import {
     createVideo, generateScenes, generateVoice, transitionStatus, updateScene,
     type VideoRecord,
@@ -109,9 +110,16 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         }
 
         if (kind === 'crear') {
-            const video = await createVideo(String(action.topic), action.platform as VideoRecord['platform'], Number(action.durationSeconds));
+            const template = getTemplate(action.template);
+            const video = await createVideo(
+                String(action.topic),
+                action.platform as VideoRecord['platform'],
+                Number(action.durationSeconds),
+                template.id,
+            );
             onCreated(video);
-            return `Listo, cree "${video.topic}". Dime si quieres que genere las escenas.`;
+            const conPlantilla = template.id === 'libre' ? '' : ` en formato ${template.label.toLowerCase()}`;
+            return `Listo, cree "${video.topic}"${conPlantilla}. Dime si quieres que genere las escenas.`;
         }
 
         if (!selected) return 'Primero abre un video de la lista, o dime que cree uno.';

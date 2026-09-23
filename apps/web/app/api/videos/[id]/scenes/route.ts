@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
 import { generateAiText } from '../../../../../lib/ai';
 import { getVideo, replaceScenes } from '../../../../../lib/video-persistence';
@@ -51,7 +52,8 @@ function extractJson(text: string): unknown {
     }
 }
 
-function buildSystemPrompt(targetDurationSeconds: number): string {
+function buildSystemPrompt(targetDurationSeconds: number, template: VideoTemplate): string {
+    const guidance = getTemplate(template).guidance;
     return [
         'Eres un planificador de escenas para mini-telenovelas verticales de marketing de creditos hipotecarios / vivienda, al estilo de las "frutinovelas" virales.',
         `Divide el guion recibido en entre ${MIN_SCENES} y ${MAX_SCENES} escenas, segun lo que requiera la duracion objetivo del video.`,
@@ -89,7 +91,7 @@ function buildScenesFromAiJson(raw: unknown): SceneInput[] | null {
     });
 }
 
-function buildSentenceFallback(script: string, targetDurationSeconds: number): SceneInput[] {
+function buildSentenceFallback(script: string, targetDurationSeconds: number, template: VideoTemplate): SceneInput[] {
     const sentences = script
         .split(/[.!?]+/)
         .map((sentence) => sentence.trim())
@@ -104,9 +106,19 @@ function buildSentenceFallback(script: string, targetDurationSeconds: number): S
     // generico/hablar/ninguno. Blind rotation was worse than no casting: it put
     // the broker on the line "llame al asesor casi llorando", which the client
     // is obviously the one saying.
+    const beats = getTemplate(template).beats;
+
     return lines.map((line, index) => {
         const text = line.toLowerCase();
         const isLast = index === lines.length - 1;
+
+        // A picked template is an explicit decision about staging, so it wins
+        // over guessing from the words. Its last beat is reserved for the
+        // closing line; the rest cycle.
+        if (beats.length > 0) {
+            const beat = isLast ? beats[beats.length - 1] : beats[index % Math.max(1, beats.length - 1)];
+            return { order: index + 1, ...beat, description: line, duration_seconds: clampedDuration, audio_url: null };
+        }
 
         // Who is speaking, read off the line itself. A line that quotes or
         // reports someone else ("me dijo", "me explico") is still the client
@@ -162,7 +174,7 @@ export async function POST(request: Request, context: RouteContext) {
     let scenes: SceneInput[] | null = null;
     try {
         const result = await generateAiText(
-            buildSystemPrompt(targetDurationSeconds),
+            buildSystemPrompt(targetDurationSeconds, video.template),
             [{ role: 'user', content: `Tema: ${video.topic}\n\nGuion completo:\n${video.script}` }],
             900,
         );
@@ -174,7 +186,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     if (!scenes || scenes.length === 0) {
-        scenes = buildSentenceFallback(video.script, targetDurationSeconds);
+        scenes = buildSentenceFallback(video.script, targetDurationSeconds, video.template);
     }
 
     try {

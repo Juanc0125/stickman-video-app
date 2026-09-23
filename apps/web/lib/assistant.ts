@@ -1,3 +1,4 @@
+import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import type { Platform, SceneAction, ScenePropType, CharacterType } from '@shared-types/video';
 import { generateAiText } from './ai';
 
@@ -7,7 +8,7 @@ import { generateAiText } from './ai';
 export type AssistantAction =
     | { kind: 'responder' }
     | { kind: 'listar' }
-    | { kind: 'crear'; topic: string; platform: Platform; durationSeconds: number }
+    | { kind: 'crear'; topic: string; platform: Platform; durationSeconds: number; template: VideoTemplate }
     | { kind: 'generar_escenas' }
     | { kind: 'generar_voz' }
     | { kind: 'editar_escena'; sceneNumber: number; character?: CharacterType; action?: SceneAction; prop?: ScenePropType }
@@ -37,6 +38,24 @@ const PLATFORM_WORDS: Record<string, Platform> = {
     tiktok: 'tiktok', 'tik tok': 'tiktok',
     shorts: 'shorts', youtube: 'shorts', short: 'shorts',
 };
+
+const TEMPLATE_WORDS: Record<string, VideoTemplate> = {
+    conversacion: 'conversacion', 'conversación': 'conversacion', dialogo: 'conversacion', 'diálogo': 'conversacion',
+    explicacion: 'explicacion', 'explicación': 'explicacion', explicativo: 'explicacion', tutorial: 'explicacion',
+    comparacion: 'comparacion', 'comparación': 'comparacion', comparativo: 'comparacion', versus: 'comparacion',
+    llamada: 'llamada', telefonica: 'llamada', 'telefónica': 'llamada',
+    presentacion: 'presentacion', 'presentación': 'presentacion', propiedad: 'presentacion',
+};
+
+// A template is only read when the sentence actually frames one ("en formato
+// llamada"). Matching the bare word would turn a video *about* a phone call
+// into a phone-call template, which is not what was asked.
+const TEMPLATE_CUE = /\b(?:en\s+)?(?:formato|estilo|plantilla|tipo|como una?)\s+([a-záéíóúñ]+)/i;
+
+function findTemplate(text: string): VideoTemplate | undefined {
+    const cue = text.match(TEMPLATE_CUE);
+    return cue ? TEMPLATE_WORDS[cue[1].toLowerCase()] : undefined;
+}
 
 const CHARACTER_WORDS: Record<string, CharacterType> = {
     broker: 'broker', asesor: 'broker', agente: 'broker',
@@ -94,6 +113,7 @@ function matchKnownCommand(message: string): AssistantReply | null {
             .replace(/^.*?\bsobre\b/i, '')
             .replace(/\b(para|en)\s+(reels|tiktok|tik tok|shorts|instagram|youtube)\b.*/i, '')
             .replace(/\bde\s+\d+\s*segundos?\b/i, '')
+            .replace(TEMPLATE_CUE, '')
             .trim();
         if (topic.length >= 3) {
             const durationMatch = text.match(/\b(\d{1,3})\s*segundos?\b/);
@@ -104,6 +124,7 @@ function matchKnownCommand(message: string): AssistantReply | null {
                     topic: topic.charAt(0).toUpperCase() + topic.slice(1),
                     platform: findWord(text, PLATFORM_WORDS) ?? 'reels',
                     durationSeconds: durationMatch ? Number(durationMatch[1]) : 30,
+                    template: findTemplate(text) ?? 'libre',
                 },
             };
         }
@@ -156,12 +177,14 @@ Respondes en español, en una o dos frases, con tono directo y sin adornos. Te v
 Puedes pedir una de estas acciones devolviendo JSON:
 {"reply":"<lo que dices en voz alta>","action":{"kind":"responder"}}
 {"reply":"...","action":{"kind":"listar"}}
-{"reply":"...","action":{"kind":"crear","topic":"...","platform":"reels|tiktok|shorts","durationSeconds":30}}
+{"reply":"...","action":{"kind":"crear","topic":"...","platform":"reels|tiktok|shorts","durationSeconds":30,"template":"libre|conversacion|explicacion|comparacion|llamada|presentacion"}}
 {"reply":"...","action":{"kind":"generar_escenas"}}
 {"reply":"...","action":{"kind":"generar_voz"}}
 {"reply":"...","action":{"kind":"editar_escena","sceneNumber":2,"character":"broker","action":"caminar","prop":"casa"}}
 {"reply":"...","action":{"kind":"enviar_aprobacion"}}
 {"reply":"...","action":{"kind":"renderizar"}}
+
+La plantilla marca como se monta el video: "conversacion" (cliente y asesor dialogando), "explicacion" (el asesor explica a camara), "comparacion" (dos opciones enfrentadas), "llamada" (una llamada telefonica), "presentacion" (se muestra una vivienda). Usa "libre" si el usuario no pide una estructura concreta.
 
 Valores validos. character: broker, cliente, pareja, hombre, mujer, generico. action: hablar, caminar, senalar, sentarse, pensar, telefono, mostrar_objeto. prop: casa, carro, banco, telefono, documento, dinero, grafico, oficina, ninguno.
 
@@ -181,7 +204,9 @@ function parseModelJson(raw: string): AssistantReply | null {
         // prompt: anything outside the known set becomes a plain answer.
         const allowed = ['responder', 'listar', 'crear', 'generar_escenas', 'generar_voz', 'editar_escena', 'enviar_aprobacion', 'renderizar'];
         if (!allowed.includes(kind)) return { reply: parsed.reply, action: { kind: 'responder' } };
-        return { reply: parsed.reply, action: parsed.action as AssistantAction };
+        const action = parsed.action as AssistantAction;
+        if (action.kind === 'crear') action.template = getTemplate(action.template).id;
+        return { reply: parsed.reply, action };
     } catch {
         return null;
     }

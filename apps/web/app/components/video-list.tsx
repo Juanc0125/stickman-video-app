@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { VIDEO_TEMPLATES, getTemplate, type VideoTemplate } from '@shared-types/templates';
 import type { Platform } from '@shared-types/video';
 import { createVideo, deleteVideo, type VideoRecord } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
@@ -20,6 +21,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
     const [topic, setTopic] = useState('');
     const [platform, setPlatform] = useState<Platform>('reels');
     const [duration, setDuration] = useState(30);
+    const [template, setTemplate] = useState<VideoTemplate>('libre');
     const [creating, setCreating] = useState(false);
     const [formError, setFormError] = useState('');
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
         setCreating(true);
         setFormError('');
         try {
-            const video = await createVideo(topic.trim(), platform, duration);
+            const video = await createVideo(topic.trim(), platform, duration, template);
             setTopic('');
             onCreated(video);
         } catch (error) {
@@ -97,6 +99,21 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                 <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                         </select>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium" htmlFor="new-video-template">Plantilla</label>
+                        <select
+                            id="new-video-template"
+                            value={template}
+                            onChange={(event) => setTemplate(event.target.value as VideoTemplate)}
+                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                            disabled={creating}
+                        >
+                            {VIDEO_TEMPLATES.map((option) => (
+                                <option key={option.id} value={option.id}>{option.label}</option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-xs text-slate-400">{getTemplate(template).description}</p>
                     </div>
                     <div>
                         <label className="mb-1 block text-sm font-medium" htmlFor="new-video-duration">Duración objetivo (segundos)</label>

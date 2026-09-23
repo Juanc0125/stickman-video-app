@@ -2,6 +2,7 @@
 // Error with a Spanish message (taken from the API's own `{ error }` body when available) so
 // callers can show it directly to the user.
 
+import type { VideoTemplate } from '@shared-types/templates';
 import type {
     CharacterType,
     LogoPosition,
@@ -40,11 +41,16 @@ export async function fetchVideos(): Promise<VideoRecord[]> {
     return data.videos;
 }
 
-export async function createVideo(topic: string, platform: Platform, targetDurationSeconds: number): Promise<VideoRecord> {
+export async function createVideo(
+    topic: string,
+    platform: Platform,
+    targetDurationSeconds: number,
+    template: VideoTemplate = 'libre',
+): Promise<VideoRecord> {
     const data = await request<{ video: VideoRecord }>('/api/videos', {
         method: 'POST',
         headers: JSON_HEADERS,
-        body: JSON.stringify({ topic, platform, targetDurationSeconds }),
+        body: JSON.stringify({ topic, platform, targetDurationSeconds, template }),
     });
     return data.video;
 }

@@ -1,3 +1,6 @@
+export type { VideoTemplate } from './templates';
+import type { VideoTemplate } from './templates';
+
 export type VideoStatus = 'borrador' | 'pendiente_aprobacion' | 'aprobado' | 'publicado';
 export type Platform = 'reels' | 'tiktok' | 'shorts';
 export type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
@@ -42,6 +45,7 @@ export interface Video {
     render_progress: number; // 0-100
     render_error: string | null;
     render_started_at: string | null; // lets the UI spot a job whose worker died
+    template: VideoTemplate; // RF-019: narrative shape the scenes follow
 }
 
 export interface Scene {

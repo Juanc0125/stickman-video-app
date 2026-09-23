@@ -1,5 +1,6 @@
 import type { Branding, Platform, Scene, Video } from '@shared-types/video';
 import { DEFAULT_BRANDING } from '@shared-types/video';
+import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import { canTransition, transitions, videos as mockVideos } from '../app/api/videos/store';
 import { getSupabaseClient } from './supabaseClient';
 import { generateAiText } from './ai';
@@ -55,6 +56,7 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
         render_progress: Number(video.render_progress ?? 0),
         render_error: nullableString(video.render_error),
         render_started_at: nullableString(video.render_started_at),
+        template: getTemplate(video.template).id,
         scenes: (scenes ?? []).map(toScene).sort((a, b) => a.order - b.order),
     };
 }
@@ -163,7 +165,7 @@ function buildFallbackScript(topic: string): string {
     return (/hipotec|credito|cr[eé]dito|cuota|vivienda|casa|banco/i.test(topic) ? mortgage : general).join(' ');
 }
 
-async function generateScript(topic: string): Promise<string> {
+async function generateScript(topic: string, template: VideoTemplate): Promise<string> {
     // Telenovela structure on purpose: the client wants the "frutinovela" format
     // that works on TikTok - conflict, characters with a stake, a hook - rather
     // than the explainer tone this used to produce. The compliance limits are
@@ -184,7 +186,7 @@ async function generateScript(topic: string): Promise<string> {
     return result.text.trim();
 }
 
-async function createInSupabase(topic: string, platform: Platform, targetDurationSeconds: number, script: string): Promise<VideoRecord> {
+async function createInSupabase(topic: string, platform: Platform, targetDurationSeconds: number, script: string, template: VideoTemplate): Promise<VideoRecord> {
     const serviceClient = getSupabaseClient({ serviceRole: true });
     if (!serviceClient) {
         throw new Error('No hay servicio de Supabase configurado para crear el video.');
@@ -201,6 +203,7 @@ async function createInSupabase(topic: string, platform: Platform, targetDuratio
         platform,
         target_duration_seconds: targetDurationSeconds,
         script,
+        template,
         status: 'borrador',
         branding: DEFAULT_BRANDING,
     }).select().single();
@@ -212,7 +215,7 @@ async function createInSupabase(topic: string, platform: Platform, targetDuratio
     return toVideoRecord(videoData, []);
 }
 
-function buildLocalVideoRecord(topic: string, platform: Platform, targetDurationSeconds: number, script: string): VideoRecord {
+function buildLocalVideoRecord(topic: string, platform: Platform, targetDurationSeconds: number, script: string, template: VideoTemplate): VideoRecord {
     const id = crypto.randomUUID();
     const video: Video = {
         id,
@@ -221,6 +224,7 @@ function buildLocalVideoRecord(topic: string, platform: Platform, targetDuration
         platform,
         target_duration_seconds: targetDurationSeconds,
         script,
+        template,
         status: 'borrador',
         branding: { ...DEFAULT_BRANDING },
         video_url: null,
@@ -242,14 +246,14 @@ export async function getVideo(id: string): Promise<VideoRecord | null> {
     return findVideoRecord(id);
 }
 
-export async function createVideo(topic: string, platform: Platform, targetDurationSeconds: number): Promise<VideoRecord> {
-    const script = await generateScript(topic);
+export async function createVideo(topic: string, platform: Platform, targetDurationSeconds: number, template: VideoTemplate = 'libre'): Promise<VideoRecord> {
+    const script = await generateScript(topic, template);
 
     try {
-        return await createInSupabase(topic, platform, targetDurationSeconds, script);
+        return await createInSupabase(topic, platform, targetDurationSeconds, script, template);
     } catch (error) {
         console.warn('Fallo en Supabase, usando fallback en memoria.', error);
-        const record = buildLocalVideoRecord(topic, platform, targetDurationSeconds, script);
+        const record = buildLocalVideoRecord(topic, platform, targetDurationSeconds, script, template);
         mockVideos.set(record.id, record);
         return record;
     }
@@ -426,6 +430,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
                 platform,
                 target_duration_seconds: original.target_duration_seconds,
                 script: original.script,
+                template: original.template,
                 status: 'borrador',
                 branding: original.branding,
                 source_video_id: original.id,
@@ -472,6 +477,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
         render_progress: 0,
         render_error: null,
         render_started_at: null,
+        template: original.template,
         created_at: new Date().toISOString(),
     };
     const record: VideoRecord = {

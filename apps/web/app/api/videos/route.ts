@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getTemplate } from '@shared-types/templates';
 import type { Platform } from '@shared-types/video';
 import { createVideo, listVideos } from '../../../lib/video-persistence';
 
@@ -10,7 +11,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-    const body = await request.json().catch(() => null) as { topic?: unknown; platform?: unknown; targetDurationSeconds?: unknown } | null;
+    const body = await request.json().catch(() => null) as { topic?: unknown; platform?: unknown; targetDurationSeconds?: unknown; template?: unknown } | null;
     const topic = typeof body?.topic === 'string' ? body.topic.trim() : '';
     const rawPlatform = typeof body?.platform === 'string' ? body.platform : 'reels';
     const platform = (PLATFORMS as string[]).includes(rawPlatform) ? rawPlatform as Platform : null;
@@ -19,12 +20,16 @@ export async function POST(request: Request) {
         ? 30
         : (typeof rawDuration === 'number' && Number.isFinite(rawDuration) && rawDuration > 0 ? rawDuration : null);
 
+    // Unknown names fall back to 'libre' rather than being rejected: a template
+    // is a hint about shape, not something worth failing a creation over.
+    const template = getTemplate(body?.template).id;
+
     if (!topic) return NextResponse.json({ error: 'El tema es obligatorio.' }, { status: 400 });
     if (!platform) return NextResponse.json({ error: 'La plataforma debe ser reels, tiktok o shorts.' }, { status: 400 });
     if (targetDurationSeconds === null) return NextResponse.json({ error: 'La duracion objetivo debe ser un numero positivo.' }, { status: 400 });
 
     try {
-        const record = await createVideo(topic, platform, targetDurationSeconds);
+        const record = await createVideo(topic, platform, targetDurationSeconds, template);
         return NextResponse.json({ video: record }, { status: 201 });
     } catch (error) {
         console.error('Error al crear video', error);
