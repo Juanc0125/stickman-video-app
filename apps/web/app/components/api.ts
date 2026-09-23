@@ -144,3 +144,8 @@ export async function deleteVideo(id: string): Promise<void> {
         throw new Error(body.error ?? 'No se pudo eliminar el video.');
     }
 }
+
+export async function deleteScene(id: string, sceneId: string): Promise<VideoRecord> {
+    const data = await request<{ video: VideoRecord }>(`/api/videos/${id}/scenes/${sceneId}`, { method: 'DELETE' });
+    return data.video;
+}

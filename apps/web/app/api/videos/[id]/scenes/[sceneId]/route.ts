@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
 import { generateAiText } from '../../../../../../lib/ai';
-import { getVideo, updateScene } from '../../../../../../lib/video-persistence';
+import { deleteScene, getVideo, updateScene } from '../../../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string; sceneId: string }> };
 type SceneInput = Omit<Scene, 'id' | 'video_id'>;
@@ -197,6 +197,18 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     try {
         const updated = await updateScene(id, sceneId, patch);
+        return NextResponse.json({ video: updated });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
+        const status = message === 'Video no encontrado.' ? 404 : 500;
+        return NextResponse.json({ error: message }, { status });
+    }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+    const { id, sceneId } = await context.params;
+    try {
+        const updated = await deleteScene(id, sceneId);
         return NextResponse.json({ video: updated });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Error desconocido';

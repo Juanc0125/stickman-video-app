@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Platform } from '@shared-types/video';
 import { duplicateVideo, transitionStatus, type StatusAction, type VideoRecord } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
 import StatusBadge from './status-badge';
+
+// A render that has not reported in this long is not slow, it is gone: the
+// worker restarted mid-job and nothing will ever finish it. Generous enough to
+// cover an AI-generated video, which legitimately takes minutes per scene.
+const STALLED_AFTER_MS = 20 * 60 * 1000;
 
 interface StatusPanelProps {
     video: VideoRecord;
@@ -22,6 +27,24 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
     const [duplicateError, setDuplicateError] = useState('');
 
     const busy = actionLoading !== null;
+
+    // Reading the clock during render is impure, so it is held in state and
+    // ticked only while a job is actually running.
+    const rendering = video.render_status === 'procesando';
+    const [now, setNow] = useState(0);
+    useEffect(() => {
+        if (!rendering) return;
+        // First read is scheduled rather than immediate: setting state straight
+        // inside the effect makes React re-render twice before paint.
+        const first = setTimeout(() => setNow(Date.now()), 0);
+        const timer = setInterval(() => setNow(Date.now()), 30000);
+        return () => { clearTimeout(first); clearInterval(timer); };
+    }, [rendering]);
+
+    const stalled = rendering
+        && video.render_started_at !== null
+        && now > 0
+        && now - new Date(video.render_started_at).getTime() > STALLED_AFTER_MS;
 
     async function runAction(action: StatusAction) {
         setActionLoading(action);
@@ -106,7 +129,23 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                     <div className="space-y-3">
                         <p className="text-sm text-slate-300">El video fue aprobado. Ya puedes generar el archivo final.</p>
 
-                        {video.render_status === 'procesando' ? (
+                        {stalled ? (
+                            <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3">
+                                <p className="text-sm font-medium text-amber-200">Esta generacion se quedo colgada.</p>
+                                <p className="mt-1 text-xs text-amber-200/80">
+                                    Empezo hace mas de {Math.round(STALLED_AFTER_MS / 60000)} minutos y el servidor dejo de
+                                    reportar, normalmente porque se reinicio a mitad del trabajo. Puedes volver a lanzarla.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => runAction('render')}
+                                    disabled={busy}
+                                    className="mt-3 rounded bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {actionLoading === 'render' ? 'Reintentando...' : 'Reintentar generacion'}
+                                </button>
+                            </div>
+                        ) : rendering ? (
                             <div className="rounded border border-sky-400/25 bg-sky-500/10 p-3">
                                 <div className="mb-2 flex items-center justify-between">
                                     <span className="text-sm font-medium text-sky-100">Generando el video...</span>

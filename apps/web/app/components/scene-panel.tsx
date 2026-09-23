@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
-import { generateScenes, generateVoice, regenerateScene, updateScene, type ScenePatch, type VideoRecord } from './api';
+import { deleteScene, generateScenes, generateVoice, regenerateScene, updateScene, type ScenePatch, type VideoRecord } from './api';
 import { ACTION_OPTIONS, CHARACTER_OPTIONS, PROP_OPTIONS } from './constants';
 
 interface ScenePanelProps {
@@ -136,7 +136,7 @@ interface SceneRowProps {
 function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
     const [description, setDescription] = useState(scene.description);
     const [durationSeconds, setDurationSeconds] = useState(scene.duration_seconds);
-    const [busyAction, setBusyAction] = useState<'select' | 'text' | 'regenerate' | null>(null);
+    const [busyAction, setBusyAction] = useState<'select' | 'text' | 'regenerate' | 'delete' | null>(null);
     const [error, setError] = useState('');
 
     const busy = busyAction !== null;
@@ -179,6 +179,20 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
         await applyPatch({ description, duration_seconds: durationSeconds }, 'text');
     }
 
+    async function handleDelete() {
+        const confirmed = window.confirm(`Se eliminara la escena ${index + 1}. Las siguientes se renumeran. Continuar?`);
+        if (!confirmed) return;
+        setBusyAction('delete');
+        setError('');
+        try {
+            onUpdated(await deleteScene(videoId, scene.id));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'No se pudo eliminar la escena.');
+        } finally {
+            setBusyAction(null);
+        }
+    }
+
     async function handleRegenerate() {
         setBusyAction('regenerate');
         setError('');
@@ -196,14 +210,28 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
         <li className="rounded border border-white/10 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-slate-400">Escena {index + 1} · {scene.duration_seconds}s</span>
-                <button
-                    type="button"
-                    onClick={handleRegenerate}
-                    disabled={busy}
-                    className="rounded border border-white/15 px-2.5 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {busyAction === 'regenerate' ? 'Regenerando con IA...' : 'Regenerar con IA'}
-                </button>
+                <div className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={handleRegenerate}
+                        disabled={busy}
+                        className="rounded border border-white/15 px-2.5 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {busyAction === 'regenerate' ? 'Regenerando con IA...' : 'Regenerar con IA'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={busy}
+                        aria-label={`Eliminar escena ${index + 1}`}
+                        title="Eliminar esta escena"
+                        className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">

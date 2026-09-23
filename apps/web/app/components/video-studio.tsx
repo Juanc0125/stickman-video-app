@@ -90,6 +90,7 @@ export default function VideoStudio() {
                     <div className="flex flex-col gap-5">
                         <Assistant
                             videos={videos}
+                            loading={loading}
                             selected={selectedVideo}
                             onCreated={handleCreated}
                             onUpdated={handleUpdated}

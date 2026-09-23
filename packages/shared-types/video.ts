@@ -41,6 +41,7 @@ export interface Video {
     render_status: RenderStatus;
     render_progress: number; // 0-100
     render_error: string | null;
+    render_started_at: string | null; // lets the UI spot a job whose worker died
 }
 
 export interface Scene {

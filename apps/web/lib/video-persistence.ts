@@ -54,6 +54,7 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
         render_status: (video.render_status ?? 'inactivo') as Video['render_status'],
         render_progress: Number(video.render_progress ?? 0),
         render_error: nullableString(video.render_error),
+        render_started_at: nullableString(video.render_started_at),
         scenes: (scenes ?? []).map(toScene).sort((a, b) => a.order - b.order),
     };
 }
@@ -227,6 +228,7 @@ function buildLocalVideoRecord(topic: string, platform: Platform, targetDuration
         render_status: 'inactivo',
         render_progress: 0,
         render_error: null,
+        render_started_at: null,
         created_at: new Date().toISOString(),
     };
     return { ...video, scenes: [] };
@@ -339,6 +341,44 @@ export async function updateScene(id: string, sceneId: string, patch: Partial<Sc
     return updated;
 }
 
+export async function deleteScene(id: string, sceneId: string): Promise<VideoRecord> {
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
+    if (client) {
+        try {
+            const { error: deleteError } = await client.from('scenes').delete().eq('id', sceneId).eq('video_id', id);
+            if (deleteError) throw deleteError;
+
+            // Close the gap the deletion leaves: order drives both the render
+            // sequence and the numbering the user sees, so leaving a hole would
+            // show "Escena 1, 2, 4".
+            const { data: remaining } = await client.from('scenes').select('*').eq('video_id', id);
+            const ordered = [...(remaining ?? [])].sort((a, b) => Number(a.order) - Number(b.order));
+            for (let index = 0; index < ordered.length; index += 1) {
+                if (Number(ordered[index].order) !== index + 1) {
+                    await client.from('scenes').update({ order: index + 1 }).eq('id', ordered[index].id);
+                    ordered[index].order = index + 1;
+                }
+            }
+
+            const { data: videoData, error: videoError } = await client.from('videos').select('*').eq('id', id).single();
+            if (videoError || !videoData) throw videoError ?? new Error('Video no encontrado.');
+            return toVideoRecord(videoData, ordered);
+        } catch (error) {
+            console.warn('Fallo al eliminar la escena en Supabase, usando fallback en memoria.', error);
+        }
+    }
+
+    const video = mockVideos.get(id);
+    if (!video) throw new Error('Video no encontrado.');
+    const scenes = video.scenes
+        .filter((scene) => scene.id !== sceneId)
+        .sort((a, b) => a.order - b.order)
+        .map((scene, index) => ({ ...scene, order: index + 1 }));
+    const updated = { ...video, scenes };
+    mockVideos.set(id, updated);
+    return updated;
+}
+
 export async function updateBranding(id: string, branding: Partial<Branding>): Promise<VideoRecord> {
     const current = await findVideoRecord(id);
     if (!current) throw new Error('Video no encontrado.');
@@ -431,6 +471,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
         render_status: 'inactivo',
         render_progress: 0,
         render_error: null,
+        render_started_at: null,
         created_at: new Date().toISOString(),
     };
     const record: VideoRecord = {
@@ -559,6 +600,7 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
         render_status: 'procesando' as const,
         render_progress: 0,
         render_error: null,
+        render_started_at: new Date().toISOString(),
     };
 
     const databaseClient = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();

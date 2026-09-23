@@ -8,6 +8,7 @@ import {
 
 interface AssistantProps {
     videos: VideoRecord[];
+    loading: boolean;
     selected: VideoRecord | null;
     onCreated: (video: VideoRecord) => void;
     onUpdated: (video: VideoRecord) => void;
@@ -50,19 +51,45 @@ function speak(text: string) {
     window.speechSynthesis.speak(utterance);
 }
 
-export default function Assistant({ videos, selected, onCreated, onUpdated }: AssistantProps) {
+export default function Assistant({ videos, loading, selected, onCreated, onUpdated }: AssistantProps) {
     const [listening, setListening] = useState(false);
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState('');
-    const [turns, setTurns] = useState<Turn[]>([
-        { who: 'stickman', text: 'Dime que quieres hacer. Por ejemplo: crea un video sobre tasas fijas para TikTok.' },
-    ]);
+    const [turns, setTurns] = useState<Turn[]>([]);
+    const greeted = useRef(false);
     const recognitionRef = useRef<Recognition | null>(null);
     const transcriptRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' });
     }, [turns, busy]);
+
+    // Greets on arrival with what is actually waiting, so the first thing the
+    // client sees is the state of their work rather than a blank box. Runs once
+    // the video list has loaded, hence the dependency on it.
+    //
+    // Text only: browsers refuse speechSynthesis before the visitor has
+    // interacted with the page, so speaking here would be silently dropped. The
+    // assistant finds its voice from the first reply onwards.
+    useEffect(() => {
+        if (greeted.current || loading) return;
+        greeted.current = true;
+
+        const pendientes = videos.filter((v) => v.status === 'pendiente_aprobacion').length;
+        const generando = videos.filter((v) => v.render_status === 'procesando').length;
+
+        let text: string;
+        if (videos.length === 0) {
+            text = 'Hola. Soy tu asistente. Dime un tema y te armo el primer video: por ejemplo, "crea un video sobre tasas fijas para TikTok".';
+        } else if (pendientes > 0) {
+            text = `Hola. Tienes ${pendientes} video${pendientes === 1 ? '' : 's'} esperando tu aprobacion. Nadie mas puede aprobarlos, tienen que pasar por ti. Dime si quieres revisarlos o empezar uno nuevo.`;
+        } else if (generando > 0) {
+            text = `Hola. Hay ${generando} video${generando === 1 ? '' : 's'} generandose ahora mismo. Mientras tanto puedo empezar otro si me dices el tema.`;
+        } else {
+            text = `Hola. Tienes ${videos.length} videos guardados. Dime que quieres hacer, o abre uno de la lista para revisarlo.`;
+        }
+        setTurns([{ who: 'stickman', text }]);
+    }, [loading, videos]);
 
     function say(text: string, aloud = true) {
         setTurns((current) => [...current, { who: 'stickman', text }]);

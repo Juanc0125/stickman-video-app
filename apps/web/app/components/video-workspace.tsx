@@ -17,21 +17,58 @@ interface VideoWorkspaceProps {
 export default function VideoWorkspace({ video, onUpdated, onDuplicated }: VideoWorkspaceProps) {
     if (!video) {
         return (
-            <section className="flex min-h-[26rem] flex-col items-center justify-center rounded-2xl border border-dashed border-white/12 px-8 py-16 text-center">
-                <span className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10 ring-1 ring-sky-400/20">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/icon-192.png" alt="" width={44} height={44} className="rounded-xl opacity-90" />
-                </span>
-                <h2 className="mb-1.5 text-lg font-semibold text-white">Dile al asistente que quieres</h2>
-                <p className="mb-6 max-w-sm text-sm leading-relaxed text-slate-400">
-                    Habla o escribe en el panel de la izquierda y el se encarga. Tambien puedes abrir
-                    cualquier video de la lista para revisarlo a mano.
-                </p>
-                <ul className="space-y-1.5 text-sm text-slate-500">
-                    <li>&ldquo;Crea un video sobre tasas fijas para TikTok&rdquo;</li>
-                    <li>&ldquo;Genera las escenas&rdquo;</li>
-                    <li>&ldquo;En la escena 2 que el broker camine con una casa&rdquo;</li>
-                </ul>
+            <section className="rounded-2xl border border-dashed border-white/12 px-8 py-12">
+                <div className="mx-auto max-w-3xl">
+                    <div className="mb-10 text-center">
+                        <span className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10 ring-1 ring-sky-400/20">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src="/icons/icon-192.png" alt="" width={44} height={44} className="rounded-xl opacity-90" />
+                        </span>
+                        <h2 className="mb-2 text-xl font-semibold text-white">Convierte un tema en un video listo para publicar</h2>
+                        <p className="mx-auto max-w-xl text-sm leading-relaxed text-slate-400">
+                            Stickman escribe la historia, la reparte en escenas, la narra en español y arma el MP4
+                            vertical para Reels, TikTok o Shorts. Tu solo dices el tema.
+                        </p>
+                    </div>
+
+                    <ol className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            { n: '1', t: 'Dices el tema', d: 'Hablas o escribes. Se genera un guion con forma de historia, no un folleto.' },
+                            { n: '2', t: 'Se arma en escenas', d: 'Cada escena con su personaje, su accion y su objeto. Puedes editarlas o borrarlas.' },
+                            { n: '3', t: 'Tu lo apruebas', d: 'Nada se publica sin que una persona lo revise. El asistente no puede saltarse este paso.' },
+                            { n: '4', t: 'Sale el video', d: 'MP4 vertical con voz y subtitulos, listo para descargar o publicar.' },
+                        ].map((step) => (
+                            <li key={step.n} className="glass rounded-xl p-4">
+                                <span className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg bg-sky-500/15 font-mono text-xs text-sky-300">
+                                    {step.n}
+                                </span>
+                                <h3 className="mb-1 text-sm font-semibold text-white">{step.t}</h3>
+                                <p className="text-xs leading-relaxed text-slate-400">{step.d}</p>
+                            </li>
+                        ))}
+                    </ol>
+
+                    <div className="grid gap-6 sm:grid-cols-2">
+                        <div>
+                            <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Pruebalo diciendo</h3>
+                            <ul className="space-y-1.5 text-sm text-slate-300">
+                                <li>&ldquo;Crea un video sobre tasas fijas para TikTok&rdquo;</li>
+                                <li>&ldquo;Genera las escenas&rdquo;</li>
+                                <li>&ldquo;En la escena 2 que el broker camine con una casa&rdquo;</li>
+                                <li>&ldquo;Cuantos videos tengo pendientes&rdquo;</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Tambien puedes</h3>
+                            <ul className="space-y-1.5 text-sm text-slate-300">
+                                <li>Editar el guion y cada escena a mano</li>
+                                <li>Poner tu logo, tus colores y tu tipografia</li>
+                                <li>Reutilizar un video para otra plataforma</li>
+                                <li>Descargar el MP4 o publicarlo</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </section>
         );
     }
