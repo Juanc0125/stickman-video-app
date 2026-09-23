@@ -61,7 +61,7 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
     };
 }
 
-async function ensureDemoUser(): Promise<string | null> {
+export async function ensureDemoUser(): Promise<string | null> {
     const client = getSupabaseClient({ serviceRole: true });
     if (!client) return null;
 
@@ -178,6 +178,9 @@ async function generateScript(topic: string, template: VideoTemplate): Promise<s
             'Frases cortas, habladas, sin tecnicismos. Todo en español neutro.',
             'LIMITES QUE NO PUEDES CRUZAR: no prometas aprobaciones ni tasas concretas, no des recomendaciones financieras personalizadas, no inventes cifras ni nombres de entidades. El drama esta en la situacion de los personajes, jamas en los numeros.',
             'Devuelve solo el guion en texto plano, sin JSON, sin comillas envolventes y sin encabezados.',
+            // Last line so the chosen template overrides the generic structure
+            // advice above. Empty for 'libre', which leaves the shape to the model.
+            ...(getTemplate(template).guidance ? [`ESTRUCTURA OBLIGATORIA: ${getTemplate(template).guidance}`] : []),
         ].join('\n'),
         [{ role: 'user', content: `Tema: ${topic}\nEscribe la mini-telenovela.` }],
         500,

@@ -1,4 +1,4 @@
-import type { CharacterType, SceneAction, ScenePropType } from './video';
+import type { Branding, CharacterType, SceneAction, ScenePropType } from './video';
 
 export type VideoTemplate = 'libre' | 'conversacion' | 'explicacion' | 'comparacion' | 'llamada' | 'presentacion';
 
@@ -103,4 +103,16 @@ export const VIDEO_TEMPLATES: TemplateDefinition[] = [
 export function getTemplate(id: unknown): TemplateDefinition {
     const found = VIDEO_TEMPLATES.find((template) => template.id === id);
     return found ?? VIDEO_TEMPLATES[0];
+}
+
+/**
+ * RF-028: a saved visual identity (logo, colors, typeface) that can be applied
+ * to any video. Unlike the narrative templates above these are invented by the
+ * business, so they live in a table instead of in code.
+ */
+export interface BrandTemplate {
+    id: string;
+    name: string;
+    branding: Branding;
+    created_at: string;
 }

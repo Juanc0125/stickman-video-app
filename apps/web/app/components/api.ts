@@ -2,7 +2,7 @@
 // Error with a Spanish message (taken from the API's own `{ error }` body when available) so
 // callers can show it directly to the user.
 
-import type { VideoTemplate } from '@shared-types/templates';
+import type { BrandTemplate, VideoTemplate } from '@shared-types/templates';
 import type {
     CharacterType,
     LogoPosition,
@@ -132,6 +132,37 @@ export async function uploadLogo(id: string, dataUrl: string): Promise<{ video: 
         headers: JSON_HEADERS,
         body: JSON.stringify({ dataUrl }),
     });
+}
+
+export async function fetchBrandTemplates(): Promise<BrandTemplate[]> {
+    const data = await request<{ templates: BrandTemplate[] }>('/api/brand-templates');
+    return data.templates;
+}
+
+export async function saveBrandTemplate(name: string, videoId: string): Promise<BrandTemplate> {
+    const data = await request<{ template: BrandTemplate }>('/api/brand-templates', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ name, video_id: videoId }),
+    });
+    return data.template;
+}
+
+export async function applyBrandTemplate(id: string, templateId: string): Promise<VideoRecord> {
+    const data = await request<{ video: VideoRecord }>(`/api/videos/${id}/brand-template`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ template_id: templateId }),
+    });
+    return data.video;
+}
+
+export async function deleteBrandTemplate(templateId: string): Promise<void> {
+    const response = await fetch(`/api/brand-templates/${templateId}`, { method: 'DELETE' });
+    if (!response.ok && response.status !== 204) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? 'No se pudo eliminar la plantilla de marca.');
+    }
 }
 
 export async function duplicateVideo(id: string, platform: Platform): Promise<VideoRecord> {

@@ -67,6 +67,8 @@ function buildSystemPrompt(targetDurationSeconds: number, template: VideoTemplat
         '- "prop": uno de estos valores exactos: "ninguno", "casa", "carro", "banco", "telefono", "documento", "dinero", "grafico", "oficina" (usa "ninguno" si no aplica ningun objeto)',
         '- "description": una linea corta de narracion/subtitulo para esa escena, basada en el guion',
         '- "duration_seconds": un numero entre 2 y 10',
+        // Last so the chosen template overrides the generic staging advice above.
+        ...(guidance ? ['', `ESTRUCTURA OBLIGATORIA PARA ESTE VIDEO: ${guidance}`] : []),
     ].join('\n');
 }
 
