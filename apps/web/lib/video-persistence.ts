@@ -135,18 +135,48 @@ async function findVideoRecord(id: string): Promise<VideoRecord | null> {
     return mockVideos.get(id) ?? null;
 }
 
+// Used whenever the model is unavailable - which, with the API quota
+// exhausted, is most of the time. It follows the same telenovela beats the
+// prompt asks the model for, so the format is visible even without the LLM.
+// Each sentence becomes one scene, so the line breaks here matter.
 function buildFallbackScript(topic: string): string {
-    if (!/hipotec|credito|cr[eé]dito|cuota|vivienda/i.test(topic)) {
-        return `Soy tu Stickman Seller. Hoy te explico ${topic} de forma clara: compara opciones, revisa el costo total y elige una cuota que puedas sostener. Esta es una guia educativa; confirma las condiciones con una entidad autorizada.`;
-    }
+    const general = [
+        `Llevo semanas dandole vueltas a ${topic} y no me decido.`,
+        'Mi cuñado dice una cosa, el vecino dice otra, y yo cada dia entiendo menos.',
+        'Entonces aparecio el asesor y me hizo una sola pregunta: ¿comparaste el costo total, o solo la cuota?',
+        'Me quede helada. Solo habia mirado la cuota.',
+        'Compara el costo total, revisa el plazo y pide siempre una oferta formal antes de firmar.',
+        'Esta historia es educativa: confirma cada condicion con una entidad autorizada.',
+    ];
 
-    return 'Soy tu Stickman Seller. Si buscas un credito hipotecario, no mires solo la cuota mensual. Compara la tasa, el plazo, el monto financiado, los seguros y el costo total. Usa un simulador para probar distintos escenarios, verifica que la cuota sea compatible con tus ingresos y pide una oferta formal antes de decidir. Esta informacion es educativa y no reemplaza la asesoria financiera.';
+    const mortgage = [
+        'Encontramos la casa perfecta. Y entonces llego la carta del banco.',
+        'La cuota parecia baja, pero nadie nos hablo de los seguros ni del plazo real.',
+        'Llame al asesor casi llorando. Me dijo: tranquila, todavia no has firmado nada.',
+        'Me explico que la cuota mensual no es el precio: el precio es el costo total.',
+        'Comparamos tasa, plazo y seguros en un simulador, y salieron numeros muy distintos.',
+        'Pedimos la oferta formal, la leimos entera, y esta vez firmamos sabiendo que firmabamos.',
+        'Esta historia es educativa y no reemplaza la asesoria financiera.',
+    ];
+
+    return (/hipotec|credito|cr[eé]dito|cuota|vivienda|casa|banco/i.test(topic) ? mortgage : general).join(' ');
 }
 
 async function generateScript(topic: string): Promise<string> {
+    // Telenovela structure on purpose: the client wants the "frutinovela" format
+    // that works on TikTok - conflict, characters with a stake, a hook - rather
+    // than the explainer tone this used to produce. The compliance limits are
+    // unchanged; drama applies to the situation, never to the numbers.
     const result = await generateAiText(
-        'Eres un guionista de videos breves de Stickman Seller. Crea contenido educativo, claro y responsable sobre finanzas hipotecarias. Devuelve solo el guion en texto plano, sin JSON ni comillas envolventes. No prometas aprobaciones ni hagas recomendaciones financieras personalizadas.',
-        [{ role: 'user', content: `Tema: ${topic}\nEscribe un guion breve donde Stickman presenta el problema, compara opciones y cierra con una accion prudente.` }],
+        [
+            'Eres guionista de mini-telenovelas verticales para redes, al estilo de las "frutinovelas" virales, aplicadas a marketing de credito hipotecario y vivienda.',
+            'Escribe una historia corta con conflicto real entre personas: alguien quiere comprar o refinanciar, algo se interpone, y aparece quien lo aclara.',
+            'Estructura: gancho en la primera linea, conflicto, giro, y cierre con una accion prudente. Tono de telenovela: emocional, con dialogo, un punto exagerado, nunca aburrido.',
+            'Frases cortas, habladas, sin tecnicismos. Todo en español neutro.',
+            'LIMITES QUE NO PUEDES CRUZAR: no prometas aprobaciones ni tasas concretas, no des recomendaciones financieras personalizadas, no inventes cifras ni nombres de entidades. El drama esta en la situacion de los personajes, jamas en los numeros.',
+            'Devuelve solo el guion en texto plano, sin JSON, sin comillas envolventes y sin encabezados.',
+        ].join('\n'),
+        [{ role: 'user', content: `Tema: ${topic}\nEscribe la mini-telenovela.` }],
         500,
     );
     if (!result || !result.text.trim()) return buildFallbackScript(topic);

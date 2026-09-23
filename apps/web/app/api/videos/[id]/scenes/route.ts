@@ -53,10 +53,12 @@ function extractJson(text: string): unknown {
 
 function buildSystemPrompt(targetDurationSeconds: number): string {
     return [
-        'Eres un planificador de escenas para videos cortos de marketing de creditos hipotecarios / vivienda, protagonizados por un personaje 2D tipo "stickman" (muneco de palitos simple, en 2D, sin animacion 3D ni personajes complejos ni fotorrealistas).',
+        'Eres un planificador de escenas para mini-telenovelas verticales de marketing de creditos hipotecarios / vivienda, al estilo de las "frutinovelas" virales.',
         `Divide el guion recibido en entre ${MIN_SCENES} y ${MAX_SCENES} escenas, segun lo que requiera la duracion objetivo del video.`,
         `La suma de "duration_seconds" de todas las escenas debe aproximarse a ${targetDurationSeconds} segundos en total.`,
-        'Cuando encaje con el tema, apoyate en estructuras narrativas simples como una conversacion, una explicacion directa, una comparacion de opciones, una llamada telefonica o la presentacion de una propiedad/vivienda.',
+        'Montalo como telenovela: la primera escena engancha, las del medio muestran el conflicto y el giro, y la ultima cierra. Alterna personajes entre escenas para que se sienta un dialogo y no un monologo: si una escena la protagoniza el "cliente", la siguiente suele ser el "broker" respondiendo.',
+        'Elige la accion y el objeto por lo que ocurre en esa escena, no al azar: quien duda va con "pensar", quien explica con "senalar" o "mostrar_objeto", una mala noticia por telefono con "telefono", el cierre feliz frente a la "casa".',
+        'Cada "description" es la linea que el personaje dice en voz alta en esa escena. Escribela como dialogo hablado y corto, no como narracion en tercera persona.',
         'Responde UNICAMENTE con un arreglo JSON valido (sin texto adicional, sin explicaciones, sin bloques de markdown ni comillas envolventes) de objetos, cada uno con EXACTAMENTE estas claves:',
         '- "character": uno de estos valores exactos: "broker", "cliente", "pareja", "hombre", "mujer", "generico"',
         '- "action": uno de estos valores exactos: "hablar", "caminar", "senalar", "sentarse", "pensar", "telefono", "mostrar_objeto"',
@@ -97,15 +99,45 @@ function buildSentenceFallback(script: string, targetDurationSeconds: number): S
     const rawDuration = safeTarget / lines.length;
     const clampedDuration = Math.min(10, Math.max(2, Number.isFinite(rawDuration) ? rawDuration : 4));
 
-    return lines.map((line, index) => ({
-        order: index + 1,
-        character: 'generico',
-        action: 'hablar',
-        prop: 'ninguno',
-        description: line,
-        duration_seconds: clampedDuration,
-        audio_url: null,
-    }));
+    // Without the model this is what the user actually gets, so it casts each
+    // scene from cues in its own line rather than stamping every one as
+    // generico/hablar/ninguno. Blind rotation was worse than no casting: it put
+    // the broker on the line "llame al asesor casi llorando", which the client
+    // is obviously the one saying.
+    return lines.map((line, index) => {
+        const text = line.toLowerCase();
+        const isLast = index === lines.length - 1;
+
+        // Who is speaking, read off the line itself. A line that quotes or
+        // reports someone else ("me dijo", "me explico") is still the client
+        // talking, so those keep the client.
+        let character: SceneInput['character'] = index % 2 === 0 ? 'cliente' : 'broker';
+        if (/\bnosotr|\bpareja\b|firmamos|comparamos|encontramos|pedimos\b/.test(text)) character = 'pareja';
+        else if (/me dijo|me explico|le pregunte|llame a|mi cuñado|no me decido|me quede/.test(text)) character = 'cliente';
+        else if (/\bel asesor\b|\bte explico\b|\brecuerda\b|\bcompara\b|\brevisa\b|\bpide\b/.test(text)) character = 'broker';
+
+        // What is on screen, also from the line, so the prop illustrates what is
+        // being said instead of decorating at random.
+        let prop: SceneInput['prop'] = 'ninguno';
+        if (/casa|vivienda|hogar|inmueble/.test(text)) prop = 'casa';
+        else if (/banco|entidad|sucursal/.test(text)) prop = 'banco';
+        else if (/carta|oferta|documento|contrato|papel|firma/.test(text)) prop = 'documento';
+        else if (/simulador|numero|tasa|grafic|compar/.test(text)) prop = 'grafico';
+        else if (/cuota|precio|costo|plata|dinero|pago/.test(text)) prop = 'dinero';
+        else if (/llame|llamo|telefono|marque/.test(text)) prop = 'telefono';
+        else if (/oficina|asesor/.test(text)) prop = 'oficina';
+
+        let action: SceneInput['action'] = 'hablar';
+        if (/llame|llamo|telefono|marque/.test(text)) action = 'telefono';
+        else if (/no se|no me decido|dudo|pensar|vueltas|entiendo menos|me quede/.test(text)) action = 'pensar';
+        else if (/compara|revisa|mira|explico|te explico|senal/.test(text)) action = 'senalar';
+        else if (/muestra|aqui esta|te traigo|resultado/.test(text)) action = 'mostrar_objeto';
+
+        // Every one of these stories resolves the same way: the couple, the house.
+        if (isLast) return { order: index + 1, character: 'pareja' as const, action: 'hablar' as const, prop: 'casa' as const, description: line, duration_seconds: clampedDuration, audio_url: null };
+
+        return { order: index + 1, character, action, prop, description: line, duration_seconds: clampedDuration, audio_url: null };
+    });
 }
 
 export async function POST(request: Request, context: RouteContext) {
