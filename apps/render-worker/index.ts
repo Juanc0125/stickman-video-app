@@ -25,11 +25,11 @@ const FRAME_RATE = 24;
 // the container reports.
 const ENCODER_THREADS = Number(process.env.FFMPEG_THREADS ?? 2);
 
-type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
-type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
-type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
-type Platform = 'reels' | 'tiktok' | 'shorts';
-type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+export type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
+export type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
+export type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
+export type Platform = 'reels' | 'tiktok' | 'shorts';
+export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 type RenderScene = {
 	order: number;
@@ -41,7 +41,7 @@ type RenderScene = {
 	audio_url: string | null;
 };
 
-type Branding = {
+export type Branding = {
 	logo_url: string | null;
 	logo_position: LogoPosition;
 	primary_color: string;
