@@ -94,6 +94,8 @@ export default function VideoStudio() {
                             selected={selectedVideo}
                             onCreated={handleCreated}
                             onUpdated={handleUpdated}
+                            onSelect={setSelectedId}
+                            onDeleted={handleDeleted}
                         />
                         <VideoList
                             videos={videos}

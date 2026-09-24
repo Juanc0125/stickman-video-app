@@ -1,5 +1,5 @@
 import { getTemplate, type VideoTemplate } from '@shared-types/templates';
-import type { Platform, SceneAction, ScenePropType, CharacterType } from '@shared-types/video';
+import type { LogoPosition, Platform, SceneAction, ScenePropType, CharacterType } from '@shared-types/video';
 import { generateAiText } from './ai';
 
 // The assistant turns a spoken sentence into one operation the studio already
@@ -8,13 +8,27 @@ import { generateAiText } from './ai';
 export type AssistantAction =
     | { kind: 'responder' }
     | { kind: 'listar' }
+    | { kind: 'abrir'; query: string }
+    | { kind: 'estado' }
     | { kind: 'crear'; topic: string; platform: Platform; durationSeconds: number; template: VideoTemplate }
     | { kind: 'generar_escenas' }
     | { kind: 'generar_voz' }
     | { kind: 'editar_escena'; sceneNumber: number; character?: CharacterType; action?: SceneAction; prop?: ScenePropType }
+    | { kind: 'borrar_escena'; sceneNumber: number }
+    | { kind: 'marca'; patch: BrandPatch }
+    | { kind: 'duplicar'; platform: Platform }
+    | { kind: 'descargar' }
+    | { kind: 'borrar_video' }
     | { kind: 'enviar_aprobacion' }
     | { kind: 'renderizar' }
     | { kind: 'rechazado'; reason: string };
+
+export interface BrandPatch {
+    primary_color?: string;
+    secondary_color?: string;
+    font_family?: string;
+    logo_position?: LogoPosition;
+}
 
 export interface AssistantReply {
     reply: string;
@@ -31,7 +45,14 @@ export interface AssistantContext {
 // refused here as well. RF-012 exists because this is regulated financial
 // marketing: the point of the gate is that a person looked at the content. An
 // assistant that can approve its own output removes the only control there is.
-const FORBIDDEN = /\b(aprob|public|autoriz)\w*/i;
+// Both stems are listed on purpose: "aprueba", the form people actually say,
+// does not contain "aprob".
+const FORBIDDEN = /\b(aprob|aprueb|public|publiqu|autoriz)\w*/i;
+
+// Asking the assistant what suits *you* is asking for financial advice, which
+// this product cannot give. It is not a refusal of the whole sentence: the
+// educational half still gets answered and the video still gets offered.
+const ADVICE = /\b(me conviene|cual elijo|cual escojo|que me recomiendas|recomiendame|me van a aprobar|cuanto me prestan|cuanto me prestarian|deberia (tomar|pedir|firmar)|es buena idea)\b/i;
 
 const PLATFORM_WORDS: Record<string, Platform> = {
     reels: 'reels', instagram: 'reels', insta: 'reels',
@@ -79,6 +100,24 @@ const PROP_WORDS: Record<string, ScenePropType> = {
     grafico: 'grafico', 'gráfico': 'grafico', oficina: 'oficina', ninguno: 'ninguno', nada: 'ninguno',
 };
 
+// Spoken colour names, so "pon el color primario azul oscuro" lands somewhere
+// sensible. Longer names come first: "azul oscuro" must win over "azul".
+const COLOR_WORDS: [string, string][] = [
+    ['azul oscuro', '#12305c'], ['azul marino', '#12305c'], ['verde oscuro', '#0a3d2f'],
+    ['celeste', '#38bdf8'], ['turquesa', '#0d9488'], ['dorado', '#c9a227'], ['amarillo', '#f5c542'],
+    ['naranja', '#ea580c'], ['morado', '#6d28d9'], ['violeta', '#6d28d9'], ['rosa', '#db2777'],
+    ['vino', '#7f1d1d'], ['burdeos', '#7f1d1d'], ['cafe', '#6b4423'], ['café', '#6b4423'],
+    ['marron', '#6b4423'], ['marrón', '#6b4423'], ['beige', '#e8ded0'], ['gris', '#64748b'],
+    ['negro', '#17202a'], ['blanco', '#ffffff'], ['azul', '#1d4ed8'], ['rojo', '#b91c1c'], ['verde', '#15803d'],
+];
+
+const FONT_WORDS: [RegExp, string][] = [
+    [/\b(serif|clasica|clásica|elegante|georgia)\b/i, 'serif'],
+    [/\b(condensada|estrecha|titular|titulares)\b/i, 'condensed'],
+    [/\b(mono|monoespaciada|tecnica|técnica|maquina|máquina)\b/i, 'mono'],
+    [/\b(sans|neutra|moderna|arial|simple)\b/i, 'sans'],
+];
+
 function findWord<T>(text: string, table: Record<string, T>): T | undefined {
     for (const [word, value] of Object.entries(table)) {
         if (new RegExp(`\\b${word}\\b`, 'i').test(text)) return value;
@@ -86,11 +125,50 @@ function findWord<T>(text: string, table: Record<string, T>): T | undefined {
     return undefined;
 }
 
+// What the assistant can actually do, in the words a person would use. Shown
+// when asked, and when nothing matched: a menu is more useful than an apology.
+const HELP = [
+    'Puedo operar el estudio por ti. Dime cosas como:',
+    '"crea un video sobre tasas fijas para TikTok en formato conversacion",',
+    '"genera las escenas", "en la escena 2 que el broker camine con una casa",',
+    '"borra la escena 3", "pon el color primario azul oscuro", "usa tipografia condensada",',
+    '"abre el video de la cuota inicial", "como va este video", "duplicalo para Reels",',
+    '"generalo" o "descarga el MP4".',
+    'Lo unico que no hago es aprobar ni publicar: eso lo decides tu.',
+].join(' ');
+
+// Short, neutral definitions. No figures, no entities, no recommendations: the
+// assistant explains the vocabulary and offers to turn it into a video, which
+// is the product. Anything asking what suits the person is caught by ADVICE
+// before this table is consulted.
+const GLOSSARY: [RegExp, string][] = [
+    [/\btasa fija\b/i, 'Una tasa fija es la que se pacta al inicio y no cambia durante el plazo del credito: la cuota es previsible de principio a fin.'],
+    [/\btasa variable\b/i, 'Una tasa variable se recalcula cada cierto periodo segun un indicador de referencia, asi que la cuota puede subir o bajar con el tiempo.'],
+    [/\bcuota inicial\b/i, 'La cuota inicial es la parte del valor de la vivienda que se paga de entrada con recursos propios; el credito cubre el resto.'],
+    [/\bplazo\b/i, 'El plazo es el tiempo total para pagar el credito. A mayor plazo la cuota mensual baja, pero se pagan intereses durante mas tiempo.'],
+    [/\bamortizaci/i, 'La amortizacion es la forma en que cada cuota se reparte entre intereses y abono al capital que se debe.'],
+    [/\bavaluo|avalúo\b/i, 'El avaluo es la valoracion tecnica del inmueble hecha por un perito, y es la referencia que la entidad usa para el credito.'],
+    [/\brefinanci/i, 'Refinanciar es sustituir un credito vigente por otro con condiciones distintas, por ejemplo otro plazo u otra tasa.'],
+    [/\bcapacidad de (endeudamiento|pago)\b/i, 'La capacidad de endeudamiento es la parte del ingreso que puede destinarse a pagar deudas sin comprometer los gastos del hogar.'],
+    [/\bpreaprobaci|pre aprobaci|pre-aprobaci/i, 'Una preaprobacion es una estimacion previa de cuanto podria financiarse, sujeta a verificacion y a la aprobacion formal.'],
+    [/\bhipoteca\b/i, 'Una hipoteca es la garantia sobre el inmueble que respalda el credito: si se incumple el pago, esa garantia puede ejecutarse.'],
+    [/\bleasing habitacional\b/i, 'El leasing habitacional es un contrato donde la entidad compra la vivienda y la entrega en arriendo con opcion de compra al final.'],
+    [/\bseguros?\b/i, 'Los seguros asociados al credito cubren riesgos como el fallecimiento del deudor o danos al inmueble, y se suman a la cuota.'],
+    [/\bhistorial crediticio|puntaje|score\b/i, 'El historial crediticio es el registro de como se han pagado las obligaciones anteriores, y las entidades lo consultan al estudiar una solicitud.'],
+];
+
+function glossaryAnswer(text: string): string | null {
+    for (const [pattern, answer] of GLOSSARY) {
+        if (pattern.test(text)) return `${answer} Si quieres lo convierto en un video, dime nada mas.`;
+    }
+    return null;
+}
+
 /**
- * Recognises the common commands without calling the model. Two reasons this is
- * not premature: the LLM quota runs out and the assistant has to keep working,
- * and "genera el video" should not cost a round trip to answer.
- * Returns null when the sentence needs real interpretation.
+ * Recognises what the user wants without calling the model. This is not an
+ * optimisation, it is the working path: the LLM quota runs out and the studio
+ * still has to obey. Everything the panels can do is reachable from here.
+ * Returns null only when the sentence genuinely needs interpretation.
  */
 function matchKnownCommand(message: string): AssistantReply | null {
     const text = message.toLowerCase().trim();
@@ -102,11 +180,35 @@ function matchKnownCommand(message: string): AssistantReply | null {
         };
     }
 
-    if (/\b(cuantos|cuántos|que hay|qué hay|lista|listar|estado|resumen|pendiente)\b/.test(text)) {
-        return { reply: '', action: { kind: 'listar' } };
+    if (ADVICE.test(text)) {
+        const context = glossaryAnswer(text);
+        return {
+            reply: `No puedo decirte que te conviene ni estimar si te aprobarian: eso depende de tu situacion y lo define la entidad. ${context ?? 'Lo que si puedo es explicarte los conceptos y armar el video que los explique.'}`,
+            action: { kind: 'responder' },
+        };
     }
 
-    const crear = text.match(/\b(crea|crear|nuevo video|haz un video|genera un video)\b(.*)/);
+    // A greeting on its own, not "hola, crea un video sobre...".
+    if (/^(hola|buenas|buenos dias|buenas tardes|buenas noches|hey|que tal|holi)\b[\s!.,]*$/i.test(text)) {
+        return {
+            reply: 'Hola. Dime que quieres hacer con tus videos, o pideme uno nuevo con el tema que necesites.',
+            action: { kind: 'responder' },
+        };
+    }
+
+    if (/\b(ayuda|que puedes hacer|que sabes hacer|como funciona|para que sirves|que hago|opciones|comandos|no se que)\b/i.test(text)) {
+        return { reply: HELP, action: { kind: 'responder' } };
+    }
+
+    // A definition question is answered before anything else reads the sentence:
+    // "que es una tasa fija" contains "tasa fija", which the create branch would
+    // happily turn into a video nobody asked for.
+    if (/\b(que es|que significa|que quiere decir|explicame|explica|diferencia entre|en que consiste)\b/i.test(text)) {
+        const answer = glossaryAnswer(text);
+        if (answer) return { reply: answer, action: { kind: 'responder' } };
+    }
+
+    const crear = text.match(/\b(crea|crear|nuevo video|haz un video|genera un video|armame|hazme un video)\b(.*)/);
     if (crear) {
         const rest = crear[2] ?? '';
         const topic = rest
@@ -130,20 +232,30 @@ function matchKnownCommand(message: string): AssistantReply | null {
         }
     }
 
-    if (/\bescenas?\b/.test(text) && /\b(genera|generar|crea|crear)\b/.test(text)) {
+    if (/\bescenas?\b/.test(text) && /\b(genera|generar|crea|crear|arma|rehaz|vuelve a)\b/.test(text)) {
         return { reply: '', action: { kind: 'generar_escenas' } };
     }
 
-    if (/\bvoz\b/.test(text) && /\b(genera|generar|pon|añade|anade)\b/.test(text)) {
+    if (/\bvoz\b/.test(text) && /\b(genera|generar|pon|añade|anade|agrega)\b/.test(text)) {
         return { reply: '', action: { kind: 'generar_voz' } };
     }
 
-    if (/\b(renderiza|renderizar|genera el video|generar el video|arma el video)\b/.test(text)) {
+    if (/\b(renderiza|renderizar|genera el video|generar el video|arma el video|generalo|generalo ya|hazlo ya)\b/.test(text)) {
         return { reply: '', action: { kind: 'renderizar' } };
     }
 
-    if (/\b(envia|enviar|manda|mandar)\b/.test(text) && /\brevisi|aprobaci/.test(text)) {
+    if (/\b(envia|enviar|manda|mandar|pasa|pasar)\b/.test(text) && /\brevisi|aprobaci/.test(text)) {
         return { reply: '', action: { kind: 'enviar_aprobacion' } };
+    }
+
+    // Deleting is checked before editing: "borra la escena 2" also matches "escena 2".
+    const borrarEscena = text.match(/\b(borra|borrar|elimina|eliminar|quita|quitar)\s+(?:la\s+)?escena\s+(\d{1,2})\b/);
+    if (borrarEscena) {
+        return { reply: '', action: { kind: 'borrar_escena', sceneNumber: Number(borrarEscena[2]) } };
+    }
+
+    if (/\b(borra|borrar|elimina|eliminar)\b/.test(text) && /\b(este|el)\s+video\b/.test(text)) {
+        return { reply: '', action: { kind: 'borrar_video' } };
     }
 
     // "en la escena 2 que el broker camine con una casa"
@@ -160,7 +272,67 @@ function matchKnownCommand(message: string): AssistantReply | null {
         }
     }
 
+    // Brand: colours, typeface and the logo corner.
+    const brand = readBrandPatch(text);
+    if (brand) return { reply: '', action: { kind: 'marca', patch: brand } };
+
+    if (/\b(duplica|duplicar|duplicalo|copia|copiar|replica|replicar)\b/.test(text)) {
+        const platform = findWord(text, PLATFORM_WORDS);
+        if (platform) return { reply: '', action: { kind: 'duplicar', platform } };
+    }
+
+    if (/\b(descarga|descargar|descargalo|bajar|baja)\b/.test(text) || /\bel (mp4|archivo)\b/.test(text)) {
+        return { reply: '', action: { kind: 'descargar' } };
+    }
+
+    if (/\b(como va|en que va|que falta|ya esta|esta listo|estado de este|resumen de este)\b/.test(text)) {
+        return { reply: '', action: { kind: 'estado' } };
+    }
+
+    // Opening a video by position or by words from its topic.
+    const abrir = text.match(/\b(abre|abrir|muestra|mostrar|selecciona|seleccionar|ver|revisa|revisar|pon)\b(.*)/);
+    if (abrir && /\bvideo|primero|ultimo|último|el de\b/.test(text)) {
+        const query = (abrir[2] ?? '')
+            .replace(/\b(el|la|los|las|un|una|video|videos)\b/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return { reply: '', action: { kind: 'abrir', query } };
+    }
+
+    if (/\b(cuantos|cuántos|que hay|qué hay|lista|listar|listame|resumen|pendiente|pendientes)\b/.test(text)) {
+        return { reply: '', action: { kind: 'listar' } };
+    }
+
     return null;
+}
+
+function readBrandPatch(text: string): BrandPatch | null {
+    const patch: BrandPatch = {};
+
+    if (/\bcolor(es)?\b/.test(text)) {
+        const found = COLOR_WORDS.find(([word]) => new RegExp(`\\b${word}\\b`, 'i').test(text));
+        if (found) {
+            if (/\bsecundario|de fondo|del fondo\b/.test(text)) patch.secondary_color = found[1];
+            else patch.primary_color = found[1];
+        }
+    }
+
+    if (/\b(tipografia|tipografía|letra|letras|fuente)\b/.test(text)) {
+        const font = FONT_WORDS.find(([pattern]) => pattern.test(text));
+        if (font) patch.font_family = font[1];
+    }
+
+    if (/\blogo\b/.test(text)) {
+        const top = /\barriba|superior\b/.test(text);
+        const bottom = /\babajo|inferior\b/.test(text);
+        const left = /\bizquierda|izquierdo\b/.test(text);
+        const right = /\bderecha|derecho\b/.test(text);
+        if ((top || bottom) && (left || right)) {
+            patch.logo_position = `${bottom ? 'bottom' : 'top'}-${right ? 'right' : 'left'}` as LogoPosition;
+        }
+    }
+
+    return Object.keys(patch).length > 0 ? patch : null;
 }
 
 function describeContext(context: AssistantContext) {
@@ -177,10 +349,17 @@ Respondes en español, en una o dos frases, con tono directo y sin adornos. Te v
 Puedes pedir una de estas acciones devolviendo JSON:
 {"reply":"<lo que dices en voz alta>","action":{"kind":"responder"}}
 {"reply":"...","action":{"kind":"listar"}}
+{"reply":"...","action":{"kind":"abrir","query":"palabras del tema, 'primero' o 'ultimo'"}}
+{"reply":"...","action":{"kind":"estado"}}
 {"reply":"...","action":{"kind":"crear","topic":"...","platform":"reels|tiktok|shorts","durationSeconds":30,"template":"libre|conversacion|explicacion|comparacion|llamada|presentacion"}}
 {"reply":"...","action":{"kind":"generar_escenas"}}
 {"reply":"...","action":{"kind":"generar_voz"}}
 {"reply":"...","action":{"kind":"editar_escena","sceneNumber":2,"character":"broker","action":"caminar","prop":"casa"}}
+{"reply":"...","action":{"kind":"borrar_escena","sceneNumber":3}}
+{"reply":"...","action":{"kind":"marca","patch":{"primary_color":"#1d4ed8","secondary_color":"#ffffff","font_family":"sans|serif|mono|condensed","logo_position":"top-left|top-right|bottom-left|bottom-right"}}}
+{"reply":"...","action":{"kind":"duplicar","platform":"reels|tiktok|shorts"}}
+{"reply":"...","action":{"kind":"descargar"}}
+{"reply":"...","action":{"kind":"borrar_video"}}
 {"reply":"...","action":{"kind":"enviar_aprobacion"}}
 {"reply":"...","action":{"kind":"renderizar"}}
 
@@ -189,6 +368,7 @@ La plantilla marca como se monta el video: "conversacion" (cliente y asesor dial
 Valores validos. character: broker, cliente, pareja, hombre, mujer, generico. action: hablar, caminar, senalar, sentarse, pensar, telefono, mostrar_objeto. prop: casa, carro, banco, telefono, documento, dinero, grafico, oficina, ninguno.
 
 NUNCA apruebes ni publiques un video, y no ofrezcas hacerlo: esa decision es de una persona porque el contenido es financiero regulado. Si te lo piden, explicalo y usa kind "responder".
+NUNCA des recomendaciones financieras personalizadas, ni estimes si le aprobarian un credito, ni inventes tasas o cifras. Explica los conceptos en general y ofrece convertirlos en un video.
 Si la peticion no encaja con ninguna accion, usa kind "responder" y contesta con lo que sabes del proyecto.
 Devuelve solo el JSON, sin texto alrededor.`;
 
@@ -202,7 +382,11 @@ function parseModelJson(raw: string): AssistantReply | null {
         if (typeof parsed.reply !== 'string' || typeof kind !== 'string') return null;
         // The model is told not to approve, but the guarantee cannot rest on the
         // prompt: anything outside the known set becomes a plain answer.
-        const allowed = ['responder', 'listar', 'crear', 'generar_escenas', 'generar_voz', 'editar_escena', 'enviar_aprobacion', 'renderizar'];
+        const allowed = [
+            'responder', 'listar', 'abrir', 'estado', 'crear', 'generar_escenas', 'generar_voz',
+            'editar_escena', 'borrar_escena', 'marca', 'duplicar', 'descargar', 'borrar_video',
+            'enviar_aprobacion', 'renderizar',
+        ];
         if (!allowed.includes(kind)) return { reply: parsed.reply, action: { kind: 'responder' } };
         const action = parsed.action as AssistantAction;
         if (action.kind === 'crear') action.template = getTemplate(action.template).id;
@@ -225,8 +409,7 @@ export async function interpret(message: string, context: AssistantContext): Pro
     const parsed = result ? parseModelJson(result.text) : null;
     if (parsed) return parsed;
 
-    return {
-        reply: 'No entendi eso, y ahora mismo no puedo consultar el modelo de lenguaje. Prueba con algo como "crea un video sobre tasas fijas", "genera las escenas" o "cuantos videos hay".',
-        action: { kind: 'responder' },
-    };
+    // No model and no match: the menu, not an apology about infrastructure the
+    // client can do nothing about.
+    return { reply: `No estoy seguro de que me pediste. ${HELP}`, action: { kind: 'responder' } };
 }
