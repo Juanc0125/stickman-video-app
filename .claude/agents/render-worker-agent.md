@@ -24,6 +24,10 @@ Two facts that cost real time to learn:
 - `RENDER_WORKER_URL` must point at the deployed worker in production, never at localhost. Keep the `/health` endpoint honest — it reports storage, engine and last storage error, and it is how a broken deploy is noticed.
 - Never write a key into a versioned file.
 
+## Antes de escribir algo nuevo
+
+Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` devuelve la relacion, no solo el nombre como haria un grep, y este proyecto ya pago el precio de duplicar (el worker redeclarando los tipos del dominio). Si la respuesta es que ya existe, reusa o extiende: no escribas la segunda copia.
+
 ## Style
 
 **Tabs**, not spaces — this workspace differs from `apps/web`. TypeScript strict, no `any`, no new dependencies without saying why. Spanish for anything a person reads, English for code and comments. Comments explain **why**.

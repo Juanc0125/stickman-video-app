@@ -31,6 +31,10 @@ Business rules live in exactly one place. The scene planner, the scene validatio
 - Migrations are append-only. Never rewrite or delete an applied migration: the schema is reproduced by replaying them in order.
 - Validate everything that arrives from a model or a client. Unknown platform to `reels`, unknown template to `libre`, out-of-range values explained rather than thrown.
 
+## Antes de escribir algo nuevo
+
+Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` devuelve la relacion, no solo el nombre como haria un grep, y este proyecto ya pago el precio de duplicar (el worker redeclarando los tipos del dominio). Si la respuesta es que ya existe, reusa o extiende: no escribas la segunda copia.
+
 ## Style
 
 4-space indent, single quotes, TypeScript strict, no `any`, no new dependencies without saying why in your report. Spanish for anything a person reads, English for code and comments. Comments explain **why**; read the neighbouring file and match its register instead of commenting every function.

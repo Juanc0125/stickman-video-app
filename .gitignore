@@ -25,3 +25,7 @@ Thumbs.db
 .vercel
 .supabase/
 supabase/.temp/
+
+# Per-machine Claude Code settings: the graphify hook points at an absolute
+# path that only exists on this computer.
+.claude/settings.local.json

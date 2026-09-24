@@ -48,5 +48,25 @@ Dale al usuario un resumen corto: qué hizo cada agente, y **toda decisión de d
 - `npm run verify` falla con `EPERM` mientras el servidor de desarrollo tiene tomado `apps/web/.next`, y OneDrive sincronizando la carpeta puede tomarlo igual. Detén el servidor, borra `apps/web/.next`, reintenta. **EPERM no es un error de código.**
 - `npm run dev` levanta web (3000) y worker (8080) juntos. También está la configuración de arranque *Stickman* de Warp.
 - El worker corre con `tsx` sin watch: un cambio en su código exige reiniciarlo.
-- `node scripts/check-ai.mjs` dice qué proveedor de lenguaje responde de verdad. Hoy ninguno: sin `GROQ_API_KEY` ni `OPENROUTER_API_KEY`, y la clave de OpenAI sin saldo. El copiloto cae al modo básico por palabras clave y **lo avisa en pantalla**.
+- `npm run check:ai` dice qué proveedor de lenguaje responde de verdad, y si además sabe usar herramientas. Hoy responde Groq; la clave vieja de OpenAI está sin saldo. El plan gratuito de Groq da ~7.000 tokens por minuto y cada turno del copiloto cuesta ~2.000, así que a la tercera o cuarta pregunta seguida se satura y cae al modo básico por palabras clave, **avisándolo en pantalla**. `npm run set:ai-key -- <proveedor>` instala una clave nueva sin que pase por pantalla ni por el chat.
 - El render worker redeclara los tipos del dominio en vez de importar `@shared-types`. Hoy coinciden; el día que uno cambie, dibujará algo distinto de lo guardado sin error de compilación.
+
+## El grafo de conocimiento: consultarlo antes de escribir
+
+El repo tiene un grafo en `graphify-out/` con 770 nodos y 1507 aristas: quien llama a quien, que vive en cada modulo y que se parece a que. Esta versionado para que no haya que reconstruirlo.
+
+**Existe para que no se construya dos veces lo mismo.** Antes de crear una funcion, un helper o un endpoint, pregunta si ya existe:
+
+```
+npm run graph -- query "donde se valida el personaje de una escena?"
+npm run graph -- path "copilot" "video-persistence"
+npm run graph -- explain "generateWithFallback"
+```
+
+Devuelven un subgrafo acotado, casi siempre mas pequeno que un `grep` y bastante mas util: `grep` encuentra el nombre, el grafo encuentra la relacion. Este proyecto ya tuvo esa duplicacion — el worker redeclarando los tipos del dominio — y costo caro.
+
+`npm run graph -- ...` resuelve donde esta instalado graphify; **no esta en el PATH**, asi que un `graphify` pelado falla.
+
+Una advertencia al consultarlo: el codigo esta en ingles y la documentacion en espanol, asi que una pregunta en espanol trae sobre todo nodos de documentacion. Para buscar codigo, pregunta con el vocabulario del codigo (`coerceCharacter`, `updateBranding`, `drawSceneFrame`).
+
+Se mantiene solo: un enganche de post-commit reconstruye el grafo con cada commit (solo AST, sin costo de modelo). Los documentos y las imagenes no los cubre el enganche; para esos, `graphify-agent` hace una corrida completa. `GRAPH_REPORT.md` se lee cuando hace falta la vista de arquitectura, no para una pregunta puntual.

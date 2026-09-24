@@ -19,7 +19,9 @@
     "check:types": "npm run check:types --workspace @stickman-video-app/render-worker",
     "verify": "npm run lint && npm run check:types && npm run build",
     "e2e": "node scripts/e2e.mjs",
-    "check:ai": "node scripts/check-ai.mjs"
+    "check:ai": "node scripts/check-ai.mjs",
+    "graph": "node scripts/graph.mjs",
+    "set:ai-key": "node scripts/set-ai-key.mjs"
   },
   "dependencies": {
     "next": "16.3.4",

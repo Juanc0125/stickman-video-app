@@ -32,6 +32,10 @@ Two paths reach the same state on purpose: the form and the chat. Neither may be
 - Browser storage (`localStorage`) is for per-viewer conveniences only, always wrapped in try/catch, and the page must render correctly when it comes back empty.
 - Do not read `Date.now()` or set state synchronously inside an effect; the lint rules in this repo reject both.
 
+## Antes de escribir algo nuevo
+
+Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` devuelve la relacion, no solo el nombre como haria un grep, y este proyecto ya pago el precio de duplicar (el worker redeclarando los tipos del dominio). Si la respuesta es que ya existe, reusa o extiende: no escribas la segunda copia.
+
 ## Style
 
 4-space indent, single quotes, TypeScript strict, no `any`, Tailwind classes in the existing register (`glass rounded-2xl`, `text-slate-300`), no new dependencies without saying why. Spanish for anything a person reads, English for code and comments. Comments explain **why**.
