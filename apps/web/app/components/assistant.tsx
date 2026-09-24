@@ -47,6 +47,8 @@ function getRecognition(): Recognition | null {
     return recognition;
 }
 
+const VOICE_KEY = 'stickman:voz';
+
 function speak(text: string) {
     if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
     window.speechSynthesis.cancel();
@@ -58,6 +60,11 @@ function speak(text: string) {
 
 export default function Assistant({ videos, loading, selected, onCreated, onUpdated, onSelect, onDeleted }: AssistantProps) {
     const [listening, setListening] = useState(false);
+    // Whether the assistant answers out loud. Kept in a ref as well because a
+    // reply can land after the user has already hit mute, and the ref is what
+    // the reply reads.
+    const [voiceOn, setVoiceOn] = useState(true);
+    const voiceRef = useRef(true);
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState('');
     const [turns, setTurns] = useState<Turn[]>([]);
@@ -68,6 +75,38 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     useEffect(() => {
         transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' });
     }, [turns, busy]);
+
+    // Read after mount, not in the initial state: the server renders this too,
+    // and a stored value there would not match what the browser paints.
+    // Storage can throw or come back empty (private window, blocked cookies),
+    // in which case the assistant simply keeps its voice.
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            try {
+                if (window.localStorage.getItem(VOICE_KEY) === 'off') {
+                    voiceRef.current = false;
+                    setVoiceOn(false);
+                }
+            } catch {
+                // no stored preference available; the default stands
+            }
+        }, 0);
+        return () => clearTimeout(timer);
+    }, []);
+
+    function toggleVoice() {
+        const next = !voiceOn;
+        voiceRef.current = next;
+        setVoiceOn(next);
+        // Silence has to be immediate: muting while a sentence is being spoken
+        // and still hearing it out is not muting.
+        if (!next && typeof window !== 'undefined') window.speechSynthesis?.cancel();
+        try {
+            window.localStorage.setItem(VOICE_KEY, next ? 'on' : 'off');
+        } catch {
+            // the toggle still works for this session
+        }
+    }
 
     // Greets on arrival with what is actually waiting, so the first thing the
     // client sees is the state of their work rather than a blank box. Runs once
@@ -98,7 +137,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
 
     function say(text: string, aloud = true) {
         setTurns((current) => [...current, { who: 'stickman', text }]);
-        if (aloud) speak(text);
+        if (aloud && voiceRef.current) speak(text);
     }
 
     async function runAction(action: Record<string, unknown>, spoken: string): Promise<string> {
@@ -319,9 +358,31 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                 <span className="flex-1">
                     <span className="block text-sm font-semibold text-white">Asistente</span>
                     <span className="block text-xs text-slate-400">
-                        {listening ? 'Escuchando...' : busy ? 'Pensando...' : 'Hablame o escribeme'}
+                        {listening ? 'Escuchando...' : busy ? 'Pensando...' : voiceOn ? 'Hablame o escribeme' : 'Voz apagada: te respondo por escrito'}
                     </span>
                 </span>
+                <button
+                    type="button"
+                    onClick={toggleVoice}
+                    aria-pressed={!voiceOn}
+                    aria-label={voiceOn ? 'Apagar la voz del asistente' : 'Encender la voz del asistente'}
+                    title={voiceOn ? 'Apagar la voz: seguira respondiendo por escrito' : 'Encender la voz'}
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition ${
+                        voiceOn ? 'bg-white/10 text-slate-200 hover:bg-white/20' : 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                    }`}
+                >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M11 5 6 9H3v6h3l5 4z" />
+                        {voiceOn ? (
+                            <>
+                                <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+                                <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+                            </>
+                        ) : (
+                            <path d="m16 9 5 6M21 9l-5 6" />
+                        )}
+                    </svg>
+                </button>
                 <span className={`h-2 w-2 rounded-full ${busy ? 'bg-amber-400' : 'bg-emerald-400'}`} aria-hidden="true" />
             </header>
 
