@@ -199,10 +199,25 @@ export function isCopilotConfigured(): boolean {
     );
 }
 
+// A provider that answers "no credits remaining" will keep saying it until
+// somebody pays, so it is written off for the life of the process instead of
+// being tried - and waited on - once per message. Rate limits and outages are
+// not written off: those pass on their own.
+const EXHAUSTED = new Set<string>();
+
+function isExhausted(error: unknown): boolean {
+    const text = error instanceof Error ? error.message : String(error);
+    return /insufficient_quota|credit_balance_exhausted|no credits remaining|payment required|402/i.test(text);
+}
+
 export async function generateWithFallback(system: string, messages: ChatMessage[], options: GenerateOptions = {}): Promise<GenerationResult | null> {
     for (const provider of providers()) {
         if (!provider.apiKey) {
             console.info(`Sin clave configurada para ${provider.id}; se omite.`);
+            continue;
+        }
+        if (EXHAUSTED.has(provider.id)) {
+            console.info(`${provider.id} quedo sin saldo en esta sesion; se omite.`);
             continue;
         }
         try {
@@ -210,7 +225,12 @@ export async function generateWithFallback(system: string, messages: ChatMessage
             console.info(`Respondio ${provider.id} con el modelo ${provider.model}.`);
             return result;
         } catch (error) {
-            console.warn(`Fallo ${provider.id}; se intentara el siguiente proveedor.`, error);
+            if (isExhausted(error)) {
+                EXHAUSTED.add(provider.id);
+                console.warn(`${provider.id} no tiene saldo; no se volvera a intentar en esta sesion.`, error);
+            } else {
+                console.warn(`Fallo ${provider.id}; se intentara el siguiente proveedor.`, error);
+            }
         }
     }
 

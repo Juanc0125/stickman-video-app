@@ -58,6 +58,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     // reply can land after the user has already hit mute, and the ref is what
     // the reply reads.
     const [voiceOn, setVoiceOn] = useState(true);
+    // null until the first answer. False means the turn was served by the
+    // keyword fallback because no language model answered - worth saying, or
+    // the operator just sees a copilot giving canned replies.
+    const [modelo, setModelo] = useState<boolean | null>(null);
     const voiceRef = useRef(true);
     const [busy, setBusy] = useState(false);
     const [input, setInput] = useState('');
@@ -158,9 +162,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             const data = await response.json() as {
                 reply?: string; error?: string;
                 video?: VideoRecord | null; created?: boolean; deletedId?: string | null;
-                selectId?: string | null; descargarUrl?: string | null;
+                selectId?: string | null; descargarUrl?: string | null; provider?: string | null;
             };
             if (!response.ok) throw new Error(data.error ?? 'El asistente no respondio.');
+            setModelo(Boolean(data.provider));
 
             if (data.deletedId) onDeleted(data.deletedId);
             if (data.video) {
@@ -171,6 +176,9 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             if (data.descargarUrl) window.open(data.descargarUrl, '_blank', 'noopener');
 
             say(data.reply ?? 'Hecho.');
+            if (!data.provider && modelo !== false) {
+                say('Aviso: estoy respondiendo en modo basico, sin modelo de lenguaje. Entiendo ordenes concretas pero no conversacion libre. Se arregla configurando GROQ_API_KEY o OPENROUTER_API_KEY.', false);
+            }
         } catch (error) {
             say(error instanceof Error ? error.message : 'Algo fallo al ejecutar eso.');
         } finally {
@@ -211,7 +219,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                 <span className="flex-1">
                     <span className="block text-sm font-semibold text-white">Asistente</span>
                     <span className="block text-xs text-slate-400">
-                        {listening ? 'Escuchando...' : busy ? 'Pensando...' : voiceOn ? 'Hablame o escribeme' : 'Voz apagada: te respondo por escrito'}
+                        {listening ? 'Escuchando...'
+                            : busy ? 'Pensando...'
+                            : modelo === false ? 'Modo basico: sin modelo de lenguaje conectado'
+                            : voiceOn ? 'Hablame o escribeme' : 'Voz apagada: te respondo por escrito'}
                     </span>
                 </span>
                 <button
