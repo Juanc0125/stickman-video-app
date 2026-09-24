@@ -65,15 +65,17 @@ function fontOf(style: FrameStyle, size: number, bold = false) {
 
 // ---- Skeleton proportions, in canvas pixels at 1080x1920 ----
 const GROUND_Y = 1430;
-const THIGH = 175;
-const SHIN = 170;
+const THIGH = 158;
+const SHIN = 152;
 const LEG_TOTAL = THIGH + SHIN;
-const TORSO = 300;
+const TORSO = 312;
 const UPPER_ARM = 128;
 const FOREARM = 120;
 const HEAD_RADIUS = 60;
-const NECK = 24;
+const NECK = 32;
 const LIMB_WIDTH = 24;
+const SHOULDER_HALF = 38;
+const HIP_HALF = 17;
 const TORSO_WIDTH = 36;
 
 const DEG = Math.PI / 180;
@@ -82,22 +84,43 @@ const DEG = Math.PI / 180;
 const FACE_LINE = '#2c2620';
 
 interface Palette {
-	body: string;
-	accent: string;
-	hair: string | null;
+	suit: string;   // jacket or shirt: the largest area of colour
+	shirt: string;  // what shows at the neckline
+	accent: string; // the tie, when the character wears one
+	skin: string;
+	hair: 'short' | 'long' | null;
+	hairColor: string;
+	tie: boolean;
 	label: string;
 }
 
-// Each character reads as a different person through body colour, an accent
-// (tie, scarf, collar) and hair shape - not through different proportions.
+// Each character reads as a different person through clothing, skin tone and
+// hair, never through different proportions: one set of pose maths drives all
+// of them.
 const PALETTES: Record<CharacterType, Palette> = {
-	broker: { body: '#2f6fd0', accent: '#f2c744', hair: 'short', label: 'Asesor' },
-	cliente: { body: '#26a269', accent: '#ffffff', hair: 'short', label: 'Cliente' },
-	pareja: { body: '#e07a3f', accent: '#ffffff', hair: 'short', label: 'Pareja' },
-	hombre: { body: '#8e5cd9', accent: '#ffffff', hair: 'short', label: 'Hombre' },
-	mujer: { body: '#e0539b', accent: '#ffffff', hair: 'long', label: 'Mujer' },
-	generico: { body: '#7d8a9c', accent: '#ffffff', hair: null, label: 'Persona' },
+	broker: { suit: '#27406b', shirt: '#eef3fa', accent: '#b8402f', skin: '#f0cdaa', hair: 'short', hairColor: '#2b2018', tie: true, label: 'Asesor' },
+	cliente: { suit: '#2e8b6f', shirt: '#eef3fa', accent: '#1f6b55', skin: '#e0b085', hair: 'short', hairColor: '#241a14', tie: false, label: 'Cliente' },
+	pareja: { suit: '#c96a3c', shirt: '#fbf3ea', accent: '#9c4a26', skin: '#f2d2b3', hair: 'short', hairColor: '#3a2a1e', tie: false, label: 'Pareja' },
+	hombre: { suit: '#4a5891', shirt: '#eef3fa', accent: '#9a3b34', skin: '#d9a97e', hair: 'short', hairColor: '#1f1812', tie: true, label: 'Hombre' },
+	mujer: { suit: '#b8477c', shirt: '#fdf2f7', accent: '#8c2f5c', skin: '#f0cdaa', hair: 'long', hairColor: '#2b2018', tie: false, label: 'Mujer' },
+	generico: { suit: '#5d6b7d', shirt: '#eef3fa', accent: '#41505f', skin: '#e9c6a2', hair: 'short', hairColor: '#2b2018', tie: false, label: 'Persona' },
 };
+
+// One dark ink for every outline on the figures. Flat colour with a consistent
+// outline is what separates a drawn character from a sketch of one, and it
+// costs nothing per frame.
+const OUTLINE = '#1b2431';
+const SHOE = '#232f3d';
+
+/** Darkens (negative) or lightens a hex colour, for shading without a second palette entry. */
+function shade(hex: string, amount: number): string {
+	const n = parseInt(hex.slice(1), 16);
+	const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+	const r = clamp(((n >> 16) & 255) + amount);
+	const g = clamp(((n >> 8) & 255) + amount);
+	const b = clamp((n & 255) + amount);
+	return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
 
 function lerp(a: number, b: number, t: number) {
 	return a + (b - a) * t;
@@ -107,18 +130,27 @@ function easeInOut(t: number) {
 	return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 }
 
-/** Draws a limb segment from (x, y) at `angle` degrees off straight-down, returning its far end. */
-function segment(ctx: SKRSContext2D, x: number, y: number, angle: number, length: number, width: number, color: string) {
-	const endX = x + Math.sin(angle * DEG) * length;
-	const endY = y + Math.cos(angle * DEG) * length;
-	ctx.strokeStyle = color;
-	ctx.lineWidth = width;
+/** The far end of a limb segment leaving (x, y) at `angle` degrees off straight-down. */
+function tipOf(x: number, y: number, angle: number, length: number) {
+	return { x: x + Math.sin(angle * DEG) * length, y: y + Math.cos(angle * DEG) * length };
+}
+
+/**
+ * Strokes a limb twice: fat in the outline ink, then in its own colour. Both
+ * passes run over the whole polyline rather than segment by segment, so an
+ * elbow comes out as one continuous arm instead of two sticks with a seam.
+ */
+function limb(ctx: SKRSContext2D, points: { x: number; y: number }[], width: number, color: string) {
 	ctx.lineCap = 'round';
-	ctx.beginPath();
-	ctx.moveTo(x, y);
-	ctx.lineTo(endX, endY);
-	ctx.stroke();
-	return { x: endX, y: endY };
+	ctx.lineJoin = 'round';
+	for (const pass of [{ w: width + 9, c: OUTLINE }, { w: width, c: color }]) {
+		ctx.strokeStyle = pass.c;
+		ctx.lineWidth = pass.w;
+		ctx.beginPath();
+		ctx.moveTo(points[0].x, points[0].y);
+		for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+		ctx.stroke();
+	}
 }
 
 interface Pose {
@@ -170,7 +202,7 @@ function lifeSignsAt(t: number, seed: number): LifeSigns {
  * Every action is one function of `phase` (0..1 over one loop) producing joint
  * angles.
  *
- * ANGLE CONVENTION, used by every value below and by segment(): degrees off
+ * ANGLE CONVENTION, used by every value below and by tipOf(): degrees off
  * straight-down, positive turning toward +x (the viewer's right). So 0 hangs
  * straight down, 90 points right, -90 points left, 180 points straight up.
  * Upper-arm and thigh angles are absolute; elbow and knee angles are relative
@@ -186,8 +218,8 @@ function poseFor(action: SceneAction, phase: number, centerX: number): Pose {
 		hipY: GROUND_Y - LEG_TOTAL,
 		lean: 0,
 		headTilt: 0,
-		thighL: -5, kneeL: 0,
-		thighR: 5, kneeR: 0,
+		thighL: -9, kneeL: 0,
+		thighR: 9, kneeR: 0,
 		shoulderL: -10, elbowL: -6,
 		shoulderR: 10, elbowR: 6,
 		mouthOpen: 0.15,
@@ -218,10 +250,10 @@ function poseFor(action: SceneAction, phase: number, centerX: number): Pose {
 		}
 		case 'hablar': {
 			// Forearms up and out at chest height, alternating, mouth moving.
-			base.shoulderL = -34 + 7 * swing;
-			base.elbowL = -74 - 10 * swing;
-			base.shoulderR = 34 - 7 * Math.sin(w + Math.PI / 2);
-			base.elbowR = 74 + 10 * Math.sin(w + Math.PI / 2);
+			base.shoulderL = -18 + 6 * swing;
+			base.elbowL = -104 - 12 * swing;
+			base.shoulderR = 18 - 6 * Math.sin(w + Math.PI / 2);
+			base.elbowR = 104 + 12 * Math.sin(w + Math.PI / 2);
 			base.headTilt = 2 * swing;
 			base.mouthOpen = 0.25 + 0.35 * Math.abs(Math.sin(w * 2));
 			base.hipY -= 3 * Math.abs(swing);
@@ -240,16 +272,16 @@ function poseFor(action: SceneAction, phase: number, centerX: number): Pose {
 		case 'sentarse': {
 			// Thighs forward and level, shins straight down: sitting on a chair.
 			base.seated = true;
-			base.hipY = GROUND_Y - SHIN - 26;
-			base.thighL = 74;
-			base.thighR = 86;
-			base.kneeL = -74;
-			base.kneeR = -86;
-			base.shoulderL = -16;
-			base.elbowL = -34;
-			base.shoulderR = 16;
-			base.elbowR = 34;
-			base.lean = -5;
+			base.hipY = GROUND_Y - SHIN - 30;
+			base.thighL = 78;
+			base.thighR = 84;
+			base.kneeL = -78;
+			base.kneeR = -84;
+			base.shoulderL = -30;
+			base.elbowL = -24;
+			base.shoulderR = 30;
+			base.elbowR = 24;
+			base.lean = 4;
 			base.hipY -= 2 * Math.abs(swing);
 			base.mouthOpen = 0.18;
 			break;
@@ -292,56 +324,200 @@ function poseFor(action: SceneAction, phase: number, centerX: number): Pose {
 }
 
 function drawHead(ctx: SKRSContext2D, x: number, y: number, tilt: number, palette: Palette, mouthOpen: number, eyeOpen: number) {
+	const rx = HEAD_RADIUS - 4;
+	const ry = HEAD_RADIUS + 2;
+
 	ctx.save();
 	ctx.translate(x, y);
 	ctx.rotate(tilt * DEG);
+	ctx.lineJoin = 'round';
 
+	// Long hair sits behind the face, so it is laid down first and the face
+	// covers its inner half.
 	if (palette.hair === 'long') {
-		ctx.fillStyle = '#3b2a22';
+		ctx.fillStyle = palette.hairColor;
+		ctx.strokeStyle = OUTLINE;
+		ctx.lineWidth = 5;
 		ctx.beginPath();
-		ctx.ellipse(0, 6, HEAD_RADIUS + 16, HEAD_RADIUS + 26, 0, 0, Math.PI * 2);
+		ctx.ellipse(0, 14, rx + 20, ry + 26, 0, 0, Math.PI * 2);
 		ctx.fill();
+		ctx.stroke();
 	}
 
-	// Facial features use their own fixed dark tone rather than the brand ink:
-	// the ink is whatever secondary_color the client set, and white eyes on a
-	// skin-toned face are invisible.
-	ctx.fillStyle = '#f1d3b4';
-	ctx.strokeStyle = FACE_LINE;
+	// Ears, likewise behind the face: only their outer edge shows, which is
+	// all an ear needs to read as one.
+	ctx.fillStyle = palette.skin;
+	ctx.strokeStyle = OUTLINE;
 	ctx.lineWidth = 5;
+	for (const side of [-1, 1]) {
+		ctx.beginPath();
+		ctx.ellipse(side * (rx - 2), 8, 13, 17, 0, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.stroke();
+	}
+
+	ctx.fillStyle = palette.skin;
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 6;
 	ctx.beginPath();
-	ctx.arc(0, 0, HEAD_RADIUS, 0, Math.PI * 2);
+	ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
 	ctx.fill();
 	ctx.stroke();
 
 	if (palette.hair) {
-		// Half-disc cap: a partial arc would fill back to the centre and read
-		// as a wedge sticking out of the head.
-		ctx.fillStyle = '#3b2a22';
+		// A cap plus a side-swept fringe: the flat top of a half-disc is what
+		// made the old head read as a helmet.
+		ctx.fillStyle = palette.hairColor;
 		ctx.beginPath();
-		ctx.arc(0, -6, HEAD_RADIUS, Math.PI, Math.PI * 2);
+		ctx.ellipse(0, -8, rx + 1, ry - 10, 0, Math.PI, Math.PI * 2);
+		ctx.quadraticCurveTo(rx * 0.5, -ry * 0.30, -rx * 0.2, -ry * 0.22);
+		ctx.quadraticCurveTo(-rx * 0.8, -ry * 0.18, -rx - 1, -ry * 0.45);
 		ctx.closePath();
 		ctx.fill();
 	}
 
-	// A blink squashes the eye vertically rather than hiding it, so the lids
-	// read as closing instead of the eyes popping out of existence.
-	ctx.fillStyle = FACE_LINE;
-	// Sat below the hairline: the hair cap fills down to y=-6, so eyes any
-	// higher get painted over by it.
-	const eyeRadius = 7;
-	const lidHeight = Math.max(0.9, eyeRadius * eyeOpen);
-	for (const eyeX of [-20, 20]) {
+	// Brows do most of the work in making a face look deliberate rather than
+	// blank, and they cost two strokes.
+	ctx.strokeStyle = palette.hairColor;
+	ctx.lineWidth = 6;
+	ctx.lineCap = 'round';
+	for (const side of [-1, 1]) {
 		ctx.beginPath();
-		ctx.ellipse(eyeX, 8, eyeRadius, lidHeight, 0, 0, Math.PI * 2);
-		ctx.fill();
+		ctx.moveTo(side * 31, -20);
+		ctx.lineTo(side * 11, -19);
+		ctx.stroke();
 	}
 
-	const mouthHeight = 4 + mouthOpen * 22;
-	ctx.fillStyle = '#8c4a4a';
+	// A blink squashes the eye vertically rather than hiding it, so the lids
+	// read as closing instead of the eyes popping out of existence.
+	const eyeRadius = 8;
+	const lidHeight = Math.max(0.9, eyeRadius * eyeOpen);
+	for (const side of [-1, 1]) {
+		ctx.fillStyle = FACE_LINE;
+		ctx.beginPath();
+		ctx.ellipse(side * 21, 4, eyeRadius, lidHeight, 0, 0, Math.PI * 2);
+		ctx.fill();
+		if (eyeOpen > 0.55) {
+			ctx.fillStyle = '#ffffff';
+			ctx.beginPath();
+			ctx.arc(side * 21 + 3, 1, 2.6, 0, Math.PI * 2);
+			ctx.fill();
+		}
+	}
+
+	// Closed mouths smile instead of sitting as a dot; open mouths grow from
+	// that same line, so speech animates between two shapes of one mouth.
+	if (mouthOpen < 0.16) {
+		ctx.strokeStyle = FACE_LINE;
+		ctx.lineWidth = 5;
+		ctx.beginPath();
+		ctx.arc(0, 22, 19, 0.18 * Math.PI, 0.82 * Math.PI);
+		ctx.stroke();
+	} else {
+		ctx.fillStyle = '#7d3b3b';
+		ctx.strokeStyle = FACE_LINE;
+		ctx.lineWidth = 4;
+		ctx.beginPath();
+		ctx.ellipse(0, 32, 13 + mouthOpen * 5, 3 + mouthOpen * 12, 0, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.stroke();
+	}
+
+	ctx.restore();
+}
+
+/**
+ * The torso, drawn in its own rotated frame so the shirt, the collar and the
+ * tie are plain coordinates down the chest instead of trigonometry. Local y
+ * runs from 0 at the shoulders to `length` at the hip; local x is lateral.
+ */
+function drawTorso(ctx: SKRSContext2D, shoulderX: number, shoulderY: number, lean: number, length: number, palette: Palette) {
+	const shoulderHalf = SHOULDER_HALF + 9;
+	const waistHalf = 33;
+	const hipHalf = 37;
+
+	ctx.save();
+	ctx.translate(shoulderX, shoulderY);
+	ctx.rotate(lean * DEG);
+	ctx.lineJoin = 'round';
+
 	ctx.beginPath();
-	ctx.ellipse(0, 36, 14 + mouthOpen * 4, mouthHeight / 2, 0, 0, Math.PI * 2);
+	ctx.moveTo(-shoulderHalf, 8);
+	ctx.quadraticCurveTo(-waistHalf - 4, length * 0.55, -hipHalf, length - 6);
+	ctx.quadraticCurveTo(0, length + 16, hipHalf, length - 6);
+	ctx.quadraticCurveTo(waistHalf + 4, length * 0.55, shoulderHalf, 8);
+	// The shoulder line dips toward the neck instead of running straight
+	// across, which is what gives the figure shoulders at all.
+	ctx.quadraticCurveTo(0, -22, -shoulderHalf, 8);
+	ctx.closePath();
+	ctx.fillStyle = palette.suit;
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 6;
 	ctx.fill();
+	ctx.stroke();
+
+	// Shirt showing at the neckline.
+	ctx.fillStyle = palette.shirt;
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 4;
+	ctx.beginPath();
+	ctx.moveTo(-24, -6);
+	ctx.lineTo(0, 64);
+	ctx.lineTo(24, -6);
+	ctx.closePath();
+	ctx.fill();
+	ctx.stroke();
+
+	// Lapels: two strokes in a darker shade of the suit, which is enough to
+	// read as a jacket over the shirt.
+	ctx.strokeStyle = shade(palette.suit, -26);
+	ctx.lineWidth = 6;
+	ctx.lineCap = 'round';
+	for (const side of [-1, 1]) {
+		ctx.beginPath();
+		ctx.moveTo(side * 30, -2);
+		ctx.quadraticCurveTo(side * 22, length * 0.30, side * 7, length * 0.42);
+		ctx.stroke();
+	}
+
+	if (palette.tie) {
+		ctx.strokeStyle = OUTLINE;
+		ctx.lineWidth = 4;
+
+		// Knot first, then the blade hanging from it: a tie without a knot is
+		// the shape that made this look like a bib.
+		ctx.fillStyle = shade(palette.accent, -22);
+		ctx.beginPath();
+		ctx.moveTo(-13, 12);
+		ctx.lineTo(13, 12);
+		ctx.lineTo(10, 40);
+		ctx.lineTo(-10, 40);
+		ctx.closePath();
+		ctx.fill();
+		ctx.stroke();
+
+		ctx.fillStyle = palette.accent;
+		ctx.beginPath();
+		ctx.moveTo(-10, 40);
+		ctx.lineTo(10, 40);
+		ctx.quadraticCurveTo(17, length * 0.44, 12, length * 0.56);
+		ctx.lineTo(0, length * 0.66);
+		ctx.lineTo(-12, length * 0.56);
+		ctx.quadraticCurveTo(-17, length * 0.44, -10, 40);
+		ctx.closePath();
+		ctx.fill();
+		ctx.stroke();
+	} else {
+		// No tie: a collar line, so the neckline still reads as clothing.
+		ctx.strokeStyle = shade(palette.accent, 0);
+		ctx.lineWidth = 7;
+		ctx.lineCap = 'round';
+		ctx.beginPath();
+		ctx.moveTo(-26, -4);
+		ctx.lineTo(0, 30);
+		ctx.lineTo(26, -4);
+		ctx.stroke();
+	}
 
 	ctx.restore();
 }
@@ -372,33 +548,50 @@ function drawFigure(
 	const shoulderX = hipX + Math.sin(lean * DEG) * torsoLength;
 	const shoulderY = hipY - Math.cos(lean * DEG) * torsoLength;
 
-	// Legs first so the torso overlaps them at the hip.
-	const kneeL = segment(ctx, hipX, hipY, pose.thighL, THIGH, LIMB_WIDTH, palette.body);
-	segment(ctx, kneeL.x, kneeL.y, pose.thighL + pose.kneeL, SHIN, LIMB_WIDTH, palette.body);
-	const kneeR = segment(ctx, hipX, hipY, pose.thighR, THIGH, LIMB_WIDTH, palette.body);
-	segment(ctx, kneeR.x, kneeR.y, pose.thighR + pose.kneeR, SHIN, LIMB_WIDTH, palette.body);
+	const shoulder = { x: shoulderX, y: shoulderY };
 
-	// Torso
-	ctx.strokeStyle = palette.body;
-	ctx.lineWidth = TORSO_WIDTH;
-	ctx.lineCap = 'round';
-	ctx.beginPath();
-	ctx.moveTo(hipX, hipY);
-	ctx.lineTo(shoulderX, shoulderY);
-	ctx.stroke();
+	// Legs hang from the two sides of the pelvis for the same reason the arms
+	// hang from the ends of the shoulders: started from one point they merge
+	// into a single trouser column at any real viewing size.
+	const hipL = { x: hipX - HIP_HALF, y: hipY };
+	const hipR = { x: hipX + HIP_HALF, y: hipY };
+	const kneeL = tipOf(hipL.x, hipL.y, pose.thighL, THIGH);
+	const ankleL = tipOf(kneeL.x, kneeL.y, pose.thighL + pose.kneeL, SHIN);
+	const kneeR = tipOf(hipR.x, hipR.y, pose.thighR, THIGH);
+	const ankleR = tipOf(kneeR.x, kneeR.y, pose.thighR + pose.kneeR, SHIN);
+	// Arms hang from the ends of the shoulder line, not from one point at the
+	// neck. Both arms leaving the same origin was what made every pose read as a
+	// puppet: it draws the chest as a V with two sticks coming out of the collar.
+	const across = { x: Math.cos(lean * DEG), y: Math.sin(lean * DEG) };
+	const jointL = { x: shoulderX - across.x * SHOULDER_HALF, y: shoulderY - across.y * SHOULDER_HALF };
+	const jointR = { x: shoulderX + across.x * SHOULDER_HALF, y: shoulderY + across.y * SHOULDER_HALF };
+	const elbowL = tipOf(jointL.x, jointL.y, pose.shoulderL, UPPER_ARM);
+	const handL = tipOf(elbowL.x, elbowL.y, pose.shoulderL + pose.elbowL, FOREARM);
+	const elbowR = tipOf(jointR.x, jointR.y, pose.shoulderR, UPPER_ARM);
+	const handR = tipOf(elbowR.x, elbowR.y, pose.shoulderR + pose.elbowR, FOREARM);
 
-	// A collar/tie strip reads as clothing without adding a second silhouette.
-	ctx.strokeStyle = palette.accent;
-	ctx.lineWidth = 9;
-	ctx.beginPath();
-	ctx.moveTo(shoulderX, shoulderY + 6);
-	ctx.lineTo(lerp(shoulderX, hipX, 0.42), lerp(shoulderY, hipY, 0.42));
-	ctx.stroke();
+	// Everything on the figure's left is drawn a shade darker and first, so the
+	// body separates into a near side and a far side. It is the cheapest depth
+	// there is and it does not break the flat 2D look the client asked for.
+	const far = shade(palette.suit, -30);
 
-	const elbowL = segment(ctx, shoulderX, shoulderY, pose.shoulderL, UPPER_ARM, LIMB_WIDTH, palette.body);
-	const handL = segment(ctx, elbowL.x, elbowL.y, pose.shoulderL + pose.elbowL, FOREARM, LIMB_WIDTH, palette.body);
-	const elbowR = segment(ctx, shoulderX, shoulderY, pose.shoulderR, UPPER_ARM, LIMB_WIDTH, palette.body);
-	const handR = segment(ctx, elbowR.x, elbowR.y, pose.shoulderR + pose.elbowR, FOREARM, LIMB_WIDTH, palette.body);
+	if (pose.seated) drawStool(ctx, hipX, hipY);
+
+	// Trousers, then shoes, then the torso over the hip joint.
+	limb(ctx, [hipL, kneeL, ankleL], LIMB_WIDTH + 10, far);
+	drawShoe(ctx, ankleL, pose.thighL + pose.kneeL, -1);
+	limb(ctx, [hipR, kneeR, ankleR], LIMB_WIDTH + 10, shade(palette.suit, -14));
+	drawShoe(ctx, ankleR, pose.thighR + pose.kneeR, 1);
+
+	// A neck, so the head is attached to the body instead of floating above it.
+	limb(ctx, [shoulder, { x: shoulderX + Math.sin(lean * DEG) * 30, y: shoulderY - Math.cos(lean * DEG) * 30 }], 30, palette.skin);
+
+	drawTorso(ctx, shoulderX, shoulderY, lean, torsoLength, palette);
+
+	limb(ctx, [jointL, elbowL, handL], LIMB_WIDTH + 4, far);
+	drawHand(ctx, handL, palette.skin);
+	limb(ctx, [jointR, elbowR, handR], LIMB_WIDTH + 4, palette.suit);
+	drawHand(ctx, handR, palette.skin);
 
 	// The head counter-rotates slightly against the body's lean, the way a
 	// person keeps their eyeline level, and drifts on its own slow cycle.
@@ -421,6 +614,51 @@ function drawFigure(
 	}
 
 	return { handL, handR, headX, headY, shoulderX, shoulderY };
+}
+
+/** A plain stool under a seated figure: without it the pose reads as falling. */
+function drawStool(ctx: SKRSContext2D, hipX: number, hipY: number) {
+	const seatY = hipY + 30;
+	ctx.fillStyle = '#4a3b2f';
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 5;
+	roundRect(ctx, hipX - 62, seatY, 172, 22, 8);
+	ctx.fill();
+	ctx.stroke();
+	ctx.strokeStyle = '#3b2f26';
+	ctx.lineWidth = 16;
+	ctx.lineCap = 'round';
+	for (const legX of [hipX - 46, hipX + 94]) {
+		ctx.beginPath();
+		ctx.moveTo(legX, seatY + 18);
+		ctx.lineTo(legX, GROUND_Y);
+		ctx.stroke();
+	}
+}
+
+function drawHand(ctx: SKRSContext2D, at: { x: number; y: number }, skin: string) {
+	ctx.fillStyle = skin;
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 5;
+	ctx.beginPath();
+	ctx.arc(at.x, at.y, 15, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.stroke();
+}
+
+/** A shoe lying along the ground at the ankle, toe pointing `facing`. */
+function drawShoe(ctx: SKRSContext2D, ankle: { x: number; y: number }, shinAngle: number, facing: number) {
+	ctx.save();
+	ctx.translate(ankle.x + facing * 11, ankle.y + 6);
+	ctx.rotate(shinAngle * DEG * 0.12);
+	ctx.fillStyle = SHOE;
+	ctx.strokeStyle = OUTLINE;
+	ctx.lineWidth = 5;
+	ctx.beginPath();
+	ctx.ellipse(0, 0, 29, 13, 0, 0, Math.PI * 2);
+	ctx.fill();
+	ctx.stroke();
+	ctx.restore();
 }
 
 function roundRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -671,12 +909,12 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 	}
 
 	if (scene.character === 'pareja') {
-		drawShadow(ctx, figureX - 96, 0.85);
-		drawShadow(ctx, figureX + 108, 0.85);
+		drawShadow(ctx, figureX - 132, 0.85);
+		drawShadow(ctx, figureX + 140, 0.85);
 		// Only one of the two speaks, so the other listens instead of both
 		// mouthing the same line.
-		drawFigure(ctx, 'mujer', scene.action, (phase + 0.42) % 1, t, figureX + 108, ink, 0.57, mouth === null ? null : 0.06);
-		drawFigure(ctx, 'hombre', scene.action, phase, t, figureX - 96, ink, 0.13, mouth);
+		drawFigure(ctx, 'mujer', scene.action, (phase + 0.42) % 1, t, figureX + 140, ink, 0.57, mouth === null ? null : 0.06);
+		drawFigure(ctx, 'hombre', scene.action, phase, t, figureX - 132, ink, 0.13, mouth);
 	} else {
 		drawShadow(ctx, figureX, 1);
 		drawFigure(ctx, scene.character, scene.action, phase, t, figureX, ink, 0.31, mouth);
