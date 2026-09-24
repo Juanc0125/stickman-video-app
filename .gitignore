@@ -8,11 +8,11 @@ apps/render-worker/renders/
 # Voice model downloaded at runtime (~78MB) - never belongs in the repo.
 apps/render-worker/.voice-cache/
 
-# Graphify output. graph.html and graph.json are ~1MB of regenerable artifacts
-# that churn completely on every run; the report is small, readable and worth
-# tracking, so it is the one exception.
-graphify-out/*
-!graphify-out/GRAPH_REPORT.md
+# Graphify output. The graph is versioned on purpose: it is read far more often than it is
+# rebuilt, and regenerating it costs a full extraction run. Only the rebuild
+# cache and the interpreter paths, which are per-machine, stay out.
+graphify-out/cache/
+graphify-out/.graphify_*
 
 .env
 .env.*
