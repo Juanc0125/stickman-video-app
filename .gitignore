@@ -12,6 +12,9 @@ apps/render-worker/.voice-cache/
 # rebuilt, and regenerating it costs a full extraction run. Only the rebuild
 # cache and the interpreter paths, which are per-machine, stay out.
 graphify-out/cache/
+# Dated snapshots the rebuild takes of the previous graph: a copy of something
+# already in git history, and one more folder per day.
+graphify-out/20*/
 graphify-out/.graphify_*
 
 .env

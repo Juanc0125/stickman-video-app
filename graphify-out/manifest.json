@@ -252,10 +252,10 @@
     "semantic_hash": "6df6f724e12d7fa43a06b4afad650639"
   },
   "package.json": {
-    "mtime": 1790264097.285268,
-    "seen": 1790264776.2623992,
-    "ast_hash": "21470f915a39f249fc23c3b3ea9733bb",
-    "semantic_hash": "21470f915a39f249fc23c3b3ea9733bb"
+    "mtime": 1790274452.769023,
+    "seen": 1790274555.1612153,
+    "ast_hash": "ee5895f156c8a009a380b89d3d464051",
+    "semantic_hash": ""
   },
   "packages/shared-types/video.ts": {
     "mtime": 1790263596.236822,
@@ -474,10 +474,10 @@
     "semantic_hash": "c3e0aa8dbfb734bb34a872e36b105925"
   },
   "apps/web/lib/copilot.ts": {
-    "mtime": 1790225033.6480205,
-    "seen": 1790264776.2572234,
-    "ast_hash": "85f292b68cf012cde4e89a429d35a728",
-    "semantic_hash": "85f292b68cf012cde4e89a429d35a728"
+    "mtime": 1790274255.1837726,
+    "seen": 1790274555.1611946,
+    "ast_hash": "63e85ee6ae4ea3cd066c14c825f40777",
+    "semantic_hash": ""
   },
   "packages/shared-types/templates.ts": {
     "mtime": 1790144644.1690984,
@@ -510,22 +510,22 @@
     "semantic_hash": "6cbb81b6748ec69c802643080ada3a20"
   },
   ".claude/agents/backend-agent.md": {
-    "mtime": 1790226377.7893417,
-    "seen": 1790264776.2677307,
-    "ast_hash": "bbbfe987f7b3c7207c9a902439e3aa38",
-    "semantic_hash": "bbbfe987f7b3c7207c9a902439e3aa38"
+    "mtime": 1790274452.7725816,
+    "seen": 1790274555.1612494,
+    "ast_hash": "e896c3220cba8f9383f45205245b0506",
+    "semantic_hash": ""
   },
   ".claude/agents/devops-agent.md": {
-    "mtime": 1790226442.1170738,
-    "seen": 1790264776.2677429,
-    "ast_hash": "77a41439f4563b089ab7406a1ecd5633",
-    "semantic_hash": "77a41439f4563b089ab7406a1ecd5633"
+    "mtime": 1790264846.621954,
+    "seen": 1790274555.1612508,
+    "ast_hash": "3be78d6e8d6ce9b12ddf03a70012f504",
+    "semantic_hash": ""
   },
   ".claude/agents/frontend-agent.md": {
-    "mtime": 1790226399.6433227,
-    "seen": 1790264776.267747,
-    "ast_hash": "ee048ef89e21f5ac502774a54e9c3fab",
-    "semantic_hash": "ee048ef89e21f5ac502774a54e9c3fab"
+    "mtime": 1790274452.7725816,
+    "seen": 1790274555.1612523,
+    "ast_hash": "53252d3ec7cc6361b99c13945064e6ca",
+    "semantic_hash": ""
   },
   ".claude/agents/graphify-agent.md": {
     "mtime": 1790226486.5592601,
@@ -534,21 +534,39 @@
     "semantic_hash": "3d240647fe5d34477d96ed7e0bfdebc5"
   },
   ".claude/agents/qa-agent.md": {
-    "mtime": 1790226462.6934128,
-    "seen": 1790264776.2677524,
-    "ast_hash": "8938b9f42a3cc7885b778a6c13e42ac4",
-    "semantic_hash": "8938b9f42a3cc7885b778a6c13e42ac4"
+    "mtime": 1790264829.9522598,
+    "seen": 1790274555.1612556,
+    "ast_hash": "209715b1eba97cf3f776ca82fcd74d26",
+    "semantic_hash": ""
   },
   ".claude/agents/render-worker-agent.md": {
-    "mtime": 1790226421.0536318,
-    "seen": 1790264776.267755,
-    "ast_hash": "5b6d449ff6aeeeffd548d2d14e781d69",
-    "semantic_hash": "5b6d449ff6aeeeffd548d2d14e781d69"
+    "mtime": 1790274452.7749884,
+    "seen": 1790274555.161257,
+    "ast_hash": "08a09e28e862ae2cd3bd46300003f5b9",
+    "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1790226516.0664651,
-    "seen": 1790264776.268508,
-    "ast_hash": "7385f7d81fc89fd72a6a0145821269d0",
-    "semantic_hash": "7385f7d81fc89fd72a6a0145821269d0"
+    "mtime": 1790274493.778973,
+    "seen": 1790274555.16126,
+    "ast_hash": "5349ec4c3f2e867b93f6f080cb311055",
+    "semantic_hash": ""
+  },
+  "scripts/graph.mjs": {
+    "mtime": 1790274510.3654947,
+    "seen": 1790274555.161227,
+    "ast_hash": "c44e7be1b3c462c1f58cc787575c886d",
+    "semantic_hash": ""
+  },
+  "scripts/set-ai-key.mjs": {
+    "mtime": 1790273742.1580615,
+    "seen": 1790274555.1612313,
+    "ast_hash": "f52050cb2ed15bc7f3701ae09a5d2b76",
+    "semantic_hash": ""
+  },
+  "apps/web/public/backdrop/space.jpg": {
+    "mtime": 1790098149.404608,
+    "seen": 1790274555.1612682,
+    "ast_hash": "6df20356e05145a1b986808140607aa9",
+    "semantic_hash": ""
   }
 }
