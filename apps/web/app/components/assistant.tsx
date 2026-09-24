@@ -1,13 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { getTemplate } from '@shared-types/templates';
-import {
-    createVideo, deleteScene, deleteVideo, duplicateVideo, generateScenes, generateVoice,
-    transitionStatus, updateBranding, updateScene,
-    type VideoRecord,
-} from './api';
-import { PLATFORM_LABELS, STATUS_LABELS } from './constants';
+import type { VideoRecord } from './api';
 
 interface AssistantProps {
     videos: VideoRecord[];
@@ -140,184 +134,43 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         if (aloud && voiceRef.current) speak(text);
     }
 
-    async function runAction(action: Record<string, unknown>, spoken: string): Promise<string> {
-        const kind = action.kind as string;
-
-        if (kind === 'listar') {
-            const counts = videos.reduce<Record<string, number>>((acc, v) => {
-                acc[v.status] = (acc[v.status] ?? 0) + 1;
-                return acc;
-            }, {});
-            const detalle = Object.entries(counts).map(([k, v]) => `${v} en ${k.replace('_', ' ')}`).join(', ');
-            return videos.length === 0 ? 'No hay videos todavia.' : `Hay ${videos.length} videos: ${detalle}.`;
-        }
-
-        if (kind === 'crear') {
-            const template = getTemplate(action.template);
-            const video = await createVideo(
-                String(action.topic),
-                action.platform as VideoRecord['platform'],
-                Number(action.durationSeconds),
-                template.id,
-            );
-            onCreated(video);
-            const conPlantilla = template.id === 'libre' ? '' : ` en formato ${template.label.toLowerCase()}`;
-            return `Listo, cree "${video.topic}"${conPlantilla}. Dime si quieres que genere las escenas.`;
-        }
-
-        if (kind === 'abrir') {
-            const query = String(action.query ?? '').trim().toLowerCase();
-            if (videos.length === 0) return 'Todavia no hay videos. Dime un tema y te creo el primero.';
-
-            // Ordered the way the list shows them, so "el primero" means the
-            // first one the user sees.
-            let target: VideoRecord | undefined;
-            const numero = query.match(/(\d{1,2})/);
-            if (/ultimo|último/.test(query)) target = videos[videos.length - 1];
-            else if (/primero|primer/.test(query)) target = videos[0];
-            else if (numero) target = videos[Number(numero[1]) - 1];
-            if (!target && query) {
-                const words = query.split(/\s+/).filter((word) => word.length > 3);
-                target = videos.find((video) => words.some((word) => video.topic.toLowerCase().includes(word)));
-            }
-            if (!target) return `No encontre ese video. Tienes: ${videos.map((v) => v.topic).join(', ')}.`;
-
-            onSelect(target.id);
-            return `Abri "${target.topic}". Esta en ${STATUS_LABELS[target.status].toLowerCase()}, con ${target.scenes.length} escenas.`;
-        }
-
-        if (!selected) return 'Primero abre un video de la lista, o dime que cree uno.';
-
-        if (kind === 'generar_escenas') {
-            const updated = await generateScenes(selected.id);
-            onUpdated(updated);
-            return `Genere ${updated.scenes.length} escenas.`;
-        }
-
-        if (kind === 'generar_voz') {
-            const result = await generateVoice(selected.id);
-            onUpdated(result.video);
-            return result.ttsConfigured ? 'Voz generada.' : 'La voz en la nube no esta configurada, pero el render narra igual con la voz local.';
-        }
-
-        if (kind === 'editar_escena') {
-            const numero = Number(action.sceneNumber);
-            const scene = [...selected.scenes].sort((a, b) => a.order - b.order)[numero - 1];
-            if (!scene) return `Ese video solo tiene ${selected.scenes.length} escenas.`;
-            const patch: Record<string, unknown> = {};
-            for (const key of ['character', 'action', 'prop'] as const) {
-                if (action[key]) patch[key] = action[key];
-            }
-            if (Object.keys(patch).length === 0) return 'No entendi que cambiar de esa escena.';
-            onUpdated(await updateScene(selected.id, scene.id, patch));
-            return `Escena ${numero} actualizada.`;
-        }
-
-        if (kind === 'estado') {
-            const partes = [`"${selected.topic}" esta en ${STATUS_LABELS[selected.status].toLowerCase()}`];
-            partes.push(selected.scenes.length ? `con ${selected.scenes.length} escenas` : 'todavia sin escenas');
-            if (selected.render_status === 'procesando') partes.push(`generandose al ${selected.render_progress} por ciento`);
-            else if (selected.render_status === 'error') partes.push('con un error en la ultima generacion');
-            else if (selected.video_url) partes.push('con el MP4 ya listo');
-            const falta = selected.scenes.length === 0 ? ' Falta generar las escenas.'
-                : selected.status === 'borrador' ? ' Falta que lo envies a aprobacion.'
-                : selected.status === 'pendiente_aprobacion' ? ' Falta que una persona lo apruebe.'
-                : selected.status === 'aprobado' && !selected.video_url ? ' Falta generar el video.'
-                : '';
-            return `${partes.join(', ')}.${falta}`;
-        }
-
-        if (kind === 'borrar_escena') {
-            const numero = Number(action.sceneNumber);
-            const scene = [...selected.scenes].sort((a, b) => a.order - b.order)[numero - 1];
-            if (!scene) return `Ese video solo tiene ${selected.scenes.length} escenas.`;
-            onUpdated(await deleteScene(selected.id, scene.id));
-            return `Borre la escena ${numero}. Las demas se renumeraron.`;
-        }
-
-        if (kind === 'marca') {
-            const patch = (action.patch ?? {}) as Record<string, string>;
-            if (Object.keys(patch).length === 0) return 'No entendi que cambiar de la marca.';
-            onUpdated(await updateBranding(selected.id, patch));
-            const dicho: string[] = [];
-            if (patch.primary_color) dicho.push('el color primario');
-            if (patch.secondary_color) dicho.push('el color secundario');
-            if (patch.font_family) dicho.push('la tipografia');
-            if (patch.logo_position) dicho.push('la posicion del logo');
-            return `Cambie ${dicho.join(' y ')} de este video.`;
-        }
-
-        if (kind === 'duplicar') {
-            const platform = action.platform as VideoRecord['platform'];
-            const copia = await duplicateVideo(selected.id, platform);
-            onCreated(copia);
-            return `Duplique el video para ${PLATFORM_LABELS[platform]}. La copia arranca como borrador y necesita su propia aprobacion.`;
-        }
-
-        if (kind === 'descargar') {
-            if (!selected.video_url) return 'Ese video todavia no tiene MP4. Hay que aprobarlo y generarlo primero.';
-            window.open(selected.video_url, '_blank', 'noopener');
-            return 'Te abri el MP4 en otra pestana.';
-        }
-
-        if (kind === 'borrar_video') {
-            // Destructive and irreversible, so it asks even when spoken.
-            const confirmado = window.confirm(`Se eliminara "${selected.topic}" y todas sus escenas. Continuar?`);
-            if (!confirmado) return 'Lo deje como estaba.';
-            await deleteVideo(selected.id);
-            onDeleted(selected.id);
-            return `Elimine "${selected.topic}".`;
-        }
-
-        if (kind === 'enviar_aprobacion') {
-            onUpdated(await transitionStatus(selected.id, 'submit'));
-            return 'Enviado a aprobacion. Alguien tiene que revisarlo antes de publicar.';
-        }
-
-        if (kind === 'renderizar') {
-            if (selected.status !== 'aprobado') {
-                return 'Todavia no puedo generarlo: el video tiene que estar aprobado por una persona.';
-            }
-            onUpdated(await transitionStatus(selected.id, 'render'));
-            return 'Arranque la generacion. Te aviso el avance en el panel de estado.';
-        }
-
-        return spoken || 'Hecho.';
-    }
-
     async function send(message: string) {
         const text = message.trim();
         if (!text || busy) return;
 
         setInput('');
+        const history = [
+            ...turns.map((turn) => ({ role: turn.who === 'tu' ? 'user' as const : 'assistant' as const, content: turn.text })),
+            { role: 'user' as const, content: text },
+        ];
         setTurns((current) => [...current, { who: 'tu', text }]);
         setBusy(true);
 
         try {
-            const counts = videos.reduce<Record<string, number>>((acc, v) => {
-                acc[v.status] = (acc[v.status] ?? 0) + 1;
-                return acc;
-            }, {});
-            const response = await fetch('/api/assistant', {
+            // The copilot runs the tools itself, against the same persistence
+            // the panels use, and hands back the record it touched. The browser
+            // only does what a server cannot: move the selection and open a file.
+            const response = await fetch('/api/copilot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: text,
-                    context: {
-                        total: videos.length,
-                        porEstado: counts,
-                        seleccionado: selected && {
-                            topic: selected.topic, status: selected.status,
-                            scenes: selected.scenes.length, renderStatus: selected.render_status,
-                        },
-                    },
-                }),
+                body: JSON.stringify({ videoId: selected?.id ?? null, messages: history }),
             });
-            if (!response.ok) throw new Error('El asistente no respondio.');
-            const data = await response.json() as { reply: string; action: Record<string, unknown> };
+            const data = await response.json() as {
+                reply?: string; error?: string;
+                video?: VideoRecord | null; created?: boolean; deletedId?: string | null;
+                selectId?: string | null; descargarUrl?: string | null;
+            };
+            if (!response.ok) throw new Error(data.error ?? 'El asistente no respondio.');
 
-            const result = await runAction(data.action, data.reply);
-            say(data.reply && data.action.kind === 'responder' ? data.reply : result);
+            if (data.deletedId) onDeleted(data.deletedId);
+            if (data.video) {
+                if (data.created) onCreated(data.video);
+                else onUpdated(data.video);
+            }
+            if (data.selectId) onSelect(data.selectId);
+            if (data.descargarUrl) window.open(data.descargarUrl, '_blank', 'noopener');
+
+            say(data.reply ?? 'Hecho.');
         } catch (error) {
             say(error instanceof Error ? error.message : 'Algo fallo al ejecutar eso.');
         } finally {

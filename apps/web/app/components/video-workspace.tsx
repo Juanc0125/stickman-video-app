@@ -14,6 +14,12 @@ interface VideoWorkspaceProps {
     onDuplicated: (video: VideoRecord) => void;
 }
 
+// Only the fields the branding panel copies into its own state.
+function brandSignature(video: VideoRecord): string {
+    const { primary_color, secondary_color, font_family, logo_position, logo_url } = video.branding;
+    return [primary_color, secondary_color, font_family, logo_position, logo_url ?? ''].join('|');
+}
+
 export default function VideoWorkspace({ video, onUpdated, onDuplicated }: VideoWorkspaceProps) {
     if (!video) {
         return (
@@ -85,9 +91,14 @@ export default function VideoWorkspace({ video, onUpdated, onDuplicated }: Video
                 <StatusBadge status={video.status} />
             </header>
 
-            <ScriptPanel video={video} onUpdated={onUpdated} />
+            {/* These two panels seed their fields from the record when they
+                mount. The copilot can now change the same video from outside,
+                so the key gives them fresh initial state when the value they
+                show actually changed - without it the textarea keeps the old
+                script and the colour pickers the old brand. */}
+            <ScriptPanel key={`guion:${video.script}`} video={video} onUpdated={onUpdated} />
             <ScenePanel video={video} onUpdated={onUpdated} />
-            <BrandingPanel video={video} onUpdated={onUpdated} />
+            <BrandingPanel key={`marca:${brandSignature(video)}`} video={video} onUpdated={onUpdated} />
             <StatusPanel video={video} onUpdated={onUpdated} onDuplicated={onDuplicated} />
         </div>
     );
