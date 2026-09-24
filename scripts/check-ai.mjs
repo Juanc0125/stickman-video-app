@@ -13,8 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Same precedence the app uses: the repo root loses to apps/web.
-for (const file of [join(root, '.env.local'), join(root, 'apps', 'web', '.env.local')]) {
+// Same precedence scripts/dev.mjs uses when it starts the app: apps/web first,
+// the repo root last so it wins. Checking with the other order would report a
+// key the running app never reads.
+for (const file of [join(root, 'apps', 'web', '.env.local'), join(root, '.env.local')]) {
     let text;
     try {
         text = readFileSync(file, 'utf8');

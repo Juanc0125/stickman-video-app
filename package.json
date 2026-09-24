@@ -16,7 +16,10 @@
     "start:web": "npm run start --workspace web",
     "start:worker": "npm run start --workspace @stickman-video-app/render-worker",
     "lint": "npm run lint --workspace web",
-    "verify": "npm run lint && npm run build"
+    "check:types": "npm run check:types --workspace @stickman-video-app/render-worker",
+    "verify": "npm run lint && npm run check:types && npm run build",
+    "e2e": "node scripts/e2e.mjs",
+    "check:ai": "node scripts/check-ai.mjs"
   },
   "dependencies": {
     "next": "16.3.4",
