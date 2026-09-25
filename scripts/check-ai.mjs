@@ -13,6 +13,10 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// The same file lib/ai-provider.ts imports, so this can never report on a model
+// the app does not actually use.
+const MODELS = JSON.parse(readFileSync(join(root, 'apps', 'web', 'lib', 'ai-models.json'), 'utf8'));
+
 // Same precedence scripts/dev.mjs uses when it starts the app: apps/web first,
 // the repo root last so it wins. Checking with the other order would report a
 // key the running app never reads.
@@ -50,15 +54,16 @@ const PROVIDERS = [
         id: 'groq',
         key: 'GROQ_API_KEY',
         url: process.env.GROQ_API_URL ?? 'https://api.groq.com/openai/v1/chat/completions',
-        model: process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b',
+        model: process.env.GROQ_MODEL ?? MODELS.groq.model,
         headers: () => ({ Authorization: `Bearer ${process.env.GROQ_API_KEY}` }),
     },
     {
         id: 'openrouter',
         key: 'OPENROUTER_API_KEY',
         url: process.env.OPENROUTER_API_URL ?? 'https://openrouter.ai/api/v1/chat/completions',
-        model: process.env.OPENROUTER_MODEL ?? 'google/gemma-4-31b-it:free',
+        model: process.env.OPENROUTER_MODEL ?? MODELS.openrouter.model,
         headers: () => ({ Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'X-Title': 'Stickman Video Studio' }),
+        alternates: MODELS.openrouter.alternates,
     },
     {
         id: 'openai/anthropic (heredado)',
@@ -87,6 +92,7 @@ async function probe(provider) {
                 ],
                 tools: [TOOL],
                 tool_choice: 'auto',
+                ...(provider.alternates ? { models: [provider.model, ...provider.alternates] } : {}),
             }),
             signal: AbortSignal.timeout(40000),
         });

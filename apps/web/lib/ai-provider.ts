@@ -1,3 +1,4 @@
+import MODELS from './ai-models.json';
 import { generateAiText } from './ai';
 
 export interface ChatMessage {
@@ -19,12 +20,12 @@ export interface GenerateOptions { tools?: ToolSchema[]; maxTokens?: number; tem
 // Checked against console.groq.com/docs/models and console.groq.com/docs/tool-use
 // on 2026-09-23: gpt-oss-120b is on the production tier (preview models can be
 // withdrawn without notice) and is listed first for tool use.
-const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-120b';
+const GROQ_DEFAULT_MODEL = MODELS.groq.model;
 
 // Checked against the openrouter.ai/models catalogue on 2026-09-23: free on both
 // prompt and completion, with `tools` among its supported parameters. Free
 // endpoints are the ones that disappear first, hence OPENROUTER_MODEL.
-const OPENROUTER_DEFAULT_MODEL = 'google/gemma-4-31b-it:free';
+const OPENROUTER_DEFAULT_MODEL = MODELS.openrouter.model;
 
 const TIMEOUT_MS = 30000;
 
@@ -34,6 +35,8 @@ interface Provider {
     model: string;
     apiKey: string | undefined;
     headers: Record<string, string>;
+    /** Only OpenRouter: extra models it may fall through to when the first is busy. */
+    alternates?: string[];
 }
 
 type WireToolCall = { id: string; type: 'function'; function: { name: string; arguments: string } };
@@ -73,6 +76,11 @@ function providers(): Provider[] {
         },
         {
             id: 'openrouter',
+            // Measured 2026-09-24 against the live catalogue: all five answer a
+            // tool-calling probe in 1.4-2.4s. Listed in that order; OpenRouter
+            // walks the list when one is saturated, which is what a 429 on a
+            // free model means.
+            alternates: MODELS.openrouter.alternates,
             url: process.env.OPENROUTER_API_URL ?? 'https://openrouter.ai/api/v1/chat/completions',
             model: process.env.OPENROUTER_MODEL ?? OPENROUTER_DEFAULT_MODEL,
             apiKey: process.env.OPENROUTER_API_KEY,
@@ -157,6 +165,7 @@ function secondsUntilRetry(headers: Headers): number | null {
 async function requestCompletion(provider: Provider, system: string, messages: ChatMessage[], options: GenerateOptions): Promise<GenerationResult> {
     const body: Record<string, unknown> = {
         model: provider.model,
+        ...(provider.alternates?.length ? { models: [provider.model, ...provider.alternates] } : {}),
         temperature: options.temperature ?? 0.6,
         max_tokens: options.maxTokens ?? 1024,
         messages: [{ role: 'system', content: system }, ...messages.map(toWireMessage)],

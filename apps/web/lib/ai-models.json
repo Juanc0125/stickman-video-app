@@ -1,0 +1,13 @@
+{
+  "_comment": "Single source for the default models. ai-provider.ts imports it and scripts/check-ai.mjs reads it, so the diagnostic can never report on a model the app does not use. Verified against the live catalogues on 2026-09-24. OpenRouter accepts at most three models per request, so the list is the primary plus two - picked from different vendors, since two models from one vendor saturate together. Override per environment with GROQ_MODEL / OPENROUTER_MODEL.",
+  "groq": {
+    "model": "openai/gpt-oss-120b"
+  },
+  "openrouter": {
+    "model": "inclusionai/ling-3.0-flash-fin:free",
+    "alternates": [
+      "dots-studio/dots-3-note-preview:free",
+      "liquid/lfm-2.5-2.6b:free"
+    ]
+  }
+}
