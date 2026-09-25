@@ -6,16 +6,16 @@
     "semantic_hash": "8866ef4fe0936e416929945a5142123c"
   },
   "apps/render-worker/drawing.ts": {
-    "mtime": 1790263466.9592705,
-    "seen": 1790264776.246562,
-    "ast_hash": "87dc4f680c58fe4cd093c003fb623e57",
-    "semantic_hash": "87dc4f680c58fe4cd093c003fb623e57"
+    "mtime": 1790307147.460261,
+    "seen": 1790307730.2085955,
+    "ast_hash": "8ee7497dc96af7f6f3879c4283b72a63",
+    "semantic_hash": ""
   },
   "apps/render-worker/index.ts": {
-    "mtime": 1790263531.968525,
-    "seen": 1790264776.246567,
-    "ast_hash": "b5552ef4180c2782fc97333aa580886c",
-    "semantic_hash": "b5552ef4180c2782fc97333aa580886c"
+    "mtime": 1790305761.4374864,
+    "seen": 1790307730.2086005,
+    "ast_hash": "ec6b2d27927e5e2e5484288d54eadc30",
+    "semantic_hash": ""
   },
   "apps/render-worker/package.json": {
     "mtime": 1790263531.9727094,
@@ -36,10 +36,10 @@
     "semantic_hash": "fdf4b553a9f4df0b0d4fc03d73fbc54f"
   },
   "apps/render-worker/voice.ts": {
-    "mtime": 1789867199.6790266,
-    "seen": 1790000479.6997588,
-    "ast_hash": "9af3b825d7b9877a58c0346595d974c9",
-    "semantic_hash": "9af3b825d7b9877a58c0346595d974c9"
+    "mtime": 1790305761.4384887,
+    "seen": 1790307730.2086177,
+    "ast_hash": "56a8e52729dbc278e2f83739e71a824f",
+    "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/branding/route.ts": {
     "mtime": 1789785714.3090003,
@@ -66,16 +66,16 @@
     "semantic_hash": "3578238b6ea7dad2be0246e3c1a74245"
   },
   "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts": {
-    "mtime": 1790141170.7003002,
-    "seen": 1790264776.2503378,
-    "ast_hash": "dc2eaf68858b12757afc6b0efacfdb00",
-    "semantic_hash": "dc2eaf68858b12757afc6b0efacfdb00"
+    "mtime": 1790343269.2044036,
+    "seen": 1790343349.1753414,
+    "ast_hash": "fb7b72b6ab946fdd360d2747e28fa04c",
+    "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/scenes/route.ts": {
-    "mtime": 1790144880.8422835,
-    "seen": 1790264776.250343,
-    "ast_hash": "359025042a4d8f9c5160fdc486e5d63e",
-    "semantic_hash": "359025042a4d8f9c5160fdc486e5d63e"
+    "mtime": 1790343269.2044036,
+    "seen": 1790343349.1753461,
+    "ast_hash": "5ad5ec7119d2a1a94b70ace3398081c0",
+    "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/tts/route.ts": {
     "mtime": 1789785627.8218937,
@@ -96,10 +96,10 @@
     "semantic_hash": "8aa3fb583847f301f03e738d144c0d29"
   },
   "apps/web/app/components/api.ts": {
-    "mtime": 1790144727.2876897,
-    "seen": 1790264776.2515085,
-    "ast_hash": "322be6eba77da2271b8826fdca03e1fd",
-    "semantic_hash": "322be6eba77da2271b8826fdca03e1fd"
+    "mtime": 1790342837.252953,
+    "seen": 1790343349.1753638,
+    "ast_hash": "51e5d2e1441ec10252e9abf24c44844c",
+    "semantic_hash": ""
   },
   "apps/web/app/components/branding-panel.tsx": {
     "mtime": 1790144887.9590092,
@@ -144,10 +144,10 @@
     "semantic_hash": "68416f8e53498a71f308ddf89723aed9"
   },
   "apps/web/app/components/video-list.tsx": {
-    "mtime": 1790144061.5577226,
-    "seen": 1790264776.2534666,
-    "ast_hash": "fb8f2ae1895cae3ea5a5d0961f9c7f34",
-    "semantic_hash": "fb8f2ae1895cae3ea5a5d0961f9c7f34"
+    "mtime": 1790342968.142648,
+    "seen": 1790343349.1754014,
+    "ast_hash": "311ae65351282f05e6353e1c3af51bf7",
+    "semantic_hash": ""
   },
   "apps/web/app/components/video-studio.tsx": {
     "mtime": 1790220728.3650115,
@@ -204,10 +204,10 @@
     "semantic_hash": "f17391af52139e9340b3befff9a62f11"
   },
   "apps/web/lib/video-persistence.ts": {
-    "mtime": 1790144873.7795324,
-    "seen": 1790264776.25835,
-    "ast_hash": "c4c056092fdacc71e89db423e205124b",
-    "semantic_hash": "c4c056092fdacc71e89db423e205124b"
+    "mtime": 1790343269.2010522,
+    "seen": 1790343349.1754978,
+    "ast_hash": "e221bc195420607dd3cc2ac24fcd498b",
+    "semantic_hash": ""
   },
   "apps/web/next.config.ts": {
     "mtime": 1789265301.251657,
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "apps/web/lib/assistant.ts": {
-    "mtime": 1790283018.0743673,
-    "seen": 1790303046.6627557,
-    "ast_hash": "4d27518ee2ed2520e586571d70cddc35",
+    "mtime": 1790343269.2032557,
+    "seen": 1790343349.1754816,
+    "ast_hash": "9638304c8f2f83ed53867c831df32c7b",
     "semantic_hash": ""
   },
   "apps/web/lib/brand-templates.ts": {
@@ -474,9 +474,9 @@
     "semantic_hash": "c3e0aa8dbfb734bb34a872e36b105925"
   },
   "apps/web/lib/copilot.ts": {
-    "mtime": 1790283018.0768998,
-    "seen": 1790303046.6627595,
-    "ast_hash": "084ed4bb0a90ce14ab8b1972fffc306b",
+    "mtime": 1790342868.4610157,
+    "seen": 1790343349.1754875,
+    "ast_hash": "6033d436e250dbad71fa31a5e87bc842",
     "semantic_hash": ""
   },
   "packages/shared-types/templates.ts": {
@@ -558,9 +558,9 @@
     "semantic_hash": ""
   },
   "scripts/set-ai-key.mjs": {
-    "mtime": 1790273742.1580615,
-    "seen": 1790274555.1612313,
-    "ast_hash": "f52050cb2ed15bc7f3701ae09a5d2b76",
+    "mtime": 1790308440.3062603,
+    "seen": 1790308658.6302772,
+    "ast_hash": "2998c5d9242c99647a67e659295a794f",
     "semantic_hash": ""
   },
   "apps/web/public/backdrop/space.jpg": {
@@ -573,6 +573,12 @@
     "mtime": 1790303845.7982368,
     "seen": 1790303911.083318,
     "ast_hash": "89703ceb17789ca3be79f65f275b5a3f",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/videos/batch/route.ts": {
+    "mtime": 1790342827.6166766,
+    "seen": 1790343349.175353,
+    "ast_hash": "8eee760850712e5e6553874fbc69f218",
     "semantic_hash": ""
   }
 }
