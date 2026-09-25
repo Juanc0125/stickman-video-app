@@ -47,12 +47,21 @@ export interface AssistantContext {
 // assistant that can approve its own output removes the only control there is.
 // Both stems are listed on purpose: "aprueba", the form people actually say,
 // does not contain "aprob".
-const FORBIDDEN = /\b(aprob|aprueb|public|publiqu|autoriz)\w*/i;
+export const FORBIDDEN = /\b(aprob|aprueb|public|publiqu|autoriz)\w*/i;
+
+// A question *about* the gate rather than a request to open it.
+export const ABOUT_APPROVAL = /\b(que (me )?falta|cuando|quien|como se|se puede|puedo|es posible|por que)\b/i;
 
 // Asking the assistant what suits *you* is asking for financial advice, which
 // this product cannot give. It is not a refusal of the whole sentence: the
 // educational half still gets answered and the video still gets offered.
 const ADVICE = /\b(me conviene|cual elijo|cual escojo|que me recomiendas|recomiendame|me van a aprobar|cuanto me prestan|cuanto me prestarian|deberia (tomar|pedir|firmar)|es buena idea)\b/i;
+
+// The studio's own vocabulary. Asking which template or character to use is a
+// question about the tool, and answering it is the product; only a question
+// about the person's own money is advice this cannot give.
+const STUDIO_NOUNS = /\b(plantilla|plantillas|personaje|personajes|escena|escenas|video|videos|guion|plataforma|marca|formato|tipografia|color)\b/i;
+const MONEY_SUBJECT = /\b(credito|creditos|tasa|tasas|prestamo|cuota|hipoteca|plazo|banco|entidad|financiaci|refinanci|seguro|deuda)\b/i;
 
 const PLATFORM_WORDS: Record<string, Platform> = {
     reels: 'reels', instagram: 'reels', insta: 'reels',
@@ -174,13 +183,16 @@ function matchKnownCommand(message: string): AssistantReply | null {
     const text = message.toLowerCase().trim();
 
     if (FORBIDDEN.test(text)) {
+        const pregunta = ABOUT_APPROVAL.test(text);
         return {
-            reply: 'No puedo aprobar ni publicar videos. Esa decision tiene que tomarla una persona revisando el contenido, porque es marketing financiero regulado. Te dejo el video listo y tu decides.',
-            action: { kind: 'rechazado', reason: 'aprobacion humana obligatoria' },
+            reply: pregunta
+                ? 'Aprobar y publicar los hace una persona, no yo: el video pasa a pendiente de aprobacion y ahi alguien lo revisa y decide. Puedo decirte que le falta antes de ese paso si me preguntas por el estado.'
+                : 'No puedo aprobar ni publicar videos. Esa decision tiene que tomarla una persona revisando el contenido, porque es marketing financiero regulado. Te dejo el video listo y tu decides.',
+            action: pregunta ? { kind: 'estado' } : { kind: 'rechazado', reason: 'aprobacion humana obligatoria' },
         };
     }
 
-    if (ADVICE.test(text)) {
+    if (ADVICE.test(text) && MONEY_SUBJECT.test(text) && !STUDIO_NOUNS.test(text)) {
         const context = glossaryAnswer(text);
         return {
             reply: `No puedo decirte que te conviene ni estimar si te aprobarian: eso depende de tu situacion y lo define la entidad. ${context ?? 'Lo que si puedo es explicarte los conceptos y armar el video que los explique.'}`,

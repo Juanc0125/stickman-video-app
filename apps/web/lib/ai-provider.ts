@@ -122,6 +122,38 @@ function toToolCalls(choices: CompletionResponse['choices'], provider: Provider)
     });
 }
 
+/** Carries the status and the reset hint so the caller can tell a rate limit from a dead provider. */
+class ProviderError extends Error {
+    readonly status: number;
+    readonly retryAfterSeconds: number | null;
+
+    constructor(message: string, status: number, retryAfterSeconds: number | null) {
+        super(message);
+        this.status = status;
+        this.retryAfterSeconds = retryAfterSeconds;
+    }
+}
+
+// Providers report the wait in seconds ("7"), as a duration ("7.66s") or as a
+// date. Anything unreadable becomes null, which the caller treats as "do not
+// wait".
+function secondsUntilRetry(headers: Headers): number | null {
+    for (const name of ['retry-after', 'x-ratelimit-reset-tokens', 'x-ratelimit-reset-requests']) {
+        const raw = headers.get(name);
+        if (!raw) continue;
+        const match = raw.trim().match(/^([\d.]+)\s*(ms|s|m)?$/i);
+        if (match) {
+            const value = Number(match[1]);
+            if (!Number.isFinite(value)) continue;
+            const unit = (match[2] ?? 's').toLowerCase();
+            return unit === 'ms' ? value / 1000 : unit === 'm' ? value * 60 : value;
+        }
+        const date = Date.parse(raw);
+        if (!Number.isNaN(date)) return Math.max(0, (date - Date.now()) / 1000);
+    }
+    return null;
+}
+
 async function requestCompletion(provider: Provider, system: string, messages: ChatMessage[], options: GenerateOptions): Promise<GenerationResult> {
     const body: Record<string, unknown> = {
         model: provider.model,
@@ -143,7 +175,13 @@ async function requestCompletion(provider: Provider, system: string, messages: C
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    if (!response.ok) throw new Error(`${provider.id} respondio con ${response.status}.`);
+    if (!response.ok) {
+        throw new ProviderError(
+            `${provider.id} respondio con ${response.status}.`,
+            response.status,
+            secondsUntilRetry(response.headers),
+        );
+    }
 
     // An empty or truncated body throws here, which is the same signal as a bad
     // status: try the next provider.
@@ -205,13 +243,19 @@ export function isCopilotConfigured(): boolean {
 // not written off: those pass on their own.
 const EXHAUSTED = new Set<string>();
 
+// A pause long enough to be worth taking rather than answering badly, and short
+// enough that nobody thinks the studio has hung.
+const MAX_RETRY_WAIT_SECONDS = 12;
+
 function isExhausted(error: unknown): boolean {
     const text = error instanceof Error ? error.message : String(error);
     return /insufficient_quota|credit_balance_exhausted|no credits remaining|payment required|402/i.test(text);
 }
 
 export async function generateWithFallback(system: string, messages: ChatMessage[], options: GenerateOptions = {}): Promise<GenerationResult | null> {
-    for (const provider of providers()) {
+    const lista = providers();
+    for (const [indice, provider] of lista.entries()) {
+        const remaining = lista.slice(indice + 1);
         if (!provider.apiKey) {
             console.info(`Sin clave configurada para ${provider.id}; se omite.`);
             continue;
@@ -226,10 +270,36 @@ export async function generateWithFallback(system: string, messages: ChatMessage
             return result;
         } catch (error) {
             if (isExhausted(error)) {
+                // No credit is permanent until somebody pays; a rate limit is not,
+                // and must never land in this set.
                 EXHAUSTED.add(provider.id);
                 console.warn(`${provider.id} no tiene saldo; no se volvera a intentar en esta sesion.`, error);
-            } else {
+                continue;
+            }
+
+            const rateLimited = error instanceof ProviderError && error.status === 429;
+            if (!rateLimited) {
                 console.warn(`Fallo ${provider.id}; se intentara el siguiente proveedor.`, error);
+                continue;
+            }
+
+            // Another provider answers sooner than this one will recover, so the
+            // wait is only worth it when this is the last one standing.
+            const espera = error.retryAfterSeconds;
+            const hayOtro = remaining.some((other) => other.apiKey && !EXHAUSTED.has(other.id));
+            if (hayOtro || espera === null || espera > MAX_RETRY_WAIT_SECONDS) {
+                console.warn(`${provider.id} esta saturado (429, espera ${espera ?? 'desconocida'}s); se pasa al siguiente proveedor.`);
+                continue;
+            }
+
+            console.info(`${provider.id} esta saturado; esperando ${espera.toFixed(1)}s y reintentando una vez.`);
+            await new Promise((resolve) => setTimeout(resolve, espera * 1000 + 250));
+            try {
+                const result = await requestCompletion(provider, system, messages, options);
+                console.info(`Respondio ${provider.id} tras esperar el limite de tasa.`);
+                return result;
+            } catch (retryError) {
+                console.warn(`${provider.id} sigue saturado tras esperar; se continua sin el.`, retryError);
             }
         }
     }

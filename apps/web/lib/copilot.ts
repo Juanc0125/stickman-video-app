@@ -13,7 +13,7 @@ import { POST as ttsRoute } from '../app/api/videos/[id]/tts/route';
 import type { VideoRecord } from '../app/api/videos/store';
 import { ACTION_OPTIONS, CHARACTER_OPTIONS, PLATFORM_LABELS, PLATFORM_OPTIONS, PROP_OPTIONS, STATUS_LABELS } from '../app/components/constants';
 import { generateWithFallback, isCopilotConfigured, type ChatMessage, type ToolCall, type ToolSchema } from './ai-provider';
-import { interpret, type AssistantAction, type AssistantContext, type BrandPatch } from './assistant';
+import { FORBIDDEN, interpret, type AssistantAction, type AssistantContext, type BrandPatch } from './assistant';
 import { listBrandTemplates } from './brand-templates';
 import { createVideo, deleteScene, deleteVideo, getVideo, listVideos, updateBranding, updateScene, updateScript } from './video-persistence';
 
@@ -75,9 +75,6 @@ const MAX_HISTORY = 12;
 // RF-012, half of the guard: the tool list below has no approve, publish or
 // render tool. The other half is this pattern, which refuses the request when
 // it is asked in words, before the model is even called. Same stems as
-// FORBIDDEN in lib/assistant.ts, which keeps them module-private: "aprueba",
-// the form people actually say, does not contain "aprob", so both are listed.
-const FORBIDDEN = /\b(aprob|aprueb|public|publiqu|autoriz)\w*/i;
 
 const APPROVAL_REFUSAL = 'No puedo aprobar, publicar ni generar el video final. Esa decision la toma una persona revisando el contenido, porque esto es marketing financiero regulado. Yo te lo dejo listo y tu decides.';
 
@@ -87,28 +84,28 @@ const APPROVAL_REFUSAL = 'No puedo aprobar, publicar ni generar el video final. 
 const LIMITES = 'NUNCA des recomendaciones financieras personalizadas, ni estimes si le aprobarian un credito, ni inventes tasas, cifras ni nombres de entidades.';
 
 const SYSTEM = [
-    'Eres el copiloto de Stickman, una herramienta interna que produce videos verticales cortos de marketing hipotecario.',
-    'El operador te habla en lenguaje natural y tu operas el estudio llamando a las herramientas. No describas lo que harias ni digas que ya lo hiciste: llama a la herramienta y despues cuenta el resultado.',
-    'Respondes en español, en una o dos frases, en prosa hablada y directa. Te pueden escuchar por voz, asi que nada de listas, markdown ni emojis.',
-    'Trabajas sobre el video abierto. Si no hay ninguno abierto y hace falta, crealo con generar_guion o dilo claramente.',
-    'Los numeros de escena empiezan en 1 y son los mismos que muestra el panel.',
-    `Plataformas validas: ${PLATFORMS.join(', ')}. Plantillas validas: ${TEMPLATE_IDS.join(', ')}.`,
+    'Eres el copiloto de Stickman: produces videos verticales cortos de marketing hipotecario.',
+    'El operador habla en lenguaje natural; tu operas el estudio llamando herramientas. No describas lo que harias: llama la herramienta y cuenta el resultado.',
+    'Responde en español, una o dos frases, prosa hablada. Te escuchan por voz: nada de listas, markdown ni emojis.',
+    'Trabajas sobre el video abierto; si no hay uno y hace falta, crealo con generar_guion.',
+    'Las escenas empiezan en 1, igual que en el panel.',
+    `Plataformas: ${PLATFORMS.join(', ')}. Plantillas: ${TEMPLATE_IDS.join(', ')}.`,
     `Personajes: ${CHARACTERS.join(', ')}. Acciones: ${ACTIONS.join(', ')}. Objetos: ${PROPS.join(', ')}.`,
-    'NUNCA apruebes, publiques, autorices ni generes el archivo final de un video, y no ofrezcas hacerlo: no tienes herramientas para eso porque esa decision la toma una persona revisando el contenido. Si te lo piden, explicalo.',
-    `${LIMITES} Explica los conceptos en general y ofrece convertirlos en un video.`,
+    'NUNCA apruebes, publiques, autorices ni generes el video final, ni ofrezcas hacerlo: no tienes herramientas para eso, lo decide una persona revisando el contenido. Explicalo si te lo piden.',
+    `${LIMITES} Explica en general y ofrece convertirlo en video.`,
 ].join('\n');
 
 const TOOLS: ToolSchema[] = [
     {
         name: 'generar_guion',
-        description: 'Crea un video nuevo con su guion escrito por IA (RF-001). Usalo cuando el operador pide un video sobre un tema. El video creado queda abierto para el resto de herramientas.',
+        description: 'Crea un video nuevo con su guion y lo deja abierto.',
         parameters: {
             type: 'object',
             properties: {
-                tema: { type: 'string', description: 'Tema del video, en español.' },
-                duracion_segundos: { type: 'number', description: `Duracion objetivo en segundos, entre ${MIN_DURATION} y ${MAX_DURATION}. Por defecto ${DEFAULT_DURATION}.` },
-                plataforma: { type: 'string', enum: PLATFORMS, description: 'Plataforma de destino.' },
-                plantilla: { type: 'string', enum: TEMPLATE_IDS, description: 'Estructura narrativa. Usa "libre" si el operador no pide una concreta.' },
+                tema: { type: 'string' },
+                duracion_segundos: { type: 'number', description: `${MIN_DURATION}-${MAX_DURATION}, por defecto ${DEFAULT_DURATION}.` },
+                plataforma: { type: 'string', enum: PLATFORMS },
+                plantilla: { type: 'string', enum: TEMPLATE_IDS, description: 'Estructura narrativa.' },
             },
             required: ['tema'],
             additionalProperties: false,
@@ -116,11 +113,11 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'editar_guion',
-        description: 'Reescribe el guion del video abierto siguiendo una instruccion del operador (RF-008): acortarlo, cambiar el final, subir el tono, etc.',
+        description: 'Reescribe el guion segun una instruccion.',
         parameters: {
             type: 'object',
             properties: {
-                instrucciones: { type: 'string', description: 'Que hay que cambiar del guion, en español.' },
+                instrucciones: { type: 'string' },
             },
             required: ['instrucciones'],
             additionalProperties: false,
@@ -128,17 +125,17 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'generar_escenas',
-        description: 'Divide el guion del video abierto en escenas con personaje, accion, objeto y duracion (RF-002). Reemplaza las escenas que hubiera.',
+        description: 'Divide el guion en escenas, reemplazando las que haya.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
     {
         name: 'regenerar_escena',
-        description: 'Vuelve a escribir una sola escena del video abierto manteniendo la continuidad con las demas (RF-007).',
+        description: 'Reescribe una escena entera.',
         parameters: {
             type: 'object',
             properties: {
-                numero_escena: { type: 'number', description: 'Numero de escena tal como lo ve el operador, empezando en 1.' },
-                instrucciones: { type: 'string', description: 'Opcional: como quiere el operador que quede esa escena.' },
+                numero_escena: { type: 'number' },
+                instrucciones: { type: 'string', description: 'Opcional: como debe quedar.' },
             },
             required: ['numero_escena'],
             additionalProperties: false,
@@ -146,15 +143,15 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'editar_escena',
-        description: 'Cambia campos concretos de una escena del video abierto. Envia solo los campos que hay que cambiar.',
+        description: 'Cambia campos sueltos de una escena, sin reescribirla.',
         parameters: {
             type: 'object',
             properties: {
-                numero_escena: { type: 'number', description: 'Numero de escena tal como lo ve el operador, empezando en 1.' },
-                personaje: { type: 'string', enum: CHARACTERS, description: 'Quien aparece en la escena.' },
-                accion: { type: 'string', enum: ACTIONS, description: 'Que hace el personaje.' },
-                objeto: { type: 'string', enum: PROPS, description: 'Objeto en pantalla.' },
-                descripcion: { type: 'string', description: 'La linea que el personaje dice en voz alta, que ademas es el subtitulo.' },
+                numero_escena: { type: 'number' },
+                personaje: { type: 'string', enum: CHARACTERS },
+                accion: { type: 'string', enum: ACTIONS },
+                objeto: { type: 'string', enum: PROPS },
+                descripcion: { type: 'string', description: 'Linea hablada, que es tambien el subtitulo.' },
             },
             required: ['numero_escena'],
             additionalProperties: false,
@@ -162,11 +159,11 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'borrar_escena',
-        description: 'Elimina una escena del video abierto. Las siguientes se renumeran solas.',
+        description: 'Elimina una escena y renumera las siguientes.',
         parameters: {
             type: 'object',
             properties: {
-                numero_escena: { type: 'number', description: 'Numero de escena tal como lo ve el operador, empezando en 1.' },
+                numero_escena: { type: 'number' },
             },
             required: ['numero_escena'],
             additionalProperties: false,
@@ -174,11 +171,11 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'sugerir_plantilla',
-        description: 'Recomienda que plantilla narrativa encaja con el video que el operador describe (RF-019). Solo informa, no modifica nada.',
+        description: 'Recomienda una plantilla. Solo informa.',
         parameters: {
             type: 'object',
             properties: {
-                tipo_video: { type: 'string', description: 'Como describe el operador el video que quiere.' },
+                tipo_video: { type: 'string' },
             },
             required: ['tipo_video'],
             additionalProperties: false,
@@ -186,11 +183,11 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'sugerir_personaje',
-        description: 'Recomienda que personaje usar para un papel descrito en palabras (RF-009). Solo informa, no modifica nada.',
+        description: 'Recomienda un personaje. Solo informa.',
         parameters: {
             type: 'object',
             properties: {
-                rol: { type: 'string', description: 'El papel que describe el operador, por ejemplo "quien explica" o "los compradores".' },
+                rol: { type: 'string', description: 'El papel, p.ej. "quien explica".' },
             },
             required: ['rol'],
             additionalProperties: false,
@@ -198,11 +195,11 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'aplicar_branding',
-        description: 'Aplica al video abierto una plantilla de marca guardada: logo, colores y tipografia (RF-025 a RF-028).',
+        description: 'Aplica una marca guardada: logo, colores y tipografia.',
         parameters: {
             type: 'object',
             properties: {
-                nombre_o_id_plantilla: { type: 'string', description: 'Nombre de la plantilla de marca tal como la nombra el operador, o su id.' },
+                nombre_o_id_plantilla: { type: 'string' },
             },
             required: ['nombre_o_id_plantilla'],
             additionalProperties: false,
@@ -210,16 +207,16 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'estado_proyecto',
-        description: 'Resume el video abierto: estado, escenas, render y que falta por hacer. Solo informa, no modifica nada.',
+        description: 'Resume estado, escenas, render y pendientes. Solo informa.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
     {
         name: 'abrir_video',
-        description: 'Abre otro video de la biblioteca y lo deja como el video sobre el que trabajas. Acepta palabras del tema, "primero" o "ultimo".',
+        description: 'Abre otro video de la biblioteca y trabaja sobre el.',
         parameters: {
             type: 'object',
             properties: {
-                busqueda: { type: 'string', description: 'Palabras del tema del video, o "primero" / "ultimo".' },
+                busqueda: { type: 'string', description: 'Tema, "primero" o "ultimo".' },
             },
             required: ['busqueda'],
             additionalProperties: false,
@@ -227,16 +224,16 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'generar_voz',
-        description: 'Prepara la narracion de las escenas del video abierto. Requiere que ya existan escenas.',
+        description: 'Narra las escenas. Requiere que ya existan.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
     {
         name: 'duplicar_video',
-        description: 'Copia el video abierto para otra plataforma, con el mismo guion, escenas y marca. La copia nace como borrador y necesita su propia aprobacion.',
+        description: 'Copia el video a otra plataforma; nace en borrador.',
         parameters: {
             type: 'object',
             properties: {
-                plataforma: { type: 'string', enum: ['reels', 'tiktok', 'shorts'], description: 'Plataforma de destino, distinta de la actual.' },
+                plataforma: { type: 'string', enum: PLATFORMS, description: 'Distinta de la actual.' },
             },
             required: ['plataforma'],
             additionalProperties: false,
@@ -244,12 +241,12 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'descargar_video',
-        description: 'Entrega al operador el MP4 ya generado del video abierto. No genera nada: si el MP4 no existe, lo dice.',
+        description: 'Entrega el MP4 ya generado. No genera nada.',
         parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
 ];
 
-// The scene planner (RF-002), the single-scene regenerator (RF-007), the strict
+// The scene planner, the single-scene regenerator, the strict
 // scene validation and the brand-template application live inside their route
 // handlers and nowhere else, so the copilot invokes the handler in process
 // instead of keeping a second copy that would drift from the panels. The URL is
