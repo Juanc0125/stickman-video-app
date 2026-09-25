@@ -55,6 +55,39 @@ export async function createVideo(
     return data.video;
 }
 
+export interface BatchCreateFailure {
+    tema: string;
+    error: string;
+}
+
+export interface BatchCreateResult {
+    creados: VideoRecord[];
+    fallidos: BatchCreateFailure[];
+}
+
+// RF-024: several videos from several topics in one call. The server runs
+// them sequentially - each is at least one model call - and a partial
+// failure is a 200 with both arrays populated, not a thrown error.
+export async function createVideosBatch(
+    temas: string[],
+    platform: Platform,
+    targetDurationSeconds: number,
+    template: VideoTemplate,
+    conEscenas: boolean,
+): Promise<BatchCreateResult> {
+    return request<BatchCreateResult>('/api/videos/batch', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+            temas,
+            platform,
+            target_duration_seconds: targetDurationSeconds,
+            template,
+            con_escenas: conEscenas,
+        }),
+    });
+}
+
 export async function saveScript(id: string, script: string): Promise<VideoRecord> {
     const data = await request<{ video: VideoRecord }>(`/api/videos/${id}`, {
         method: 'PATCH',
