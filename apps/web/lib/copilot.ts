@@ -10,6 +10,7 @@ import { PATCH as patchSceneRoute } from '../app/api/videos/[id]/scenes/[sceneId
 import { POST as planScenesRoute } from '../app/api/videos/[id]/scenes/route';
 import { POST as duplicateRoute } from '../app/api/videos/[id]/duplicate/route';
 import { POST as ttsRoute } from '../app/api/videos/[id]/tts/route';
+import { POST as batchRoute } from '../app/api/videos/batch/route';
 import type { VideoRecord } from '../app/api/videos/store';
 import { ACTION_OPTIONS, CHARACTER_OPTIONS, PLATFORM_LABELS, PLATFORM_OPTIONS, PROP_OPTIONS, STATUS_LABELS } from '../app/components/constants';
 import { generateWithFallback, isCopilotConfigured, type ChatMessage, type ToolCall, type ToolSchema } from './ai-provider';
@@ -108,6 +109,22 @@ const TOOLS: ToolSchema[] = [
                 plantilla: { type: 'string', enum: TEMPLATE_IDS, description: 'Estructura narrativa.' },
             },
             required: ['tema'],
+            additionalProperties: false,
+        },
+    },
+    {
+        name: 'generar_varios',
+        description: 'Crea varios videos de golpe, uno por tema (maximo 8), todos en borrador.',
+        parameters: {
+            type: 'object',
+            properties: {
+                temas: { type: 'array', items: { type: 'string' }, description: 'Un tema por video.' },
+                plataforma: { type: 'string', enum: PLATFORMS },
+                duracion_segundos: { type: 'number', description: `${MIN_DURATION}-${MAX_DURATION}, por defecto ${DEFAULT_DURATION}.` },
+                plantilla: { type: 'string', enum: TEMPLATE_IDS },
+                con_escenas: { type: 'boolean', description: 'Generar tambien las escenas de cada uno.' },
+            },
+            required: ['temas'],
             additionalProperties: false,
         },
     },
@@ -268,6 +285,18 @@ function jsonInit(method: string, body: unknown): RequestInit {
     return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
 
+// The batch route answers { creados, fallidos } instead of a single { video },
+// so it needs its own thin call instead of reusing callRoute above - the
+// validation and the sequential loop still live only in that route handler.
+async function callBatchRoute(body: unknown): Promise<{ creados: VideoRecord[]; fallidos: { tema: string; error: string }[] }> {
+    const response = await batchRoute(new Request(INTERNAL_URL, jsonInit('POST', body)));
+    const payload = await response.json().catch(() => null) as { creados?: VideoRecord[]; fallidos?: { tema: string; error: string }[]; error?: string } | null;
+    if (!response.ok || !payload) {
+        throw new Error(payload?.error ?? 'No se pudo generar el lote.');
+    }
+    return { creados: payload.creados ?? [], fallidos: payload.fallidos ?? [] };
+}
+
 // Accents come and go in what a model writes ("telefono" / "teléfono") while
 // the stored ids never carry them.
 function normalise(value: string): string {
@@ -370,6 +399,41 @@ async function generarGuion(args: ToolArgs, state: CopilotState): Promise<string
         `Video creado sobre "${video.topic}" para ${PLATFORM_LABELS[video.platform]}, ${video.target_duration_seconds} segundos, plantilla ${getTemplate(video.template).label}.`,
         `Guion:\n${video.script}`,
     ].join('\n');
+}
+
+// RF-024: one call per topic, sequential, all born 'borrador' - the batch
+// route enforces the cap, the dedup and the platform/template validation, so
+// this only shapes the arguments and reads back what happened.
+async function generarVarios(args: ToolArgs, state: CopilotState): Promise<string> {
+    const temas = Array.isArray(args.temas) ? args.temas.map((tema) => readText(tema)).filter(Boolean) : [];
+    if (!temas.length) return 'Dime los temas, uno por video: hasta ocho por lote.';
+
+    let batch;
+    try {
+        batch = await callBatchRoute({
+            temas,
+            platform: coercePlatform(args.plataforma),
+            target_duration_seconds: coerceDuration(args.duracion_segundos),
+            template: getTemplate(args.plantilla).id,
+            con_escenas: args.con_escenas === true,
+        });
+    } catch (error) {
+        return `No se pudo generar el lote: ${error instanceof Error ? error.message : 'error desconocido'}.`;
+    }
+
+    const { creados, fallidos } = batch;
+    if (creados.length) {
+        // The turn keeps working on the last one created, same as generar_guion.
+        const last = creados[creados.length - 1];
+        state.videoId = last.id;
+        state.touched = last;
+        state.created = true;
+    }
+    state.acciones.push(`${creados.length} de ${temas.length} videos creados`);
+
+    const resumen = `Cree ${creados.length} de ${temas.length} videos, todos en borrador.`;
+    if (!fallidos.length) return resumen;
+    return `${resumen} Fallaron: ${fallidos.map((item) => `"${item.tema}" (${item.error})`).join(', ')}.`;
 }
 
 async function editarGuion(args: ToolArgs, state: CopilotState): Promise<string> {
@@ -690,6 +754,7 @@ async function descargarVideo(_args: ToolArgs, state: CopilotState): Promise<str
 
 const EXECUTORS: Record<string, ToolExecutor> = {
     generar_guion: generarGuion,
+    generar_varios: generarVarios,
     editar_guion: editarGuion,
     generar_escenas: generarEscenas,
     regenerar_escena: regenerarEscena,
