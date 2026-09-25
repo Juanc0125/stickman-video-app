@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
-import { generateAiText } from '../../../../../../lib/ai';
+import { generateWithFallback } from '../../../../../../lib/ai-provider';
 import { deleteScene, getVideo, updateScene } from '../../../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string; sceneId: string }> };
@@ -121,10 +121,10 @@ export async function PATCH(request: Request, context: RouteContext) {
         };
 
         try {
-            const result = await generateAiText(
+            const result = await generateWithFallback(
                 buildRegenerateSystemPrompt(),
                 [{ role: 'user', content: contextLines.join('\n') }],
-                300,
+                { maxTokens: 300 },
             );
             if (result?.text) {
                 const parsed = extractJson(result.text);

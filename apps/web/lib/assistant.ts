@@ -1,6 +1,6 @@
 import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import type { LogoPosition, Platform, SceneAction, ScenePropType, CharacterType } from '@shared-types/video';
-import { generateAiText } from './ai';
+import { generateWithFallback } from './ai-provider';
 
 // The assistant turns a spoken sentence into one operation the studio already
 // supports. It only *decides*; the browser runs the action through the same API
@@ -412,10 +412,10 @@ export async function interpret(message: string, context: AssistantContext): Pro
     const known = matchKnownCommand(message);
     if (known) return known;
 
-    const result = await generateAiText(
+    const result = await generateWithFallback(
         SYSTEM,
         [{ role: 'user', content: `${describeContext(context)}\n\nEl usuario dice: "${message}"` }],
-        300,
+        { maxTokens: 300 },
     );
 
     const parsed = result ? parseModelJson(result.text) : null;

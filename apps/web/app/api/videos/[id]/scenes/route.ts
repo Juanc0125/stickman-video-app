@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
-import { generateAiText } from '../../../../../lib/ai';
+import { generateWithFallback } from '../../../../../lib/ai-provider';
 import { getVideo, replaceScenes } from '../../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -175,10 +175,10 @@ export async function POST(request: Request, context: RouteContext) {
 
     let scenes: SceneInput[] | null = null;
     try {
-        const result = await generateAiText(
+        const result = await generateWithFallback(
             buildSystemPrompt(targetDurationSeconds, video.template),
             [{ role: 'user', content: `Tema: ${video.topic}\n\nGuion completo:\n${video.script}` }],
-            900,
+            { maxTokens: 900 },
         );
         if (result?.text) {
             scenes = buildScenesFromAiJson(extractJson(result.text));

@@ -3,7 +3,7 @@ import { DEFAULT_BRANDING } from '@shared-types/video';
 import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import { canTransition, transitions, videos as mockVideos } from '../app/api/videos/store';
 import { getSupabaseClient } from './supabaseClient';
-import { generateAiText } from './ai';
+import { generateWithFallback } from './ai-provider';
 
 type VideoRecord = Video & { scenes: Scene[] };
 type SceneInput = Omit<Scene, 'id' | 'video_id'>;
@@ -170,7 +170,7 @@ async function generateScript(topic: string, template: VideoTemplate): Promise<s
     // that works on TikTok - conflict, characters with a stake, a hook - rather
     // than the explainer tone this used to produce. The compliance limits are
     // unchanged; drama applies to the situation, never to the numbers.
-    const result = await generateAiText(
+    const result = await generateWithFallback(
         [
             'Eres guionista de mini-telenovelas verticales para redes, al estilo de las "frutinovelas" virales, aplicadas a marketing de credito hipotecario y vivienda.',
             'Escribe una historia corta con conflicto real entre personas: alguien quiere comprar o refinanciar, algo se interpone, y aparece quien lo aclara.',
@@ -183,7 +183,7 @@ async function generateScript(topic: string, template: VideoTemplate): Promise<s
             ...(getTemplate(template).guidance ? [`ESTRUCTURA OBLIGATORIA: ${getTemplate(template).guidance}`] : []),
         ].join('\n'),
         [{ role: 'user', content: `Tema: ${topic}\nEscribe la mini-telenovela.` }],
-        500,
+        { maxTokens: 500 },
     );
     if (!result || !result.text.trim()) return buildFallbackScript(topic);
     return result.text.trim();
