@@ -11,6 +11,9 @@
 //   npm run set:ai-key -- groq
 //   npm run set:ai-key -- openrouter
 //   npm run set:ai-key            (asks which provider)
+//
+// With --from-local it takes the key already in .env.local instead of asking,
+// which is the case of "it works on my machine and Vercel still does not".
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -19,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 import readline from 'node:readline';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+const MODELS = JSON.parse(readFileSync(join(root, 'apps', 'web', 'lib', 'ai-models.json'), 'utf8'));
 const ENV_FILE = join(root, '.env.local');
 
 // Same tool-calling probe scripts/check-ai.mjs uses: a key that returns 200
@@ -46,15 +51,16 @@ const PROVIDERS = {
         envVar: 'GROQ_API_KEY',
         prefix: 'gsk_',
         url: process.env.GROQ_API_URL ?? 'https://api.groq.com/openai/v1/chat/completions',
-        model: process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b',
+        model: process.env.GROQ_MODEL ?? MODELS.groq.model,
         headers: (key) => ({ Authorization: `Bearer ${key}` }),
     },
     openrouter: {
         envVar: 'OPENROUTER_API_KEY',
         prefix: 'sk-or-v1-',
         url: process.env.OPENROUTER_API_URL ?? 'https://openrouter.ai/api/v1/chat/completions',
-        model: process.env.OPENROUTER_MODEL ?? 'google/gemma-4-31b-it:free',
+        model: process.env.OPENROUTER_MODEL ?? MODELS.openrouter.model,
         headers: (key) => ({ Authorization: `Bearer ${key}`, 'X-Title': 'Stickman Video Studio' }),
+        alternates: MODELS.openrouter.alternates,
     },
 };
 
@@ -143,6 +149,7 @@ async function probe(provider, key) {
                 ],
                 tools: [TOOL],
                 tool_choice: 'auto',
+                ...(provider.alternates ? { models: [provider.model, ...provider.alternates] } : {}),
             }),
             signal: AbortSignal.timeout(40000),
         });
@@ -166,9 +173,10 @@ async function probe(provider, key) {
 function runCommand(command, args, options = {}) {
     // vercel and (on some setups) git are .cmd shims on Windows; without a
     // shell, spawn() can fail to find them even though they work from a prompt.
-    return spawnSync(command, args, {
+    const useShell = process.platform === 'win32';
+    return spawnSync(useShell ? [command, ...args].join(' ') : command, useShell ? undefined : args, {
         cwd: root,
-        shell: process.platform === 'win32',
+        shell: useShell,
         encoding: 'utf8',
         ...options,
     });
@@ -207,8 +215,18 @@ function lastLine(text) {
     return lines.length ? lines[lines.length - 1] : 'sin detalle';
 }
 
+// Reads one variable out of .env.local without the value passing through an
+// argument or a log line.
+function readLocalEnv(name) {
+    if (!existsSync(ENV_FILE)) return '';
+    const match = readFileSync(ENV_FILE, 'utf8').match(new RegExp(`^${name}=(.*)$`, 'm'));
+    return match ? match[1].trim() : '';
+}
+
 async function run() {
-    const rawArg = process.argv[2];
+    const args = process.argv.slice(2).filter((arg) => arg !== '--from-local');
+    const desdeLocal = process.argv.includes('--from-local');
+    const rawArg = args[0];
     const providerArg = (rawArg ?? '').toLowerCase();
 
     if (rawArg && !PROVIDERS[providerArg]) {
@@ -217,14 +235,27 @@ async function run() {
         return;
     }
 
-    const session = createSession();
     let providerName;
     let key;
-    try {
-        providerName = providerArg || (await pickProvider(session));
-        key = (await session.askHidden(`Pega la clave de ${providerName} (no se mostrara en pantalla): `)).trim();
-    } finally {
-        session.close();
+    if (desdeLocal) {
+        // No terminal at all in this mode: the value is already on disk, and
+        // opening a prompt just to close it would eat a line of stdin.
+        providerName = providerArg || 'groq';
+        key = readLocalEnv(PROVIDERS[providerName].envVar);
+        if (!key) {
+            console.error(`No hay ${PROVIDERS[providerName].envVar} con valor en .env.local. Corre el comando sin --from-local para pegarla.`);
+            process.exitCode = 1;
+            return;
+        }
+        console.log(`Tomando ${PROVIDERS[providerName].envVar} de .env.local.`);
+    } else {
+        const session = createSession();
+        try {
+            providerName = providerArg || (await pickProvider(session));
+            key = (await session.askHidden(`Pega la clave de ${providerName} (no se mostrara en pantalla): `)).trim();
+        } finally {
+            session.close();
+        }
     }
     const provider = PROVIDERS[providerName];
 
