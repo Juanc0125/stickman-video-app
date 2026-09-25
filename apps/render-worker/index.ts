@@ -7,8 +7,16 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
-import { createFrameCanvas, drawSceneFrame, renderTextOverlayPng } from './drawing';
-import { ensureVoiceModel, mouthEnvelope, speak } from './voice';
+import {
+	createFrameCanvas,
+	drawSceneFrame,
+	drawTransitionFrame,
+	pickTransition,
+	renderTextOverlayPng,
+	TRANSITION_SECONDS,
+	type FrameScene,
+} from './drawing';
+import { ensureVoiceModel, estimateWordTimings, mouthEnvelope, speak } from './voice';
 import { aiVideoModel, buildScenePrompt, generateSceneVideo, isAiVideoEnabled } from './ai-video';
 
 // Frames are drawn with a real 2D graphics context and piped to ffmpeg, so
@@ -295,6 +303,16 @@ async function reportProgress(videoId: string, fields: Record<string, unknown>) 
 	}
 }
 
+// The frame the outgoing scene's own last drawn pose comes from (for a
+// transition's "from" side) needs a matching frame for the *next* scene's
+// first pose - built from the raw scene data before that scene has been
+// narrated or timed. At t=0 nothing in drawSceneFrame depends on the total
+// duration (every t/duration ratio is 0), so a placeholder duration is safe.
+function previewFrameScene(scene: RenderScene, index: number): FrameScene {
+	const description = (scene.description || '').trim();
+	return { index, character: scene.character, action: scene.action, prop: scene.prop, description: description || `Escena ${index + 1}` };
+}
+
 async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 	if (!Array.isArray(job.scenes) || job.scenes.length === 0) {
 		throw new Error('El trabajo necesita al menos una escena.');
@@ -361,6 +379,13 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 			const frameStyle = { width, height, background: backgroundColor, ink: textColor, fontFamily: branding.font_family };
 			const frameCount = Math.max(1, Math.round(duration * FRAME_RATE));
 			const mouth = speech ? mouthEnvelope(speech, FRAME_RATE, frameCount) : null;
+			// There is no offline word-level alignment for the narration, so the
+			// subtitle highlight's timing is approximated from word length and,
+			// when we actually synthesised the speech, refined against its
+			// loudness envelope (see estimateWordTimings in voice.ts).
+			const wordTimings = estimateWordTimings(frameScene.description, duration, mouth, FRAME_RATE);
+			const isFirstScene = index === 0;
+			const isLastScene = index === scenes.length - 1;
 
 			// When an AI model is configured, the scene's footage comes from it
 			// and we only add our own text and narration on top. Generation is
@@ -401,37 +426,112 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 					'-movflags', '+faststart',
 					clipPath,
 				]);
-
-				clips.push(clipPath);
-				onProgress?.(Math.round(((index + 1) / scenes.length) * 90));
-				continue;
+			} else {
+				await runFfmpegWithFrames([
+					'-y',
+					'-f', 'rawvideo',
+					'-pix_fmt', 'rgba',
+					'-s', `${width}x${height}`,
+					'-r', String(FRAME_RATE),
+					'-i', 'pipe:0',
+					...audioInputArgs,
+					'-map', '0:v',
+					'-map', '1:a',
+					'-c:v', 'libx264',
+					'-threads', String(ENCODER_THREADS),
+					'-preset', 'veryfast',
+					'-crf', '20',
+					'-c:a', 'aac',
+					'-shortest',
+					'-pix_fmt', 'yuv420p',
+					'-movflags', '+faststart',
+					clipPath,
+				], frameCount, (frameIndex) => {
+					drawSceneFrame(
+						context,
+						frameScene,
+						frameIndex / FRAME_RATE,
+						duration,
+						frameStyle,
+						mouth ? mouth[frameIndex] ?? 0 : null,
+						wordTimings,
+						{ in: isFirstScene, out: isLastScene },
+					);
+					return Buffer.from(context.getImageData(0, 0, width, height).data);
+				});
 			}
 
-			await runFfmpegWithFrames([
-				'-y',
-				'-f', 'rawvideo',
-				'-pix_fmt', 'rgba',
-				'-s', `${width}x${height}`,
-				'-r', String(FRAME_RATE),
-				'-i', 'pipe:0',
-				...audioInputArgs,
-				'-map', '0:v',
-				'-map', '1:a',
-				'-c:v', 'libx264',
-				'-threads', String(ENCODER_THREADS),
-				'-preset', 'veryfast',
-				'-crf', '20',
-				'-c:a', 'aac',
-				'-shortest',
-				'-pix_fmt', 'yuv420p',
-				'-movflags', '+faststart',
-				clipPath,
-			], frameCount, (frameIndex) => {
-				drawSceneFrame(context, frameScene, frameIndex / FRAME_RATE, duration, frameStyle, mouth ? mouth[frameIndex] ?? 0 : null);
-				return Buffer.from(context.getImageData(0, 0, width, height).data);
-			});
-
 			clips.push(clipPath);
+
+			// The join to the next scene: a hard cut, a crossfade or a slide (see
+			// pickTransition). Built as a handful of extra frames blending the
+			// frozen last pose of this scene with the frozen first pose of the
+			// next, rather than an ffmpeg crossfade filter - that would have to
+			// re-encode the whole assembled video to re-time every frame after
+			// it, which is exactly the "doubles the render" cost the frame
+			// budget can't absorb for a transition that lasts a third of a
+			// second. It only applies between two canvas-drawn scenes: an AI clip
+			// has no frame of ours to blend from, and generation is best-effort
+			// per scene, so whether the *next* scene will need one isn't known
+			// yet here - simplest to keep every AI-video boundary a plain cut.
+			if (!isLastScene && !generatedPath && !isAiVideoEnabled()) {
+				const nextFrameScene = previewFrameScene(scenes[index + 1], index + 1);
+				const narrationWordCount = frameScene.description.split(/\s+/).filter(Boolean).length;
+				const wordsPerSecond = duration > 0 ? narrationWordCount / duration : 0;
+				const kind = pickTransition(frameScene, nextFrameScene, wordsPerSecond, index);
+
+				if (kind !== 'cut') {
+					const fromCanvas = createFrameCanvas(width, height);
+					drawSceneFrame(
+						fromCanvas.getContext('2d'),
+						frameScene,
+						Math.max(0, duration - 1 / FRAME_RATE),
+						duration,
+						frameStyle,
+						mouth ? mouth[mouth.length - 1] ?? null : null,
+						wordTimings,
+					);
+
+					// duration=1 is a placeholder: at t=0 every t/duration ratio
+					// drawSceneFrame uses (camera easing, pose phase) is 0
+					// regardless of the real duration, which isn't known yet -
+					// the next scene hasn't been narrated at this point in the loop.
+					const toCanvas = createFrameCanvas(width, height);
+					drawSceneFrame(toCanvas.getContext('2d'), nextFrameScene, 0, 1, frameStyle, null, null);
+
+					const transitionFrameCount = Math.max(1, Math.round(TRANSITION_SECONDS * FRAME_RATE));
+					const transitionCanvas = createFrameCanvas(width, height);
+					const transitionContext = transitionCanvas.getContext('2d');
+					const transitionClipPath = join(jobDirectory, `scene-${index + 1}-transition.mp4`);
+
+					await runFfmpegWithFrames([
+						'-y',
+						'-f', 'rawvideo',
+						'-pix_fmt', 'rgba',
+						'-s', `${width}x${height}`,
+						'-r', String(FRAME_RATE),
+						'-i', 'pipe:0',
+						'-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${TRANSITION_SECONDS}`,
+						'-map', '0:v',
+						'-map', '1:a',
+						'-c:v', 'libx264',
+						'-threads', String(ENCODER_THREADS),
+						'-preset', 'veryfast',
+						'-crf', '20',
+						'-c:a', 'aac',
+						'-shortest',
+						'-pix_fmt', 'yuv420p',
+						'-movflags', '+faststart',
+						transitionClipPath,
+					], transitionFrameCount, (frameIndex) => {
+						drawTransitionFrame(transitionContext, fromCanvas, toCanvas, kind, (frameIndex + 1) / transitionFrameCount, width);
+						return Buffer.from(transitionContext.getImageData(0, 0, width, height).data);
+					});
+
+					clips.push(transitionClipPath);
+				}
+			}
+
 			// Scene rendering is the long part; the tail (concat, logo, upload)
 			// is quick, so the last 10% is left for it.
 			onProgress?.(Math.round(((index + 1) / scenes.length) * 90));

@@ -456,16 +456,16 @@
     "semantic_hash": "56827d984f9d45b9c185412c0b745bec"
   },
   "apps/web/lib/ai-provider.ts": {
-    "mtime": 1790226154.8381367,
-    "seen": 1790264776.2565398,
-    "ast_hash": "cbfacdfc3e179d027ec0db4c55ea03ba",
-    "semantic_hash": "cbfacdfc3e179d027ec0db4c55ea03ba"
+    "mtime": 1790303787.32821,
+    "seen": 1790303911.0833209,
+    "ast_hash": "526936c6b6c00a5669f13b3661c09532",
+    "semantic_hash": ""
   },
   "apps/web/lib/assistant.ts": {
-    "mtime": 1790220936.4045405,
-    "seen": 1790264776.2572148,
-    "ast_hash": "c9f0982cb5565a19ea28997792a73773",
-    "semantic_hash": "c9f0982cb5565a19ea28997792a73773"
+    "mtime": 1790283018.0743673,
+    "seen": 1790303046.6627557,
+    "ast_hash": "4d27518ee2ed2520e586571d70cddc35",
+    "semantic_hash": ""
   },
   "apps/web/lib/brand-templates.ts": {
     "mtime": 1790144662.4306974,
@@ -474,9 +474,9 @@
     "semantic_hash": "c3e0aa8dbfb734bb34a872e36b105925"
   },
   "apps/web/lib/copilot.ts": {
-    "mtime": 1790274255.1837726,
-    "seen": 1790274555.1611946,
-    "ast_hash": "63e85ee6ae4ea3cd066c14c825f40777",
+    "mtime": 1790283018.0768998,
+    "seen": 1790303046.6627595,
+    "ast_hash": "084ed4bb0a90ce14ab8b1972fffc306b",
     "semantic_hash": ""
   },
   "packages/shared-types/templates.ts": {
@@ -486,10 +486,10 @@
     "semantic_hash": "3237855f551c963226614ea680819ca8"
   },
   "scripts/check-ai.mjs": {
-    "mtime": 1790264119.3663652,
-    "seen": 1790264776.2624133,
-    "ast_hash": "742c91ac6bb8c0d0ac975277b3c38b49",
-    "semantic_hash": "742c91ac6bb8c0d0ac975277b3c38b49"
+    "mtime": 1790303824.3678708,
+    "seen": 1790303911.0833492,
+    "ast_hash": "7cd2f29c91f90aa6e7eaf12fe39b3395",
+    "semantic_hash": ""
   },
   "scripts/e2e.mjs": {
     "mtime": 1790226688.298764,
@@ -567,6 +567,12 @@
     "mtime": 1790098149.404608,
     "seen": 1790274555.1612682,
     "ast_hash": "6df20356e05145a1b986808140607aa9",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/ai-models.json": {
+    "mtime": 1790303845.7982368,
+    "seen": 1790303911.083318,
+    "ast_hash": "89703ceb17789ca3be79f65f275b5a3f",
     "semantic_hash": ""
   }
 }

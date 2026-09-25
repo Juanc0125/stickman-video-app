@@ -1,17 +1,17 @@
 # Graph Report - stickman-video-app  (2026-09-24)
 
 ## Corpus Check
-- 84 files · ~54,117 words
+- 85 files · ~54,611 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 2, .ico 1)
 
 ## Summary
-- 804 nodes · 1549 edges · 54 communities (39 shown, 15 thin omitted)
+- 811 nodes · 1556 edges · 55 communities (40 shown, 15 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 57 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `710d0322`
+- Built from commit: `f4ce2db7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - api.ts
 - video-persistence.ts
 - copilot.ts
-- [sceneId]/route.ts
+- scenes/route.ts
 - web/package.json
 - drawing.ts
 - index.ts
@@ -27,7 +27,7 @@
 - assistant.ts
 - compilerOptions
 - index.ts (orquesta el render: job, frames, ffmpeg, subida)
-- scenes/route.ts
+- check-ai.mjs
 - render-worker/package.json
 - apps/web/app/api (rutas de API)
 - frontend-agent
@@ -41,6 +41,7 @@
 - compilerOptions
 - e2e.mjs
 - ai-video.ts
+- SceneRow
 - layout.tsx
 - type-parity.ts
 - dev.mjs
@@ -69,12 +70,12 @@
 ## God Nodes (most connected - your core abstractions)
 1. `getSupabaseClient()` - 24 edges
 2. `getVideo()` - 20 edges
-3. `next` - 17 edges
-4. `VideoRecord` - 17 edges
-5. `scripts` - 16 edges
-6. `toVideoRecord()` - 16 edges
-7. `getTemplate()` - 16 edges
-8. `render()` - 16 edges
+3. `VideoRecord` - 17 edges
+4. `next` - 17 edges
+5. `toVideoRecord()` - 16 edges
+6. `getTemplate()` - 16 edges
+7. `render()` - 16 edges
+8. `scripts` - 16 edges
 9. `compilerOptions` - 16 edges
 10. `generateAiText()` - 15 edges
 
@@ -100,23 +101,23 @@
 - **Produccion de un video de extremo a extremo** — readme_video_pipeline, _claude_agents_backend_agent_video_persistence, readme_approval_states, _claude_agents_render_worker_agent_index, _claude_agents_render_worker_agent_voice, _claude_agents_render_worker_agent_drawing, readme_mp4_storage [INFERRED 0.85]
 - **Stickman PWA Icon Set (192 / 512 / maskable / apple-touch)** — apps_web_public_icons_icon_192_stickman_icon, apps_web_public_icons_icon_512_stickman_icon, apps_web_public_icons_icon_maskable_512_stickman_icon, apps_web_public_icons_apple_touch_icon_stickman_icon [INFERRED 0.95]
 
-## Communities (54 total, 15 thin omitted)
+## Communities (55 total, 15 thin omitted)
 
 ### Community 0 - "api.ts"
-Cohesion: 0.05
-Nodes (87): applyBrandTemplate(), BrandingPatch, createVideo(), deleteBrandTemplate(), deleteScene(), deleteVideo(), duplicateVideo(), fetchBrandTemplates() (+79 more)
+Cohesion: 0.06
+Nodes (76): applyBrandTemplate(), BrandingPatch, createVideo(), deleteBrandTemplate(), deleteVideo(), duplicateVideo(), fetchBrandTemplates(), fetchVideos() (+68 more)
 
 ### Community 1 - "video-persistence.ts"
 Cohesion: 0.05
-Nodes (72): DELETE(), RouteContext, coerceBranding(), CreateBody, GET(), LOGO_POSITIONS, POST(), POST() (+64 more)
+Nodes (74): DELETE(), RouteContext, coerceBranding(), CreateBody, GET(), LOGO_POSITIONS, POST(), POST() (+66 more)
 
 ### Community 2 - "copilot.ts"
-Cohesion: 0.08
-Nodes (61): POST(), VideoRecord, generateWithFallback(), isCopilotConfigured(), abrirVideo(), ACTIONS, aplicarBranding(), aplicarMarca() (+53 more)
+Cohesion: 0.05
+Nodes (82): POST(), GET(), apps_web_lib_ai_models, ChatMessage, CompletionResponse, EXHAUSTED, GenerateOptions, generateWithFallback() (+74 more)
 
-### Community 3 - "[sceneId]/route.ts"
-Cohesion: 0.07
-Nodes (43): ACTIONS, buildRegenerateSystemPrompt(), CHARACTERS, coerceAction(), coerceCharacter(), coerceDescription(), coerceProp(), DELETE() (+35 more)
+### Community 3 - "scenes/route.ts"
+Cohesion: 0.08
+Nodes (39): ACTIONS, buildScenesFromAiJson(), buildSentenceFallback(), buildSystemPrompt(), CHARACTERS, coerceAction(), coerceCharacter(), coerceDescription() (+31 more)
 
 ### Community 4 - "web/package.json"
 Cohesion: 0.05
@@ -128,15 +129,15 @@ Nodes (33): drawBackground(), drawFigure(), drawHand(), drawHead(), drawProp(), 
 
 ### Community 6 - "index.ts"
 Cohesion: 0.10
-Nodes (29): aiVideoModel(), isAiVideoEnabled(), createFrameCanvas(), applyLogoOverlayOrFallback(), CharacterType, DEFAULT_BRANDING, ENCODER_THREADS, getLogoOverlayPosition() (+21 more)
+Nodes (30): aiVideoModel(), isAiVideoEnabled(), createFrameCanvas(), applyLogoOverlayOrFallback(), CharacterType, DEFAULT_BRANDING, ENCODER_THREADS, getLogoOverlayPosition() (+22 more)
 
 ### Community 7 - "scripts"
 Cohesion: 0.08
 Nodes (25): dependencies, next, react, react-dom, name, private, scripts, build (+17 more)
 
 ### Community 8 - "assistant.ts"
-Cohesion: 0.12
-Nodes (22): POST(), ACTION_WORDS, AssistantAction, AssistantContext, AssistantReply, BrandPatch, CHARACTER_WORDS, COLOR_WORDS (+14 more)
+Cohesion: 0.11
+Nodes (24): POST(), ABOUT_APPROVAL, ACTION_WORDS, AssistantAction, AssistantContext, AssistantReply, BrandPatch, CHARACTER_WORDS (+16 more)
 
 ### Community 9 - "compilerOptions"
 Cohesion: 0.10
@@ -146,9 +147,9 @@ Nodes (19): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModu
 Cohesion: 0.14
 Nodes (18): Usar process.exitCode: process.exit() rompe libuv en Windows, Verificar el dato almacenado, no el mensaje de respuesta, ai-video.ts (camino opcional de fal.ai), ffmpeg drawbox evalua sus expresiones una sola vez al inicializar el filtro, drawing.ts (figuras, props, subtitulos, branding), Todo camino opcional degrada al local: sin fal.ai, sin clave de TTS y sin nube, index.ts (orquesta el render: job, frames, ffmpeg, subida), Convencion de angulos de extremidades en drawing.ts (grados desde abajo, positivo hacia +x) (+10 more)
 
-### Community 11 - "scenes/route.ts"
-Cohesion: 0.20
-Nodes (16): ACTIONS, buildScenesFromAiJson(), buildSentenceFallback(), buildSystemPrompt(), CHARACTERS, coerceAction(), coerceCharacter(), coerceDescription() (+8 more)
+### Community 11 - "check-ai.mjs"
+Cohesion: 0.29
+Nodes (5): ref_node_url, MODELS, PROVIDERS, root, TOOL
 
 ### Community 12 - "render-worker/package.json"
 Cohesion: 0.05
@@ -175,8 +176,8 @@ Cohesion: 0.24
 Nodes (10): Assistant(), say(), send(), toggleMic(), AssistantProps, getRecognition(), Recognition, speak() (+2 more)
 
 ### Community 18 - "ref_node_fs"
-Cohesion: 0.15
-Nodes (11): nextConfig, rootEnvPath, ref_node_fs, ref_node_path, ref_node_process, ref_node_url, PROVIDERS, root (+3 more)
+Cohesion: 0.22
+Nodes (7): nextConfig, rootEnvPath, ref_node_fs, ref_node_path, ref_node_process, args, root
 
 ### Community 19 - "make-backdrop.mjs"
 Cohesion: 0.18
@@ -202,9 +203,13 @@ Nodes (6): ref_node_os, fail, mp4Path, results, S, W
 Cohesion: 0.24
 Nodes (9): ACTION_VERBS, buildScenePrompt(), CHARACTER_SUBJECTS, extractVideoUrl(), FAL_KEY, falFetch(), generateSceneVideo(), PROP_SCENERY (+1 more)
 
+### Community 25 - "SceneRow"
+Cohesion: 0.31
+Nodes (11): deleteScene(), regenerateScene(), updateScene(), SceneRow(), applyPatch(), handleActionChange(), handleCharacterChange(), handleDelete() (+3 more)
+
 ### Community 26 - "layout.tsx"
-Cohesion: 0.25
-Nodes (6): ServiceWorker(), apps_web_app_globals, geistMono, geistSans, metadata, viewport
+Cohesion: 0.29
+Nodes (5): apps_web_app_globals, geistMono, geistSans, metadata, viewport
 
 ### Community 27 - "type-parity.ts"
 Cohesion: 0.25
@@ -267,8 +272,8 @@ Nodes (3): Next.js Wordmark (SVG), Vercel Triangle Logo (SVG), create-next-app B
   .claude/agents/devops-agent.md · relation: references
 
 ## Knowledge Gaps
-- **269 isolated node(s):** `name`, `version`, `private`, `workspaces`, `dev` (+264 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 323 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **273 isolated node(s):** `GenerationResult`, `GenerateOptions`, `Provider`, `WireToolCall`, `WireMessage` (+268 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 329 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **15 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
@@ -282,9 +287,9 @@ _Questions this graph is uniquely positioned to answer:_
   _Edge tagged AMBIGUOUS (relation: references) - confidence is low._
 - **Why does `apps/web/app/api (rutas de API)` connect `apps/web/app/api (rutas de API)` to `video-persistence.ts`, `backend-agent`?**
   _High betweenness centrality (0.139) - this node is a cross-community bridge._
-- **Why does `next` connect `video-persistence.ts` to `copilot.ts`, `[sceneId]/route.ts`, `scripts`, `assistant.ts`, `scenes/route.ts`, `ref_node_fs`, `layout.tsx`?**
+- **Why does `next` connect `video-persistence.ts` to `copilot.ts`, `scenes/route.ts`, `scripts`, `assistant.ts`, `ref_node_fs`, `layout.tsx`?**
   _High betweenness centrality (0.108) - this node is a cross-community bridge._
 - **Why does `backend-agent` connect `backend-agent` to `qa-agent`, `devops-agent`, `apps/web/app/api (rutas de API)`, `frontend-agent`?**
-  _High betweenness centrality (0.090) - this node is a cross-community bridge._
-- **What connects `name`, `version`, `private` to the rest of the system?**
-  _269 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _High betweenness centrality (0.089) - this node is a cross-community bridge._
+- **What connects `GenerationResult`, `GenerateOptions`, `Provider` to the rest of the system?**
+  _273 weakly-connected nodes found - possible documentation gaps or missing edges._

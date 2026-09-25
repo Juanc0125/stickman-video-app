@@ -169,3 +169,69 @@ export function mouthEnvelope(speech: Speech, frameRate: number, frameCount: num
 export function voiceModelName() {
 	return MODEL_NAME;
 }
+
+export interface WordTiming {
+	word: string;
+	start: number;
+	end: number;
+}
+
+/**
+ * Approximates when each word of a subtitle line is spoken, for the
+ * karaoke-style highlight in drawSceneFrame. There is no offline word-level
+ * ASR alignment available, so timing starts from each word's character
+ * length (a longer word is assumed to take proportionally longer to say,
+ * with every word given a fixed minimum share so short ones like "de" or "y"
+ * don't collapse to nothing) and, when the narration was actually
+ * synthesised locally, is refined against its loudness envelope: a boundary
+ * is snapped to the quietest nearby frame, which is usually the small gap
+ * between two words. Without an envelope (silent scenes, or narration that
+ * came in as scene.audio_url rather than through speak()) it falls back to
+ * the length-only estimate across the known scene duration.
+ */
+export function estimateWordTimings(text: string, totalDuration: number, envelope: number[] | null, frameRate: number): WordTiming[] {
+	const words = text.trim().split(/\s+/).filter(Boolean);
+	if (words.length === 0 || totalDuration <= 0) return [];
+
+	const weights = words.map((word) => word.length + 3);
+	const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+	const boundaries: number[] = [0];
+	let cumulative = 0;
+	for (const weight of weights) {
+		cumulative += weight;
+		boundaries.push((cumulative / totalWeight) * totalDuration);
+	}
+
+	if (envelope && envelope.length > 1) {
+		const frameDuration = 1 / frameRate;
+		const searchSeconds = 0.12;
+		for (let i = 1; i < boundaries.length - 1; i += 1) {
+			const center = Math.round(boundaries[i] / frameDuration);
+			const span = Math.max(1, Math.round(searchSeconds / frameDuration));
+			const lo = Math.max(0, center - span);
+			const hi = Math.min(envelope.length - 1, center + span);
+			let quietestIndex = clampIndex(center, envelope.length);
+			let quietestValue = envelope[quietestIndex] ?? 1;
+			for (let frame = lo; frame <= hi; frame += 1) {
+				if (envelope[frame] < quietestValue) {
+					quietestValue = envelope[frame];
+					quietestIndex = frame;
+				}
+			}
+			boundaries[i] = quietestIndex * frameDuration;
+		}
+		// Snapping to envelope minima can pull a boundary earlier than the one
+		// before it on very short words; keep the sequence monotonic so no
+		// word ends up with a zero or negative duration.
+		for (let i = 1; i < boundaries.length; i += 1) {
+			boundaries[i] = Math.max(boundaries[i], boundaries[i - 1] + frameDuration);
+		}
+	}
+
+	return words.map((word, i) => ({ word, start: boundaries[i], end: boundaries[i + 1] }));
+}
+
+function clampIndex(index: number, length: number) {
+	return Math.max(0, Math.min(length - 1, index));
+}

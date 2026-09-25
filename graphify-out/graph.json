@@ -320,19 +320,6 @@
       "source_location": "L9"
     },
     {
-      "id": "packages_shared_types_video_platform",
-      "label": "Platform",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "platform",
-      "source_file": "packages/shared-types/video.ts",
-      "source_location": "L5"
-    },
-    {
       "id": "packages_shared_types_video_renderstatus",
       "label": "RenderStatus",
       "_callable": true,
@@ -528,6 +515,19 @@
       "source_location": "L5"
     },
     {
+      "id": "apps_web_app_api_videos_store_videorecord",
+      "label": "VideoRecord",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "video-persistence.ts",
+      "file_type": "code",
+      "norm_label": "videorecord",
+      "source_file": "apps/web/app/api/videos/store.ts",
+      "source_location": "L3"
+    },
+    {
       "id": "apps_web_lib_brand_templates_databaserow",
       "label": "DatabaseRow",
       "_callable": true,
@@ -580,30 +580,17 @@
       "source_location": "L8"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route_routecontext",
-      "label": "RouteContext",
+      "id": "packages_shared_types_video_platform",
+      "label": "Platform",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
+      "community": 1,
+      "community_name": "video-persistence.ts",
       "file_type": "code",
-      "norm_label": "routecontext",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L7"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_sceneinput",
-      "label": "SceneInput",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "sceneinput",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L8"
+      "norm_label": "platform",
+      "source_file": "packages/shared-types/video.ts",
+      "source_location": "L5"
     },
     {
       "id": "apps_render_worker_voice_speech",
@@ -684,17 +671,134 @@
       "source_location": "L16"
     },
     {
-      "id": "apps_web_app_api_videos_store_videorecord",
-      "label": "VideoRecord",
+      "id": "apps_web_lib_ai_provider_chatmessage",
+      "label": "ChatMessage",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "copilot.ts",
       "file_type": "code",
-      "norm_label": "videorecord",
-      "source_file": "apps/web/app/api/videos/store.ts",
-      "source_location": "L3"
+      "norm_label": "chatmessage",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L4"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_completionresponse",
+      "label": "CompletionResponse",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "completionresponse",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L52"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_generateoptions",
+      "label": "GenerateOptions",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "generateoptions",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L18"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_generationresult",
+      "label": "GenerationResult",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "generationresult",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_provider",
+      "label": "Provider",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "provider",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L32"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_providererror",
+      "label": "ProviderError",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "providererror",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L134"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_toolcall",
+      "label": "ToolCall",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "toolcall",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L16"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_toolschema",
+      "label": "ToolSchema",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "toolschema",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L15"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_wiremessage",
+      "label": "WireMessage",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "wiremessage",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L44"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_wiretoolcall",
+      "label": "WireToolCall",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "wiretoolcall",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L42"
     },
     {
       "id": "apps_web_lib_copilot_copilotresult",
@@ -759,7 +863,7 @@
       "file_type": "code",
       "norm_label": "routehandler",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L259"
+      "source_location": "L256"
     },
     {
       "id": "apps_web_lib_copilot_toolargs",
@@ -879,13 +983,39 @@
       "source_location": "L31"
     },
     {
+      "id": "apps_web_app_api_videos_id_scenes_route_routecontext",
+      "label": "RouteContext",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "routecontext",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L7"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_sceneinput",
+      "label": "SceneInput",
+      "_callable": true,
+      "_callable_class": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "sceneinput",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L8"
+    },
+    {
       "id": "apps_web_app_api_videos_id_scenes_sceneid_route_routecontext",
       "label": "RouteContext",
       "_callable": true,
       "_callable_class": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "routecontext",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -898,7 +1028,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "scenecontentpatch",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -911,7 +1041,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "sceneinput",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -924,7 +1054,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "aiprovider",
       "source_file": "apps/web/lib/ai.ts",
@@ -937,128 +1067,11 @@
       "_callable_class": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "generatedresponse",
       "source_file": "apps/web/lib/ai.ts",
       "source_location": "L3"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_chatmessage",
-      "label": "ChatMessage",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "chatmessage",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L3"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_completionresponse",
-      "label": "CompletionResponse",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "completionresponse",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L49"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_generateoptions",
-      "label": "GenerateOptions",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "generateoptions",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_generationresult",
-      "label": "GenerationResult",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "generationresult",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L16"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_provider",
-      "label": "Provider",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "provider",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L31"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_toolcall",
-      "label": "ToolCall",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "toolcall",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L15"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_toolschema",
-      "label": "ToolSchema",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "toolschema",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L14"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_wiremessage",
-      "label": "WireMessage",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "wiremessage",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L41"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_wiretoolcall",
-      "label": "WireToolCall",
-      "_callable": true,
-      "_callable_class": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "wiretoolcall",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L39"
     },
     {
       "id": "apps_render_worker_drawing_fontchoice",
@@ -1292,18 +1305,6 @@
       "source_location": "L160"
     },
     {
-      "id": "apps_web_app_components_api_deletescene",
-      "label": "deleteScene()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "deletescene()",
-      "source_file": "apps/web/app/components/api.ts",
-      "source_location": "L185"
-    },
-    {
       "id": "apps_web_app_components_api_deletevideo",
       "label": "deleteVideo()",
       "_callable": true,
@@ -1388,18 +1389,6 @@
       "source_location": "L18"
     },
     {
-      "id": "apps_web_app_components_api_regeneratescene",
-      "label": "regenerateScene()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "regeneratescene()",
-      "source_file": "apps/web/app/components/api.ts",
-      "source_location": "L83"
-    },
-    {
       "id": "apps_web_app_components_api_request",
       "label": "request()",
       "_callable": true,
@@ -1458,18 +1447,6 @@
       "norm_label": "updatebranding()",
       "source_file": "apps/web/app/components/api.ts",
       "source_location": "L120"
-    },
-    {
-      "id": "apps_web_app_components_api_updatescene",
-      "label": "updateScene()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "updatescene()",
-      "source_file": "apps/web/app/components/api.ts",
-      "source_location": "L100"
     },
     {
       "id": "apps_web_app_components_api_uploadlogo",
@@ -1616,102 +1593,6 @@
       "source_location": "L44"
     },
     {
-      "id": "apps_web_app_components_scene_panel_scenerow",
-      "label": "SceneRow()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "scenerow()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L136"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_applypatch",
-      "label": "applyPatch()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "applypatch()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L145"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handleactionchange",
-      "label": "handleActionChange()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handleactionchange()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L162"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handlecharacterchange",
-      "label": "handleCharacterChange()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handlecharacterchange()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L158"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handledelete",
-      "label": "handleDelete()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handledelete()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L182"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handlepropchange",
-      "label": "handlePropChange()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handlepropchange()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L166"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handleregenerate",
-      "label": "handleRegenerate()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handleregenerate()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L196"
-    },
-    {
-      "id": "apps_web_app_components_scene_panel_scenerow_handlesavetext",
-      "label": "handleSaveText()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "api.ts",
-      "file_type": "code",
-      "norm_label": "handlesavetext()",
-      "source_file": "apps/web/app/components/scene-panel.tsx",
-      "source_location": "L170"
-    },
-    {
       "id": "apps_web_app_components_script_panel_scriptpanel",
       "label": "ScriptPanel()",
       "_callable": true,
@@ -1734,6 +1615,18 @@
       "norm_label": "handlesave()",
       "source_file": "apps/web/app/components/script-panel.tsx",
       "source_location": "L17"
+    },
+    {
+      "id": "apps_web_app_components_service_worker_serviceworker",
+      "label": "ServiceWorker()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "serviceworker()",
+      "source_file": "apps/web/app/components/service-worker.tsx",
+      "source_location": "L8"
     },
     {
       "id": "apps_web_app_components_status_badge_statusbadge",
@@ -2036,18 +1929,6 @@
       "source_location": "L7"
     },
     {
-      "id": "apps_web_app_api_videos_route_get",
-      "label": "GET()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "video-persistence.ts",
-      "file_type": "code",
-      "norm_label": "get()",
-      "source_file": "apps/web/app/api/videos/route.ts",
-      "source_location": "L8"
-    },
-    {
       "id": "apps_web_app_api_videos_route_post",
       "label": "POST()",
       "_callable": true,
@@ -2240,6 +2121,18 @@
       "source_location": "L252"
     },
     {
+      "id": "apps_web_lib_video_persistence_deletescene",
+      "label": "deleteScene()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "video-persistence.ts",
+      "file_type": "code",
+      "norm_label": "deletescene()",
+      "source_file": "apps/web/lib/video-persistence.ts",
+      "source_location": "L351"
+    },
+    {
       "id": "apps_web_lib_video_persistence_deletevideo",
       "label": "deleteVideo()",
       "_callable": true,
@@ -2310,18 +2203,6 @@
       "norm_label": "getvideo()",
       "source_file": "apps/web/lib/video-persistence.ts",
       "source_location": "L248"
-    },
-    {
-      "id": "apps_web_lib_video_persistence_listvideos",
-      "label": "listVideos()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "video-persistence.ts",
-      "file_type": "code",
-      "norm_label": "listvideos()",
-      "source_file": "apps/web/lib/video-persistence.ts",
-      "source_location": "L244"
     },
     {
       "id": "apps_web_lib_video_persistence_nullablestring",
@@ -2444,6 +2325,18 @@
       "source_location": "L326"
     },
     {
+      "id": "apps_web_lib_video_persistence_updatescript",
+      "label": "updateScript()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 1,
+      "community_name": "video-persistence.ts",
+      "file_type": "code",
+      "norm_label": "updatescript()",
+      "source_file": "apps/web/lib/video-persistence.ts",
+      "source_location": "L265"
+    },
+    {
       "id": "apps_web_lib_video_persistence_updatevideostatus",
       "label": "updateVideoStatus()",
       "_callable": true,
@@ -2456,136 +2349,28 @@
       "source_location": "L529"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route_buildscenesfromaijson",
-      "label": "buildScenesFromAiJson()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "buildscenesfromaijson()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L75"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_buildsentencefallback",
-      "label": "buildSentenceFallback()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "buildsentencefallback()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L96"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_buildsystemprompt",
-      "label": "buildSystemPrompt()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "buildsystemprompt()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L55"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_coerceaction",
-      "label": "coerceAction()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "coerceaction()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L21"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_coercecharacter",
-      "label": "coerceCharacter()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "coercecharacter()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L17"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_coercedescription",
-      "label": "coerceDescription()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "coercedescription()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L34"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_coerceduration",
-      "label": "coerceDuration()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "coerceduration()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L29"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_coerceprop",
-      "label": "coerceProp()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "coerceprop()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L25"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_extractjson",
-      "label": "extractJson()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "extractjson()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L40"
-    },
-    {
-      "id": "apps_web_app_api_videos_id_scenes_route_post",
-      "label": "POST()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
-      "file_type": "code",
-      "norm_label": "post()",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L157"
-    },
-    {
       "id": "packages_shared_types_templates_gettemplate",
       "label": "getTemplate()",
       "_callable": true,
       "_origin": "ast",
-      "community": 11,
-      "community_name": "scenes/route.ts",
+      "community": 1,
+      "community_name": "video-persistence.ts",
       "file_type": "code",
       "norm_label": "gettemplate()",
       "source_file": "packages/shared-types/templates.ts",
       "source_location": "L103"
+    },
+    {
+      "id": "scripts_check_ai_probe",
+      "label": "probe()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "check-ai.mjs",
+      "file_type": "code",
+      "norm_label": "probe()",
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L77"
     },
     {
       "id": "apps_render_worker_voice_downloadmodel",
@@ -2888,18 +2673,6 @@
       "source_location": "L46"
     },
     {
-      "id": "scripts_check_ai_probe",
-      "label": "probe()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "file_type": "code",
-      "norm_label": "probe()",
-      "source_file": "scripts/check-ai.mjs",
-      "source_location": "L72"
-    },
-    {
       "id": "scripts_graph_candidates",
       "label": "candidates()",
       "_callable": true,
@@ -2936,6 +2709,18 @@
       "source_location": "L7"
     },
     {
+      "id": "apps_web_app_api_videos_route_get",
+      "label": "GET()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "get()",
+      "source_file": "apps/web/app/api/videos/route.ts",
+      "source_location": "L8"
+    },
+    {
       "id": "apps_web_lib_ai_provider_generatewithfallback",
       "label": "generateWithFallback()",
       "_callable": true,
@@ -2945,7 +2730,7 @@
       "file_type": "code",
       "norm_label": "generatewithfallback()",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L213"
+      "source_location": "L264"
     },
     {
       "id": "apps_web_lib_ai_provider_iscopilotconfigured",
@@ -2957,7 +2742,127 @@
       "file_type": "code",
       "norm_label": "iscopilotconfigured()",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L192"
+      "source_location": "L239"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_isexhausted",
+      "label": "isExhausted()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "isexhausted()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L259"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_parsetoolarguments",
+      "label": "parseToolArguments()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "parsetoolarguments()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L106"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_providererror_constructor",
+      "label": ".constructor()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": ".constructor()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L138"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_providers",
+      "label": "providers()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "providers()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L62"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_requestcompletion",
+      "label": "requestCompletion()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "requestcompletion()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L165"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_requestlegacy",
+      "label": "requestLegacy()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "requestlegacy()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L226"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_secondsuntilretry",
+      "label": "secondsUntilRetry()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "secondsuntilretry()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L148"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_tolegacymessages",
+      "label": "toLegacyMessages()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "tolegacymessages()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L210"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_totoolcalls",
+      "label": "toToolCalls()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "totoolcalls()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L121"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_towiremessage",
+      "label": "toWireMessage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "towiremessage()",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L92"
     },
     {
       "id": "apps_web_lib_copilot_abrirvideo",
@@ -2969,7 +2874,7 @@
       "file_type": "code",
       "norm_label": "abrirvideo()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L636"
+      "source_location": "L633"
     },
     {
       "id": "apps_web_lib_copilot_aplicarbranding",
@@ -2981,7 +2886,7 @@
       "file_type": "code",
       "norm_label": "aplicarbranding()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L585"
+      "source_location": "L582"
     },
     {
       "id": "apps_web_lib_copilot_aplicarmarca",
@@ -2993,7 +2898,7 @@
       "file_type": "code",
       "norm_label": "aplicarmarca()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L755"
+      "source_location": "L752"
     },
     {
       "id": "apps_web_lib_copilot_borrarescena",
@@ -3005,7 +2910,7 @@
       "file_type": "code",
       "norm_label": "borrarescena()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L519"
+      "source_location": "L516"
     },
     {
       "id": "apps_web_lib_copilot_borrarvideo",
@@ -3017,7 +2922,7 @@
       "file_type": "code",
       "norm_label": "borrarvideo()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L765"
+      "source_location": "L762"
     },
     {
       "id": "apps_web_lib_copilot_buildcontext",
@@ -3029,7 +2934,7 @@
       "file_type": "code",
       "norm_label": "buildcontext()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L777"
+      "source_location": "L774"
     },
     {
       "id": "apps_web_lib_copilot_callroute",
@@ -3041,7 +2946,7 @@
       "file_type": "code",
       "norm_label": "callroute()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L261"
+      "source_location": "L258"
     },
     {
       "id": "apps_web_lib_copilot_coerceduration",
@@ -3053,7 +2958,7 @@
       "file_type": "code",
       "norm_label": "coerceduration()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L301"
+      "source_location": "L298"
     },
     {
       "id": "apps_web_lib_copilot_coerceplatform",
@@ -3065,7 +2970,7 @@
       "file_type": "code",
       "norm_label": "coerceplatform()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L296"
+      "source_location": "L293"
     },
     {
       "id": "apps_web_lib_copilot_descargarvideo",
@@ -3077,7 +2982,7 @@
       "file_type": "code",
       "norm_label": "descargarvideo()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L684"
+      "source_location": "L681"
     },
     {
       "id": "apps_web_lib_copilot_describebranding",
@@ -3089,7 +2994,7 @@
       "file_type": "code",
       "norm_label": "describebranding()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L342"
+      "source_location": "L339"
     },
     {
       "id": "apps_web_lib_copilot_describelibrary",
@@ -3101,7 +3006,7 @@
       "file_type": "code",
       "norm_label": "describelibrary()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L791"
+      "source_location": "L788"
     },
     {
       "id": "apps_web_lib_copilot_describescenes",
@@ -3113,7 +3018,7 @@
       "file_type": "code",
       "norm_label": "describescenes()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L337"
+      "source_location": "L334"
     },
     {
       "id": "apps_web_lib_copilot_duplicarvideo",
@@ -3125,7 +3030,7 @@
       "file_type": "code",
       "norm_label": "duplicarvideo()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L668"
+      "source_location": "L665"
     },
     {
       "id": "apps_web_lib_copilot_editarescena",
@@ -3137,7 +3042,7 @@
       "file_type": "code",
       "norm_label": "editarescena()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L478"
+      "source_location": "L475"
     },
     {
       "id": "apps_web_lib_copilot_editarguion",
@@ -3149,7 +3054,7 @@
       "file_type": "code",
       "norm_label": "editarguion()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L378"
+      "source_location": "L375"
     },
     {
       "id": "apps_web_lib_copilot_estadoproyecto",
@@ -3161,7 +3066,7 @@
       "file_type": "code",
       "norm_label": "estadoproyecto()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L610"
+      "source_location": "L607"
     },
     {
       "id": "apps_web_lib_copilot_executetool",
@@ -3173,7 +3078,7 @@
       "file_type": "code",
       "norm_label": "executetool()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L713"
+      "source_location": "L710"
     },
     {
       "id": "apps_web_lib_copilot_generarescenas",
@@ -3185,7 +3090,7 @@
       "file_type": "code",
       "norm_label": "generarescenas()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L407"
+      "source_location": "L404"
     },
     {
       "id": "apps_web_lib_copilot_generarguion",
@@ -3197,7 +3102,7 @@
       "file_type": "code",
       "norm_label": "generarguion()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L360"
+      "source_location": "L357"
     },
     {
       "id": "apps_web_lib_copilot_generarvoz",
@@ -3209,7 +3114,7 @@
       "file_type": "code",
       "norm_label": "generarvoz()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L655"
+      "source_location": "L652"
     },
     {
       "id": "apps_web_lib_copilot_jsoninit",
@@ -3221,7 +3126,7 @@
       "file_type": "code",
       "norm_label": "jsoninit()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L270"
+      "source_location": "L267"
     },
     {
       "id": "apps_web_lib_copilot_matchoption",
@@ -3233,7 +3138,7 @@
       "file_type": "code",
       "norm_label": "matchoption()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L284"
+      "source_location": "L281"
     },
     {
       "id": "apps_web_lib_copilot_normalise",
@@ -3245,7 +3150,7 @@
       "file_type": "code",
       "norm_label": "normalise()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L276"
+      "source_location": "L273"
     },
     {
       "id": "apps_web_lib_copilot_orderedscenes",
@@ -3257,7 +3162,7 @@
       "file_type": "code",
       "norm_label": "orderedscenes()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L307"
+      "source_location": "L304"
     },
     {
       "id": "apps_web_lib_copilot_parsejsonobject",
@@ -3269,7 +3174,7 @@
       "file_type": "code",
       "norm_label": "parsejsonobject()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L347"
+      "source_location": "L344"
     },
     {
       "id": "apps_web_lib_copilot_readtext",
@@ -3281,7 +3186,7 @@
       "file_type": "code",
       "norm_label": "readtext()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L280"
+      "source_location": "L277"
     },
     {
       "id": "apps_web_lib_copilot_regenerarconinstruccion",
@@ -3293,7 +3198,7 @@
       "file_type": "code",
       "norm_label": "regenerarconinstruccion()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L425"
+      "source_location": "L422"
     },
     {
       "id": "apps_web_lib_copilot_regenerarescena",
@@ -3305,7 +3210,7 @@
       "file_type": "code",
       "norm_label": "regenerarescena()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L457"
+      "source_location": "L454"
     },
     {
       "id": "apps_web_lib_copilot_requirevideo",
@@ -3317,7 +3222,7 @@
       "file_type": "code",
       "norm_label": "requirevideo()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L314"
+      "source_location": "L311"
     },
     {
       "id": "apps_web_lib_copilot_resolvescene",
@@ -3329,7 +3234,7 @@
       "file_type": "code",
       "norm_label": "resolvescene()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L325"
+      "source_location": "L322"
     },
     {
       "id": "apps_web_lib_copilot_runcopilot",
@@ -3341,7 +3246,7 @@
       "file_type": "code",
       "norm_label": "runcopilot()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L864"
+      "source_location": "L861"
     },
     {
       "id": "apps_web_lib_copilot_runlegacyaction",
@@ -3353,7 +3258,7 @@
       "file_type": "code",
       "norm_label": "runlegacyaction()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L807"
+      "source_location": "L804"
     },
     {
       "id": "apps_web_lib_copilot_runwithoutmodel",
@@ -3365,7 +3270,7 @@
       "file_type": "code",
       "norm_label": "runwithoutmodel()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L848"
+      "source_location": "L845"
     },
     {
       "id": "apps_web_lib_copilot_scoretext",
@@ -3377,7 +3282,7 @@
       "file_type": "code",
       "norm_label": "scoretext()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L535"
+      "source_location": "L532"
     },
     {
       "id": "apps_web_lib_copilot_sugerirpersonaje",
@@ -3389,7 +3294,7 @@
       "file_type": "code",
       "norm_label": "sugerirpersonaje()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L569"
+      "source_location": "L566"
     },
     {
       "id": "apps_web_lib_copilot_sugerirplantilla",
@@ -3401,7 +3306,7 @@
       "file_type": "code",
       "norm_label": "sugerirplantilla()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L541"
+      "source_location": "L538"
     },
     {
       "id": "apps_web_lib_copilot_summarise",
@@ -3413,7 +3318,7 @@
       "file_type": "code",
       "norm_label": "summarise()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L728"
+      "source_location": "L725"
     },
     {
       "id": "apps_web_lib_copilot_toresult",
@@ -3425,19 +3330,19 @@
       "file_type": "code",
       "norm_label": "toresult()",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L738"
+      "source_location": "L735"
     },
     {
-      "id": "apps_web_lib_video_persistence_updatescript",
-      "label": "updateScript()",
+      "id": "apps_web_lib_video_persistence_listvideos",
+      "label": "listVideos()",
       "_callable": true,
       "_origin": "ast",
       "community": 2,
       "community_name": "copilot.ts",
       "file_type": "code",
-      "norm_label": "updatescript()",
+      "norm_label": "listvideos()",
       "source_file": "apps/web/lib/video-persistence.ts",
-      "source_location": "L265"
+      "source_location": "L244"
     },
     {
       "id": "scripts_e2e_api",
@@ -3536,16 +3441,136 @@
       "source_location": "L96"
     },
     {
-      "id": "apps_web_app_components_service_worker_serviceworker",
-      "label": "ServiceWorker()",
+      "id": "apps_web_app_components_api_deletescene",
+      "label": "deleteScene()",
       "_callable": true,
       "_origin": "ast",
-      "community": 26,
-      "community_name": "layout.tsx",
+      "community": 25,
+      "community_name": "SceneRow",
       "file_type": "code",
-      "norm_label": "serviceworker()",
-      "source_file": "apps/web/app/components/service-worker.tsx",
-      "source_location": "L8"
+      "norm_label": "deletescene()",
+      "source_file": "apps/web/app/components/api.ts",
+      "source_location": "L185"
+    },
+    {
+      "id": "apps_web_app_components_api_regeneratescene",
+      "label": "regenerateScene()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "regeneratescene()",
+      "source_file": "apps/web/app/components/api.ts",
+      "source_location": "L83"
+    },
+    {
+      "id": "apps_web_app_components_api_updatescene",
+      "label": "updateScene()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "updatescene()",
+      "source_file": "apps/web/app/components/api.ts",
+      "source_location": "L100"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow",
+      "label": "SceneRow()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "scenerow()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L136"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_applypatch",
+      "label": "applyPatch()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "applypatch()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L145"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handleactionchange",
+      "label": "handleActionChange()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handleactionchange()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L162"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handlecharacterchange",
+      "label": "handleCharacterChange()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handlecharacterchange()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L158"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handledelete",
+      "label": "handleDelete()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handledelete()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L182"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handlepropchange",
+      "label": "handlePropChange()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handlepropchange()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L166"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handleregenerate",
+      "label": "handleRegenerate()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handleregenerate()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L196"
+    },
+    {
+      "id": "apps_web_app_components_scene_panel_scenerow_handlesavetext",
+      "label": "handleSaveText()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 25,
+      "community_name": "SceneRow",
+      "file_type": "code",
+      "norm_label": "handlesavetext()",
+      "source_file": "apps/web/app/components/scene-panel.tsx",
+      "source_location": "L170"
     },
     {
       "id": "apps_web_app_layout_rootlayout",
@@ -3584,12 +3609,132 @@
       "source_location": "L50"
     },
     {
+      "id": "apps_web_app_api_videos_id_scenes_route_buildscenesfromaijson",
+      "label": "buildScenesFromAiJson()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "buildscenesfromaijson()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L75"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_buildsentencefallback",
+      "label": "buildSentenceFallback()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "buildsentencefallback()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L96"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_buildsystemprompt",
+      "label": "buildSystemPrompt()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "buildsystemprompt()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L55"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_coerceaction",
+      "label": "coerceAction()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "coerceaction()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L21"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_coercecharacter",
+      "label": "coerceCharacter()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "coercecharacter()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L17"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_coercedescription",
+      "label": "coerceDescription()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "coercedescription()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L34"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_coerceduration",
+      "label": "coerceDuration()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "coerceduration()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L29"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_coerceprop",
+      "label": "coerceProp()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "coerceprop()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L25"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_extractjson",
+      "label": "extractJson()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "extractjson()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L40"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_post",
+      "label": "POST()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "post()",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L157"
+    },
+    {
       "id": "apps_web_app_api_videos_id_scenes_sceneid_route_buildregeneratesystemprompt",
       "label": "buildRegenerateSystemPrompt()",
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "buildregeneratesystemprompt()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3601,7 +3746,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "coerceaction()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3613,7 +3758,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "coercecharacter()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3625,7 +3770,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "coercedescription()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3637,7 +3782,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "coerceprop()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3649,7 +3794,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "delete()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3661,7 +3806,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "extractjson()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3673,7 +3818,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "isaction()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3685,7 +3830,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "ischaracter()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3697,7 +3842,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "isprop()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3709,7 +3854,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "patch()",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -3721,7 +3866,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "configuredproviders()",
       "source_file": "apps/web/lib/ai.ts",
@@ -3733,107 +3878,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "generateaitext()",
       "source_file": "apps/web/lib/ai.ts",
       "source_location": "L44"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_isexhausted",
-      "label": "isExhausted()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "isexhausted()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L208"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_parsetoolarguments",
-      "label": "parseToolArguments()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "parsetoolarguments()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L98"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_providers",
-      "label": "providers()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "providers()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L59"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_requestcompletion",
-      "label": "requestCompletion()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "requestcompletion()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L125"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_requestlegacy",
-      "label": "requestLegacy()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "requestlegacy()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L179"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_tolegacymessages",
-      "label": "toLegacyMessages()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "tolegacymessages()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L163"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_totoolcalls",
-      "label": "toToolCalls()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "totoolcalls()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L113"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_towiremessage",
-      "label": "toWireMessage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "towiremessage()",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L84"
     },
     {
       "id": "apps_web_lib_ai_providerkey",
@@ -3841,7 +3890,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "providerkey()",
       "source_file": "apps/web/lib/ai.ts",
@@ -3853,7 +3902,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "requestanthropic()",
       "source_file": "apps/web/lib/ai.ts",
@@ -3865,23 +3914,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "requestopenai()",
       "source_file": "apps/web/lib/ai.ts",
       "source_location": "L16"
-    },
-    {
-      "id": "apps_web_lib_video_persistence_deletescene",
-      "label": "deleteScene()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "deletescene()",
-      "source_file": "apps/web/lib/video-persistence.ts",
-      "source_location": "L351"
     },
     {
       "id": "apps_render_worker_drawing_drawbackground",
@@ -4337,7 +4374,7 @@
       "file_type": "code",
       "norm_label": "describecontext()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L338"
+      "source_location": "L350"
     },
     {
       "id": "apps_web_lib_assistant_findtemplate",
@@ -4349,7 +4386,7 @@
       "file_type": "code",
       "norm_label": "findtemplate()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L76"
+      "source_location": "L85"
     },
     {
       "id": "apps_web_lib_assistant_findword",
@@ -4361,7 +4398,7 @@
       "file_type": "code",
       "norm_label": "findword()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L121"
+      "source_location": "L130"
     },
     {
       "id": "apps_web_lib_assistant_glossaryanswer",
@@ -4373,7 +4410,7 @@
       "file_type": "code",
       "norm_label": "glossaryanswer()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L160"
+      "source_location": "L169"
     },
     {
       "id": "apps_web_lib_assistant_interpret",
@@ -4385,7 +4422,7 @@
       "file_type": "code",
       "norm_label": "interpret()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L399"
+      "source_location": "L411"
     },
     {
       "id": "apps_web_lib_assistant_matchknowncommand",
@@ -4397,7 +4434,7 @@
       "file_type": "code",
       "norm_label": "matchknowncommand()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L173"
+      "source_location": "L182"
     },
     {
       "id": "apps_web_lib_assistant_parsemodeljson",
@@ -4409,7 +4446,7 @@
       "file_type": "code",
       "norm_label": "parsemodeljson()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L375"
+      "source_location": "L387"
     },
     {
       "id": "apps_web_lib_assistant_readbrandpatch",
@@ -4421,7 +4458,7 @@
       "file_type": "code",
       "norm_label": "readbrandpatch()",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L309"
+      "source_location": "L321"
     },
     {
       "id": "apps_web_app_components_api",
@@ -4586,6 +4623,17 @@
       "file_type": "code",
       "norm_label": "script-panel.tsx",
       "source_file": "apps/web/app/components/script-panel.tsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "apps_web_app_components_service_worker",
+      "label": "service-worker.tsx",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "api.ts",
+      "file_type": "code",
+      "norm_label": "service-worker.tsx",
+      "source_file": "apps/web/app/components/service-worker.tsx",
       "source_location": "L1"
     },
     {
@@ -5007,48 +5055,59 @@
       "source_location": "L27"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route",
-      "label": "scenes/route.ts",
+      "id": "scripts_check_ai",
+      "label": "check-ai.mjs",
       "_origin": "ast",
       "community": 11,
-      "community_name": "scenes/route.ts",
+      "community_name": "check-ai.mjs",
       "file_type": "code",
-      "norm_label": "scenes/route.ts",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "norm_label": "check-ai.mjs",
+      "source_file": "scripts/check-ai.mjs",
       "source_location": "L1"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route_actions",
-      "label": "ACTIONS",
+      "id": "scripts_check_ai_models",
+      "label": "MODELS",
       "_origin": "ast",
       "community": 11,
-      "community_name": "scenes/route.ts",
+      "community_name": "check-ai.mjs",
       "file_type": "code",
-      "norm_label": "actions",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L11"
+      "norm_label": "models",
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L18"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route_characters",
-      "label": "CHARACTERS",
+      "id": "scripts_check_ai_providers",
+      "label": "PROVIDERS",
       "_origin": "ast",
       "community": 11,
-      "community_name": "scenes/route.ts",
+      "community_name": "check-ai.mjs",
       "file_type": "code",
-      "norm_label": "characters",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L10"
+      "norm_label": "providers",
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L52"
     },
     {
-      "id": "apps_web_app_api_videos_id_scenes_route_props",
-      "label": "PROPS",
+      "id": "scripts_check_ai_root",
+      "label": "root",
       "_origin": "ast",
       "community": 11,
-      "community_name": "scenes/route.ts",
+      "community_name": "check-ai.mjs",
       "file_type": "code",
-      "norm_label": "props",
-      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
-      "source_location": "L12"
+      "norm_label": "root",
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L14"
+    },
+    {
+      "id": "scripts_check_ai_tool",
+      "label": "TOOL",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "check-ai.mjs",
+      "file_type": "code",
+      "norm_label": "tool",
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L36"
     },
     {
       "id": "apps_render_worker_package",
@@ -5568,50 +5627,6 @@
       "source_location": "L6"
     },
     {
-      "id": "scripts_check_ai",
-      "label": "check-ai.mjs",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "file_type": "code",
-      "norm_label": "check-ai.mjs",
-      "source_file": "scripts/check-ai.mjs",
-      "source_location": "L1"
-    },
-    {
-      "id": "scripts_check_ai_providers",
-      "label": "PROVIDERS",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "file_type": "code",
-      "norm_label": "providers",
-      "source_file": "scripts/check-ai.mjs",
-      "source_location": "L48"
-    },
-    {
-      "id": "scripts_check_ai_root",
-      "label": "root",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "file_type": "code",
-      "norm_label": "root",
-      "source_file": "scripts/check-ai.mjs",
-      "source_location": "L14"
-    },
-    {
-      "id": "scripts_check_ai_tool",
-      "label": "TOOL",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "file_type": "code",
-      "norm_label": "tool",
-      "source_file": "scripts/check-ai.mjs",
-      "source_location": "L32"
-    },
-    {
       "id": "scripts_graph",
       "label": "graph.mjs",
       "_origin": "ast",
@@ -5777,6 +5792,28 @@
       "source_location": "L1"
     },
     {
+      "id": "apps_web_lib_ai_provider",
+      "label": "ai-provider.ts",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "ai-provider.ts",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "apps_web_lib_ai_provider_exhausted",
+      "label": "EXHAUSTED",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "file_type": "code",
+      "norm_label": "exhausted",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L253"
+    },
+    {
       "id": "apps_web_lib_copilot",
       "label": "copilot.ts",
       "_origin": "ast",
@@ -5807,7 +5844,7 @@
       "file_type": "code",
       "norm_label": "character_hints",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L560"
+      "source_location": "L557"
     },
     {
       "id": "apps_web_lib_copilot_characters",
@@ -5829,7 +5866,7 @@
       "file_type": "code",
       "norm_label": "executors",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L694"
+      "source_location": "L691"
     },
     {
       "id": "apps_web_lib_copilot_platform_aliases",
@@ -5840,7 +5877,7 @@
       "file_type": "code",
       "norm_label": "platform_aliases",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L294"
+      "source_location": "L291"
     },
     {
       "id": "apps_web_lib_copilot_platforms",
@@ -5873,7 +5910,7 @@
       "file_type": "code",
       "norm_label": "system",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L89"
+      "source_location": "L86"
     },
     {
       "id": "apps_web_lib_copilot_template_ids",
@@ -5895,7 +5932,7 @@
       "file_type": "code",
       "norm_label": "tools",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L101"
+      "source_location": "L98"
     },
     {
       "id": "apps_render_worker_tsconfig",
@@ -6151,17 +6188,6 @@
       "source_location": "L19"
     },
     {
-      "id": "apps_web_app_components_service_worker",
-      "label": "service-worker.tsx",
-      "_origin": "ast",
-      "community": 26,
-      "community_name": "layout.tsx",
-      "file_type": "code",
-      "norm_label": "service-worker.tsx",
-      "source_file": "apps/web/app/components/service-worker.tsx",
-      "source_location": "L1"
-    },
-    {
       "id": "apps_web_app_layout",
       "label": "layout.tsx",
       "_origin": "ast",
@@ -6283,11 +6309,55 @@
       "source_location": "L12"
     },
     {
+      "id": "apps_web_app_api_videos_id_scenes_route",
+      "label": "scenes/route.ts",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "scenes/route.ts",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L1"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_actions",
+      "label": "ACTIONS",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "actions",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L11"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_characters",
+      "label": "CHARACTERS",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "characters",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L10"
+    },
+    {
+      "id": "apps_web_app_api_videos_id_scenes_route_props",
+      "label": "PROPS",
+      "_origin": "ast",
+      "community": 3,
+      "community_name": "scenes/route.ts",
+      "file_type": "code",
+      "norm_label": "props",
+      "source_file": "apps/web/app/api/videos/[id]/scenes/route.ts",
+      "source_location": "L12"
+    },
+    {
       "id": "apps_web_app_api_videos_id_scenes_sceneid_route",
       "label": "[sceneId]/route.ts",
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "[sceneid]/route.ts",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -6298,7 +6368,7 @@
       "label": "ACTIONS",
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "actions",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -6309,7 +6379,7 @@
       "label": "CHARACTERS",
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "characters",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -6320,7 +6390,7 @@
       "label": "PROPS",
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "props",
       "source_file": "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts",
@@ -6331,33 +6401,11 @@
       "label": "ai.ts",
       "_origin": "ast",
       "community": 3,
-      "community_name": "[sceneId]/route.ts",
+      "community_name": "scenes/route.ts",
       "file_type": "code",
       "norm_label": "ai.ts",
       "source_file": "apps/web/lib/ai.ts",
       "source_location": "L1"
-    },
-    {
-      "id": "apps_web_lib_ai_provider",
-      "label": "ai-provider.ts",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "ai-provider.ts",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L1"
-    },
-    {
-      "id": "apps_web_lib_ai_provider_exhausted",
-      "label": "EXHAUSTED",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "[sceneId]/route.ts",
-      "file_type": "code",
-      "norm_label": "exhausted",
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L206"
     },
     {
       "id": "apps_render_worker_tsconfig_check",
@@ -7785,6 +7833,17 @@
       "source_location": "L1"
     },
     {
+      "id": "apps_web_lib_assistant_about_approval",
+      "label": "ABOUT_APPROVAL",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "assistant.ts",
+      "file_type": "code",
+      "norm_label": "about_approval",
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L53"
+    },
+    {
       "id": "apps_web_lib_assistant_action_words",
       "label": "ACTION_WORDS",
       "_origin": "ast",
@@ -7793,7 +7852,7 @@
       "file_type": "code",
       "norm_label": "action_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L86"
+      "source_location": "L95"
     },
     {
       "id": "apps_web_lib_assistant_character_words",
@@ -7804,7 +7863,7 @@
       "file_type": "code",
       "norm_label": "character_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L81"
+      "source_location": "L90"
     },
     {
       "id": "apps_web_lib_assistant_color_words",
@@ -7815,7 +7874,7 @@
       "file_type": "code",
       "norm_label": "color_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L105"
+      "source_location": "L114"
     },
     {
       "id": "apps_web_lib_assistant_font_words",
@@ -7826,7 +7885,18 @@
       "file_type": "code",
       "norm_label": "font_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L114"
+      "source_location": "L123"
+    },
+    {
+      "id": "apps_web_lib_assistant_forbidden",
+      "label": "FORBIDDEN",
+      "_origin": "ast",
+      "community": 8,
+      "community_name": "assistant.ts",
+      "file_type": "code",
+      "norm_label": "forbidden",
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L50"
     },
     {
       "id": "apps_web_lib_assistant_glossary",
@@ -7837,7 +7907,7 @@
       "file_type": "code",
       "norm_label": "glossary",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L144"
+      "source_location": "L153"
     },
     {
       "id": "apps_web_lib_assistant_help",
@@ -7848,7 +7918,7 @@
       "file_type": "code",
       "norm_label": "help",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L130"
+      "source_location": "L139"
     },
     {
       "id": "apps_web_lib_assistant_platform_words",
@@ -7859,7 +7929,7 @@
       "file_type": "code",
       "norm_label": "platform_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L57"
+      "source_location": "L66"
     },
     {
       "id": "apps_web_lib_assistant_prop_words",
@@ -7870,7 +7940,7 @@
       "file_type": "code",
       "norm_label": "prop_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L96"
+      "source_location": "L105"
     },
     {
       "id": "apps_web_lib_assistant_template_words",
@@ -7881,7 +7951,7 @@
       "file_type": "code",
       "norm_label": "template_words",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L63"
+      "source_location": "L72"
     },
     {
       "id": "apps_web_tsconfig",
@@ -9663,14 +9733,14 @@
       "source_url": null
     },
     {
-      "id": "ref_supabase_supabase_js",
-      "label": "ref_supabase_supabase_js",
+      "id": "ref_node_url",
+      "label": "ref_node_url",
       "_origin": "semantic",
-      "community": 1,
-      "community_name": "video-persistence.ts",
+      "community": 11,
+      "community_name": "check-ai.mjs",
       "external": true,
       "file_type": "concept",
-      "norm_label": "ref_supabase_supabase_js",
+      "norm_label": "ref_node_url",
       "source_file": "",
       "type": "external"
     },
@@ -9683,6 +9753,18 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_stream",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "ref_node_readline",
+      "label": "ref_node_readline",
+      "_origin": "semantic",
+      "community": 16,
+      "community_name": "set-ai-key.mjs",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_node_readline",
       "source_file": "",
       "type": "external"
     },
@@ -9719,18 +9801,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_node_process",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_node_url",
-      "label": "ref_node_url",
-      "_origin": "semantic",
-      "community": 18,
-      "community_name": "ref_node_fs",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_node_url",
       "source_file": "",
       "type": "external"
     },
@@ -9807,13 +9877,25 @@
       "type": "external"
     },
     {
-      "id": "ref_node_readline",
-      "label": "ref_node_readline",
-      "community": 16,
-      "community_name": "set-ai-key.mjs",
+      "id": "ref_supabase_supabase_js",
+      "label": "ref_supabase_supabase_js",
+      "_origin": "semantic",
+      "community": 6,
+      "community_name": "index.ts",
       "external": true,
       "file_type": "concept",
-      "norm_label": "ref_node_readline",
+      "norm_label": "ref_supabase_supabase_js",
+      "source_file": "",
+      "type": "external"
+    },
+    {
+      "id": "apps_web_lib_ai_models",
+      "label": "apps_web_lib_ai_models",
+      "community": 2,
+      "community_name": "copilot.ts",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "apps_web_lib_ai_models",
       "source_file": "",
       "type": "external"
     }
@@ -11820,7 +11902,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L214",
+      "source_location": "L265",
       "weight": 1.0
     },
     {
@@ -11832,7 +11914,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L224",
+      "source_location": "L277",
       "weight": 1.0
     },
     {
@@ -11844,7 +11926,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L228",
+      "source_location": "L281",
       "weight": 1.0
     },
     {
@@ -11856,7 +11938,31 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L237",
+      "source_location": "L316",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider_requestcompletion",
+      "target": "apps_web_lib_ai_provider_providererror",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L188",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider_requestcompletion",
+      "target": "apps_web_lib_ai_provider_secondsuntilretry",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L191",
       "weight": 1.0
     },
     {
@@ -11868,7 +11974,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L155",
+      "source_location": "L202",
       "weight": 1.0
     },
     {
@@ -11880,7 +11986,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L180",
+      "source_location": "L227",
       "weight": 1.0
     },
     {
@@ -11892,7 +11998,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L183",
+      "source_location": "L230",
       "weight": 1.0
     },
     {
@@ -11904,7 +12010,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L121",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -11940,7 +12046,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L400",
+      "source_location": "L412",
       "weight": 1.0
     },
     {
@@ -11952,7 +12058,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L403",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -11964,7 +12070,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L405",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -11976,7 +12082,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L409",
+      "source_location": "L421",
       "weight": 1.0
     },
     {
@@ -11988,7 +12094,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L184",
+      "source_location": "L196",
       "weight": 1.0
     },
     {
@@ -12000,7 +12106,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L227",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -12012,7 +12118,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L229",
+      "source_location": "L241",
       "weight": 1.0
     },
     {
@@ -12024,7 +12130,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L276",
+      "source_location": "L288",
       "weight": 1.0
     },
     {
@@ -12036,7 +12142,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L392",
+      "source_location": "L404",
       "weight": 1.0
     },
     {
@@ -12156,7 +12262,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L637",
+      "source_location": "L634",
       "weight": 1.0
     },
     {
@@ -12168,7 +12274,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L640",
+      "source_location": "L637",
       "weight": 1.0
     },
     {
@@ -12180,7 +12286,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L640",
+      "source_location": "L637",
       "weight": 1.0
     },
     {
@@ -12192,7 +12298,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L586",
+      "source_location": "L583",
       "weight": 1.0
     },
     {
@@ -12204,7 +12310,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L589",
+      "source_location": "L586",
       "weight": 1.0
     },
     {
@@ -12216,7 +12322,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L594",
+      "source_location": "L591",
       "weight": 1.0
     },
     {
@@ -12228,7 +12334,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L595",
+      "source_location": "L592",
       "weight": 1.0
     },
     {
@@ -12240,7 +12346,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L604",
+      "source_location": "L601",
       "weight": 1.0
     },
     {
@@ -12252,7 +12358,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L604",
+      "source_location": "L601",
       "weight": 1.0
     },
     {
@@ -12264,7 +12370,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L607",
+      "source_location": "L604",
       "weight": 1.0
     },
     {
@@ -12276,7 +12382,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L756",
+      "source_location": "L753",
       "weight": 1.0
     },
     {
@@ -12288,7 +12394,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L759",
+      "source_location": "L756",
       "weight": 1.0
     },
     {
@@ -12300,12 +12406,24 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L762",
+      "source_location": "L759",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_copilot_borrarescena",
       "target": "apps_web_lib_copilot_requirevideo",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L517",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot_borrarescena",
+      "target": "apps_web_lib_copilot_resolvescene",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12317,18 +12435,6 @@
     },
     {
       "source": "apps_web_lib_copilot_borrarescena",
-      "target": "apps_web_lib_copilot_resolvescene",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L523",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_borrarescena",
       "target": "apps_web_lib_video_persistence_deletescene",
       "relation": "calls",
       "_origin": "ast",
@@ -12336,7 +12442,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L526",
+      "source_location": "L523",
       "weight": 1.0
     },
     {
@@ -12348,7 +12454,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L766",
+      "source_location": "L763",
       "weight": 1.0
     },
     {
@@ -12360,7 +12466,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L769",
+      "source_location": "L766",
       "weight": 1.0
     },
     {
@@ -12372,7 +12478,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L302",
+      "source_location": "L299",
       "weight": 1.0
     },
     {
@@ -12384,7 +12490,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L297",
+      "source_location": "L294",
       "weight": 1.0
     },
     {
@@ -12396,7 +12502,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L297",
+      "source_location": "L294",
       "weight": 1.0
     },
     {
@@ -12408,7 +12514,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L298",
+      "source_location": "L295",
       "weight": 1.0
     },
     {
@@ -12420,7 +12526,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L685",
+      "source_location": "L682",
       "weight": 1.0
     },
     {
@@ -12432,7 +12538,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L793",
+      "source_location": "L790",
       "weight": 1.0
     },
     {
@@ -12444,12 +12550,24 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L338",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_copilot_duplicarvideo",
       "target": "apps_web_lib_copilot_requirevideo",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L666",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot_duplicarvideo",
+      "target": "apps_web_lib_copilot_matchoption",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12461,18 +12579,6 @@
     },
     {
       "source": "apps_web_lib_copilot_duplicarvideo",
-      "target": "apps_web_lib_copilot_matchoption",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L672",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_duplicarvideo",
       "target": "apps_web_lib_copilot_readtext",
       "relation": "calls",
       "_origin": "ast",
@@ -12480,7 +12586,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L672",
+      "source_location": "L669",
       "weight": 1.0
     },
     {
@@ -12492,7 +12598,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L676",
+      "source_location": "L673",
       "weight": 1.0
     },
     {
@@ -12504,12 +12610,24 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L676",
+      "source_location": "L673",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_copilot_editarescena",
       "target": "apps_web_lib_copilot_requirevideo",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L476",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot_editarescena",
+      "target": "apps_web_lib_copilot_resolvescene",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12521,18 +12639,6 @@
     },
     {
       "source": "apps_web_lib_copilot_editarescena",
-      "target": "apps_web_lib_copilot_resolvescene",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L482",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_editarescena",
       "target": "apps_web_lib_copilot_readtext",
       "relation": "calls",
       "_origin": "ast",
@@ -12540,7 +12646,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L495",
+      "source_location": "L492",
       "weight": 1.0
     },
     {
@@ -12552,7 +12658,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L501",
+      "source_location": "L498",
       "weight": 1.0
     },
     {
@@ -12564,7 +12670,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L510",
+      "source_location": "L507",
       "weight": 1.0
     },
     {
@@ -12576,12 +12682,24 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L510",
+      "source_location": "L507",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_copilot_editarguion",
       "target": "apps_web_lib_copilot_readtext",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L376",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot_editarguion",
+      "target": "apps_web_lib_copilot_requirevideo",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12593,7 +12711,7 @@
     },
     {
       "source": "apps_web_lib_copilot_editarguion",
-      "target": "apps_web_lib_copilot_requirevideo",
+      "target": "apps_web_lib_ai_provider_generatewithfallback",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12605,18 +12723,6 @@
     },
     {
       "source": "apps_web_lib_copilot_editarguion",
-      "target": "apps_web_lib_ai_provider_generatewithfallback",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L385",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_editarguion",
       "target": "apps_web_lib_video_persistence_updatescript",
       "relation": "calls",
       "_origin": "ast",
@@ -12624,7 +12730,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L401",
+      "source_location": "L398",
       "weight": 1.0
     },
     {
@@ -12636,7 +12742,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L611",
+      "source_location": "L608",
       "weight": 1.0
     },
     {
@@ -12648,7 +12754,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L615",
+      "source_location": "L612",
       "weight": 1.0
     },
     {
@@ -12660,7 +12766,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L626",
+      "source_location": "L623",
       "weight": 1.0
     },
     {
@@ -12672,7 +12778,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L628",
+      "source_location": "L625",
       "weight": 1.0
     },
     {
@@ -12684,7 +12790,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L408",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -12696,7 +12802,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L414",
+      "source_location": "L411",
       "weight": 1.0
     },
     {
@@ -12708,7 +12814,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L417",
+      "source_location": "L414",
       "weight": 1.0
     },
     {
@@ -12720,7 +12826,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L361",
+      "source_location": "L358",
       "weight": 1.0
     },
     {
@@ -12732,7 +12838,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L366",
+      "source_location": "L363",
       "weight": 1.0
     },
     {
@@ -12744,7 +12850,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L366",
+      "source_location": "L363",
       "weight": 1.0
     },
     {
@@ -12756,7 +12862,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L366",
+      "source_location": "L363",
       "weight": 1.0
     },
     {
@@ -12768,7 +12874,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L366",
+      "source_location": "L363",
       "weight": 1.0
     },
     {
@@ -12780,7 +12886,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L656",
+      "source_location": "L653",
       "weight": 1.0
     },
     {
@@ -12792,7 +12898,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L660",
+      "source_location": "L657",
       "weight": 1.0
     },
     {
@@ -12804,7 +12910,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L286",
+      "source_location": "L283",
       "weight": 1.0
     },
     {
@@ -12816,7 +12922,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L426",
+      "source_location": "L423",
       "weight": 1.0
     },
     {
@@ -12828,7 +12934,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L444",
+      "source_location": "L441",
       "weight": 1.0
     },
     {
@@ -12840,7 +12946,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L446",
+      "source_location": "L443",
       "weight": 1.0
     },
     {
@@ -12852,7 +12958,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L446",
+      "source_location": "L443",
       "weight": 1.0
     },
     {
@@ -12864,7 +12970,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L449",
+      "source_location": "L446",
       "weight": 1.0
     },
     {
@@ -12876,7 +12982,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L450",
+      "source_location": "L447",
       "weight": 1.0
     },
     {
@@ -12888,7 +12994,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L450",
+      "source_location": "L447",
       "weight": 1.0
     },
     {
@@ -12900,7 +13006,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L458",
+      "source_location": "L455",
       "weight": 1.0
     },
     {
@@ -12912,7 +13018,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L461",
+      "source_location": "L458",
       "weight": 1.0
     },
     {
@@ -12924,7 +13030,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L464",
+      "source_location": "L461",
       "weight": 1.0
     },
     {
@@ -12936,7 +13042,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L466",
+      "source_location": "L463",
       "weight": 1.0
     },
     {
@@ -12948,7 +13054,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L467",
+      "source_location": "L464",
       "weight": 1.0
     },
     {
@@ -12960,7 +13066,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L467",
+      "source_location": "L464",
       "weight": 1.0
     },
     {
@@ -12972,7 +13078,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L318",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -12984,7 +13090,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L326",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -12996,7 +13102,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L330",
+      "source_location": "L327",
       "weight": 1.0
     },
     {
@@ -13008,7 +13114,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L870",
+      "source_location": "L867",
       "weight": 1.0
     },
     {
@@ -13020,7 +13126,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L873",
+      "source_location": "L870",
       "weight": 1.0
     },
     {
@@ -13032,7 +13138,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L874",
+      "source_location": "L871",
       "weight": 1.0
     },
     {
@@ -13044,7 +13150,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L882",
+      "source_location": "L879",
       "weight": 1.0
     },
     {
@@ -13056,7 +13162,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L902",
+      "source_location": "L899",
       "weight": 1.0
     },
     {
@@ -13068,7 +13174,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L810",
+      "source_location": "L807",
       "weight": 1.0
     },
     {
@@ -13080,7 +13186,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L812",
+      "source_location": "L809",
       "weight": 1.0
     },
     {
@@ -13092,7 +13198,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L814",
+      "source_location": "L811",
       "weight": 1.0
     },
     {
@@ -13104,7 +13210,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L816",
+      "source_location": "L813",
       "weight": 1.0
     },
     {
@@ -13116,7 +13222,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L818",
+      "source_location": "L815",
       "weight": 1.0
     },
     {
@@ -13128,7 +13234,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L820",
+      "source_location": "L817",
       "weight": 1.0
     },
     {
@@ -13140,7 +13246,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L822",
+      "source_location": "L819",
       "weight": 1.0
     },
     {
@@ -13152,7 +13258,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L824",
+      "source_location": "L821",
       "weight": 1.0
     },
     {
@@ -13164,7 +13270,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L826",
+      "source_location": "L823",
       "weight": 1.0
     },
     {
@@ -13176,7 +13282,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L831",
+      "source_location": "L828",
       "weight": 1.0
     },
     {
@@ -13188,7 +13294,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L833",
+      "source_location": "L830",
       "weight": 1.0
     },
     {
@@ -13200,7 +13306,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L835",
+      "source_location": "L832",
       "weight": 1.0
     },
     {
@@ -13212,7 +13318,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L849",
+      "source_location": "L846",
       "weight": 1.0
     },
     {
@@ -13224,7 +13330,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L850",
+      "source_location": "L847",
       "weight": 1.0
     },
     {
@@ -13236,7 +13342,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L850",
+      "source_location": "L847",
       "weight": 1.0
     },
     {
@@ -13248,7 +13354,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L851",
+      "source_location": "L848",
       "weight": 1.0
     },
     {
@@ -13260,7 +13366,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L856",
+      "source_location": "L853",
       "weight": 1.0
     },
     {
@@ -13272,7 +13378,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L536",
+      "source_location": "L533",
       "weight": 1.0
     },
     {
@@ -13284,7 +13390,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L570",
+      "source_location": "L567",
       "weight": 1.0
     },
     {
@@ -13296,7 +13402,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L575",
+      "source_location": "L572",
       "weight": 1.0
     },
     {
@@ -13308,7 +13414,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L542",
+      "source_location": "L539",
       "weight": 1.0
     },
     {
@@ -13320,7 +13426,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L548",
+      "source_location": "L545",
       "weight": 1.0
     },
     {
@@ -13332,7 +13438,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L740",
+      "source_location": "L737",
       "weight": 1.0
     },
     {
@@ -14342,42 +14448,6 @@
       "context": "field",
       "source_file": "apps/web/app/components/video-workspace.tsx",
       "source_location": "L12",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_assistant_brandpatch",
-      "target": "packages_shared_types_video_logoposition",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "field",
-      "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L30",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_copilotresult",
-      "target": "apps_web_app_api_videos_store_videorecord",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "field",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L27",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot_copilotstate",
-      "target": "apps_web_app_api_videos_store_videorecord",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "field",
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -16477,7 +16547,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L1",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -16843,6 +16913,18 @@
     {
       "source": "apps_web_lib_copilot",
       "target": "apps_web_lib_assistant_brandpatch",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot",
+      "target": "apps_web_lib_assistant_forbidden",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -18870,7 +18952,7 @@
     },
     {
       "source": "apps_web_lib_ai_provider",
-      "target": "apps_web_lib_ai",
+      "target": "apps_web_lib_ai_models",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -18878,6 +18960,18 @@
       "context": "import",
       "source_file": "apps/web/lib/ai-provider.ts",
       "source_location": "L1",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -22654,24 +22748,46 @@
     },
     {
       "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai_provider_parsetoolarguments",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L106",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
       "target": "apps_web_lib_ai_provider_totoolcalls",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L113",
+      "source_location": "L121",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_ai_provider",
-      "target": "apps_web_lib_ai_provider_requestcompletion",
+      "target": "apps_web_lib_ai_provider_providererror",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L125",
+      "source_location": "L134",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai_provider_secondsuntilretry",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L148",
       "weight": 1.0
     },
     {
@@ -22682,7 +22798,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L14",
+      "source_location": "L15",
       "weight": 1.0
     },
     {
@@ -22693,7 +22809,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L15",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai_provider_requestcompletion",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L165",
       "weight": 1.0
     },
     {
@@ -22704,18 +22831,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L16",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_ai_provider",
-      "target": "apps_web_lib_ai_provider_tolegacymessages",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L163",
+      "source_location": "L17",
       "weight": 1.0
     },
     {
@@ -22726,7 +22842,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L17",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai_provider_tolegacymessages",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L210",
       "weight": 1.0
     },
     {
@@ -22737,7 +22864,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L179",
+      "source_location": "L226",
       "weight": 1.0
     },
     {
@@ -22748,7 +22875,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L192",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -22759,7 +22886,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L206",
+      "source_location": "L253",
       "weight": 1.0
     },
     {
@@ -22770,7 +22897,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L208",
+      "source_location": "L259",
       "weight": 1.0
     },
     {
@@ -22781,18 +22908,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L213",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_ai_provider",
-      "target": "apps_web_lib_ai_provider_chatmessage",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L3",
+      "source_location": "L264",
       "weight": 1.0
     },
     {
@@ -22803,7 +22919,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L31",
+      "source_location": "L32",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_ai_provider",
+      "target": "apps_web_lib_ai_provider_chatmessage",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L4",
       "weight": 1.0
     },
     {
@@ -22814,7 +22941,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L39",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -22825,7 +22952,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L41",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -22836,7 +22963,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L49",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -22847,7 +22974,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L59",
+      "source_location": "L62",
       "weight": 1.0
     },
     {
@@ -22858,23 +22985,12 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L84",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_ai_provider",
-      "target": "apps_web_lib_ai_provider_parsetoolarguments",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L98",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_color_words",
+      "target": "apps_web_lib_assistant_prop_words",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -22885,7 +23001,7 @@
     },
     {
       "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_font_words",
+      "target": "apps_web_lib_assistant_color_words",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -22896,18 +23012,18 @@
     },
     {
       "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_findword",
+      "target": "apps_web_lib_assistant_font_words",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L121",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
       "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_help",
+      "target": "apps_web_lib_assistant_findword",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -22918,13 +23034,24 @@
     },
     {
       "source": "apps_web_lib_assistant",
+      "target": "apps_web_lib_assistant_help",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L139",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_assistant",
       "target": "apps_web_lib_assistant_glossary",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L144",
+      "source_location": "L153",
       "weight": 1.0
     },
     {
@@ -22935,7 +23062,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L160",
+      "source_location": "L169",
       "weight": 1.0
     },
     {
@@ -22946,7 +23073,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L173",
+      "source_location": "L182",
       "weight": 1.0
     },
     {
@@ -22968,7 +23095,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L309",
+      "source_location": "L321",
       "weight": 1.0
     },
     {
@@ -22990,18 +23117,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L338",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_parsemodeljson",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L375",
+      "source_location": "L350",
       "weight": 1.0
     },
     {
@@ -23017,13 +23133,46 @@
     },
     {
       "source": "apps_web_lib_assistant",
+      "target": "apps_web_lib_assistant_parsemodeljson",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L387",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_assistant",
       "target": "apps_web_lib_assistant_interpret",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L399",
+      "source_location": "L411",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_assistant",
+      "target": "apps_web_lib_assistant_forbidden",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L50",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_assistant",
+      "target": "apps_web_lib_assistant_about_approval",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -23034,7 +23183,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L57",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -23045,18 +23194,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L63",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_findtemplate",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L76",
+      "source_location": "L72",
       "weight": 1.0
     },
     {
@@ -23072,13 +23210,24 @@
     },
     {
       "source": "apps_web_lib_assistant",
+      "target": "apps_web_lib_assistant_findtemplate",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/assistant.ts",
+      "source_location": "L85",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_assistant",
       "target": "apps_web_lib_assistant_character_words",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L81",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -23089,18 +23238,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L86",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_assistant",
-      "target": "apps_web_lib_assistant_prop_words",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/assistant.ts",
-      "source_location": "L96",
+      "source_location": "L95",
       "weight": 1.0
     },
     {
@@ -23204,17 +23342,6 @@
     },
     {
       "source": "apps_web_lib_copilot",
-      "target": "apps_web_lib_copilot_tools",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L101",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot",
       "target": "apps_web_lib_copilot_copilotturn",
       "relation": "contains",
       "_origin": "ast",
@@ -23243,7 +23370,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L259",
+      "source_location": "L256",
       "weight": 1.0
     },
     {
@@ -23254,7 +23381,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L261",
+      "source_location": "L258",
       "weight": 1.0
     },
     {
@@ -23265,7 +23392,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L270",
+      "source_location": "L267",
       "weight": 1.0
     },
     {
@@ -23276,7 +23403,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L276",
+      "source_location": "L273",
       "weight": 1.0
     },
     {
@@ -23287,7 +23414,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L280",
+      "source_location": "L277",
       "weight": 1.0
     },
     {
@@ -23298,7 +23425,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L284",
+      "source_location": "L281",
       "weight": 1.0
     },
     {
@@ -23309,7 +23436,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L294",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -23320,7 +23447,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L296",
+      "source_location": "L293",
       "weight": 1.0
     },
     {
@@ -23331,7 +23458,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L301",
+      "source_location": "L298",
       "weight": 1.0
     },
     {
@@ -23342,7 +23469,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L307",
+      "source_location": "L304",
       "weight": 1.0
     },
     {
@@ -23353,7 +23480,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L314",
+      "source_location": "L311",
       "weight": 1.0
     },
     {
@@ -23364,7 +23491,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L325",
+      "source_location": "L322",
       "weight": 1.0
     },
     {
@@ -23375,7 +23502,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L337",
+      "source_location": "L334",
       "weight": 1.0
     },
     {
@@ -23386,7 +23513,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L342",
+      "source_location": "L339",
       "weight": 1.0
     },
     {
@@ -23397,7 +23524,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L347",
+      "source_location": "L344",
       "weight": 1.0
     },
     {
@@ -23419,7 +23546,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L425",
+      "source_location": "L422",
       "weight": 1.0
     },
     {
@@ -23463,7 +23590,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L535",
+      "source_location": "L532",
       "weight": 1.0
     },
     {
@@ -23474,7 +23601,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L560",
+      "source_location": "L557",
       "weight": 1.0
     },
     {
@@ -23540,7 +23667,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L694",
+      "source_location": "L691",
       "weight": 1.0
     },
     {
@@ -23551,7 +23678,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L713",
+      "source_location": "L710",
       "weight": 1.0
     },
     {
@@ -23562,7 +23689,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L728",
+      "source_location": "L725",
       "weight": 1.0
     },
     {
@@ -23573,7 +23700,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L738",
+      "source_location": "L735",
       "weight": 1.0
     },
     {
@@ -23584,7 +23711,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L755",
+      "source_location": "L752",
       "weight": 1.0
     },
     {
@@ -23595,7 +23722,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L765",
+      "source_location": "L762",
       "weight": 1.0
     },
     {
@@ -23606,7 +23733,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L777",
+      "source_location": "L774",
       "weight": 1.0
     },
     {
@@ -23617,7 +23744,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L791",
+      "source_location": "L788",
       "weight": 1.0
     },
     {
@@ -23628,7 +23755,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L807",
+      "source_location": "L804",
       "weight": 1.0
     },
     {
@@ -23639,18 +23766,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L848",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_web_lib_copilot",
-      "target": "apps_web_lib_copilot_runcopilot",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L864",
+      "source_location": "L845",
       "weight": 1.0
     },
     {
@@ -23661,7 +23777,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L89",
+      "source_location": "L86",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot",
+      "target": "apps_web_lib_copilot_runcopilot",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L861",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_web_lib_copilot",
+      "target": "apps_web_lib_copilot_tools",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/copilot.ts",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -25008,13 +25146,24 @@
     },
     {
       "source": "scripts_check_ai",
+      "target": "scripts_check_ai_models",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/check-ai.mjs",
+      "source_location": "L18",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_check_ai",
       "target": "scripts_check_ai_tool",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/check-ai.mjs",
-      "source_location": "L32",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -25025,7 +25174,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/check-ai.mjs",
-      "source_location": "L48",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -25036,7 +25185,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/check-ai.mjs",
-      "source_location": "L72",
+      "source_location": "L77",
       "weight": 1.0
     },
     {
@@ -25711,6 +25860,17 @@
       "weight": 1.0
     },
     {
+      "source": "apps_web_lib_ai_provider_providererror",
+      "target": "apps_web_lib_ai_provider_providererror_constructor",
+      "relation": "method",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "apps/web/lib/ai-provider.ts",
+      "source_location": "L138",
+      "weight": 1.0
+    },
+    {
       "source": "supabase_migrations_20260910000000_initial_schema_public_scenes",
       "target": "supabase_migrations_20260910000000_initial_schema_public_videos",
       "relation": "references",
@@ -25774,7 +25934,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "apps/web/lib/ai-provider.ts",
-      "source_location": "L130",
+      "source_location": "L171",
       "weight": 1.0
     },
     {
@@ -25810,7 +25970,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L695",
+      "source_location": "L692",
       "weight": 1.0
     },
     {
@@ -25822,7 +25982,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L696",
+      "source_location": "L693",
       "weight": 1.0
     },
     {
@@ -25834,7 +25994,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L697",
+      "source_location": "L694",
       "weight": 1.0
     },
     {
@@ -25846,7 +26006,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L698",
+      "source_location": "L695",
       "weight": 1.0
     },
     {
@@ -25858,7 +26018,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L699",
+      "source_location": "L696",
       "weight": 1.0
     },
     {
@@ -25870,7 +26030,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L700",
+      "source_location": "L697",
       "weight": 1.0
     },
     {
@@ -25882,7 +26042,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L701",
+      "source_location": "L698",
       "weight": 1.0
     },
     {
@@ -25894,7 +26054,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L702",
+      "source_location": "L699",
       "weight": 1.0
     },
     {
@@ -25906,7 +26066,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L703",
+      "source_location": "L700",
       "weight": 1.0
     },
     {
@@ -25918,7 +26078,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L704",
+      "source_location": "L701",
       "weight": 1.0
     },
     {
@@ -25930,7 +26090,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L705",
+      "source_location": "L702",
       "weight": 1.0
     },
     {
@@ -25942,7 +26102,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L706",
+      "source_location": "L703",
       "weight": 1.0
     },
     {
@@ -25954,7 +26114,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L707",
+      "source_location": "L704",
       "weight": 1.0
     },
     {
@@ -25966,7 +26126,7 @@
       "confidence_score": 0.85,
       "context": "collection",
       "source_file": "apps/web/lib/copilot.ts",
-      "source_location": "L708",
+      "source_location": "L705",
       "weight": 1.0
     },
     {
@@ -27800,5 +27960,5 @@
       "source_file": "apps/web/public/icons/icon-512.png"
     }
   ],
-  "built_at_commit": "710d03220f6cf8094b9310e0af317d457d10ef23"
+  "built_at_commit": "f4ce2db7da3731b6b9efd55ce49d9d49d41efce3"
 }

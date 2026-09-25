@@ -1,5 +1,6 @@
-import { createCanvas, GlobalFonts, type SKRSContext2D } from '@napi-rs/canvas';
+import { createCanvas, GlobalFonts, type Canvas, type SKRSContext2D } from '@napi-rs/canvas';
 import { dirname, join } from 'node:path';
+import type { WordTiming } from './voice';
 
 export type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
 export type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
@@ -65,6 +66,21 @@ function fontOf(style: FrameStyle, size: number, bold = false) {
 
 // ---- Skeleton proportions, in canvas pixels at 1080x1920 ----
 const GROUND_Y = 1430;
+// Where the back wall meets the floor. This sits well above GROUND_Y (the
+// figure's own feet) on purpose: the back wall is farther from the camera
+// than the figure standing near it, so its base is higher in frame - the
+// same reason a photographed room's far skirting board sits above a nearby
+// subject's feet. Everything place-related is grounded against one of these
+// two lines depending on how close to the "camera" it is meant to read.
+const HORIZON_Y = 1180;
+// The lowest a place decoration is allowed to reach. The subtitle panel is
+// bottom-anchored and grows upward with longer captions, so its top isn't a
+// fixed y - this is chosen clear of it for anything up to a realistic 3-line
+// caption. Nothing place-related may be drawn below this, full stop; the
+// plain floor wash behind everything is the only thing allowed to run to the
+// bottom of the frame, since a flat colour doesn't read as a collision the
+// way a distinct shape does.
+const PLACE_SAFE_BOTTOM = 1480;
 const THIGH = 158;
 const SHIN = 152;
 const LEG_TOTAL = THIGH + SHIN;
@@ -124,6 +140,10 @@ function shade(hex: string, amount: number): string {
 
 function lerp(a: number, b: number, t: number) {
 	return a + (b - a) * t;
+}
+
+function clamp(value: number, min: number, max: number) {
+	return Math.max(min, Math.min(max, value));
 }
 
 function easeInOut(t: number) {
@@ -841,42 +861,259 @@ function drawProp(ctx: SKRSContext2D, prop: ScenePropType, cx: number, cy: numbe
 	ctx.restore();
 }
 
-function wrapLines(ctx: SKRSContext2D, text: string, maxWidth: number): string[] {
-	const words = text.split(/\s+/).filter(Boolean);
-	const lines: string[] = [];
-	let current = '';
+function wrapWords(ctx: SKRSContext2D, words: string[], maxWidth: number): string[][] {
+	const lines: string[][] = [];
+	let current: string[] = [];
+	let currentWidth = 0;
+	const spaceWidth = ctx.measureText(' ').width;
 	for (const word of words) {
-		const candidate = current ? `${current} ${word}` : word;
-		if (ctx.measureText(candidate).width <= maxWidth || !current) {
-			current = candidate;
+		const wordWidth = ctx.measureText(word).width;
+		const extra = current.length ? spaceWidth + wordWidth : wordWidth;
+		if (current.length === 0 || currentWidth + extra <= maxWidth) {
+			current.push(word);
+			currentWidth += extra;
 		} else {
 			lines.push(current);
-			current = word;
+			current = [word];
+			currentWidth = wordWidth;
 		}
 	}
-	if (current) lines.push(current);
+	if (current.length) lines.push(current);
 	return lines;
 }
 
-function drawBackground(ctx: SKRSContext2D, style: FrameStyle) {
-	const { width, height, background } = style;
-	ctx.fillStyle = background;
-	ctx.fillRect(0, 0, width, height);
+function wrapLines(ctx: SKRSContext2D, text: string, maxWidth: number): string[] {
+	return wrapWords(ctx, text.split(/\s+/).filter(Boolean), maxWidth).map((line) => line.join(' '));
+}
 
-	// A horizon band gives the figure something to stand on instead of
-	// floating in flat colour.
-	const gradient = ctx.createLinearGradient(0, GROUND_Y - 320, 0, height);
-	gradient.addColorStop(0, 'rgba(255,255,255,0.00)');
-	gradient.addColorStop(1, 'rgba(255,255,255,0.07)');
-	ctx.fillStyle = gradient;
-	ctx.fillRect(0, GROUND_Y - 320, width, height - GROUND_Y + 320);
+// A scene renders 80-150 consecutive frames sharing the exact same subtitle
+// text, and wrapping + measuring every word is the same result each time - a
+// one-entry cache turns "wrap and measure the whole line" from a per-frame
+// cost into a per-scene one. Keyed on everything the layout actually depends
+// on, so a real change (new text, a resized panel) still recomputes.
+let subtitleLayoutCache: { key: string; lines: string[][]; widths: number[][]; spaceWidth: number } | null = null;
 
-	ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-	ctx.lineWidth = 3;
+function layoutSubtitle(ctx: SKRSContext2D, description: string, maxWidth: number, fontKey: string) {
+	const key = `${fontKey}|${maxWidth}|${description}`;
+	if (subtitleLayoutCache?.key === key) return subtitleLayoutCache;
+
+	const lines = wrapWords(ctx, description.split(/\s+/).filter(Boolean), maxWidth);
+	const spaceWidth = ctx.measureText(' ').width;
+	const widths = lines.map((lineWords) => lineWords.map((word) => ctx.measureText(word).width));
+	subtitleLayoutCache = { key, lines, widths, spaceWidth };
+	return subtitleLayoutCache;
+}
+
+// ---- Places: one flat-vector backdrop per narrative context, so a scene has
+// somewhere to be instead of the same panel everywhere. Derived from the prop
+// and, failing that, the action - both already say where the scene is set
+// (RF-004 stays 2D: this is layered flat shapes, not a projected room).
+type Place = 'oficina' | 'banco' | 'calle' | 'sala';
+
+function placeFor(prop: ScenePropType, action: SceneAction): Place {
+	if (prop === 'oficina' || prop === 'grafico' || prop === 'documento') return 'oficina';
+	if (prop === 'banco' || prop === 'dinero') return 'banco';
+	if (prop === 'casa' || prop === 'carro') return 'calle';
+	if (action === 'caminar') return 'calle';
+	return 'sala';
+}
+
+/**
+ * A background house for the street, well above HORIZON_Y (see below) -
+ * placing it at the far wall's depth rather than the figure's own floor is
+ * what keeps a small silhouette reading as "a house down the street" instead
+ * of "a toy at his feet": scale alone couldn't do that, because a house tall
+ * enough to dominate the frame would compete with the figure and the 'casa'
+ * prop for the same visual weight.
+ */
+function drawHouseShape(ctx: SKRSContext2D, cx: number, baseY: number, scale: number, roofColor: string, wallColor: string) {
+	const w = 150 * scale;
+	const h = 150 * scale;
+	ctx.fillStyle = wallColor;
+	ctx.fillRect(cx - w / 2, baseY - h, w, h);
 	ctx.beginPath();
-	ctx.moveTo(0, GROUND_Y);
-	ctx.lineTo(width, GROUND_Y);
+	ctx.moveTo(cx - w / 2 - 14 * scale, baseY - h);
+	ctx.lineTo(cx, baseY - h - 84 * scale);
+	ctx.lineTo(cx + w / 2 + 14 * scale, baseY - h);
+	ctx.closePath();
+	ctx.fillStyle = roofColor;
+	ctx.fill();
+}
+
+/**
+ * The scene's environment, drawn once behind the figure and prop. Flat shapes
+ * in a fixed palette (the same convention drawProp already uses) so they read
+ * consistently whatever brand colour is configured for the wall/floor behind
+ * them.
+ *
+ * Two ground rules, both because a person is standing in front of this, near
+ * the camera: anything meant to sit with the figure - furniture, a counter -
+ * is grounded at GROUND_Y, the figure's own floor line, never floating above
+ * it; anything meant to read as farther away - the street's houses - is
+ * grounded at or above HORIZON_Y instead, well clear of the figure's own
+ * footing. Nothing here is ever drawn wider than it needs to be through the
+ * figure's own x position, so the figure is never the thing something else
+ * gets layered on top of.
+ */
+function drawPlaceDetails(ctx: SKRSContext2D, place: Place, width: number) {
+	switch (place) {
+		case 'oficina': {
+			// Two tall windows - a window on a wall reads bigger than a head, not
+			// smaller - flanking a framed picture, with a grounded plant well
+			// clear of both the figure (left third) and the subtitle panel.
+			const winW = 300;
+			const winH = 680;
+			const winY = 130;
+			for (const wx of [width * 0.08, width * 0.60]) {
+				ctx.fillStyle = '#bcd4ee';
+				roundRect(ctx, wx, winY, winW, winH, 14);
+				ctx.fill();
+				ctx.strokeStyle = 'rgba(20,30,45,0.4)';
+				ctx.lineWidth = 8;
+				ctx.beginPath();
+				ctx.moveTo(wx + winW / 2, winY);
+				ctx.lineTo(wx + winW / 2, winY + winH);
+				ctx.moveTo(wx, winY + winH / 2);
+				ctx.lineTo(wx + winW, winY + winH / 2);
+				ctx.stroke();
+			}
+			// A framed picture between the windows.
+			ctx.fillStyle = 'rgba(255,255,255,0.16)';
+			roundRect(ctx, width * 0.45, 220, 100, 140, 6);
+			ctx.fill();
+			// A potted plant, grounded at the figure's own floor line so it
+			// visibly stands on the same floor rather than hanging above it.
+			const potW = 84;
+			const potH = 96;
+			const potX = width - 190;
+			ctx.fillStyle = '#5b4433';
+			roundRect(ctx, potX, GROUND_Y - potH, potW, potH, 8);
+			ctx.fill();
+			ctx.fillStyle = '#3f7f52';
+			for (const [dx, dy, r] of [[-18, -38, 58], [20, -58, 50], [0, -82, 46]] as const) {
+				ctx.beginPath();
+				ctx.arc(potX + potW / 2 + dx, GROUND_Y - potH + dy, r, 0, Math.PI * 2);
+				ctx.fill();
+			}
+			break;
+		}
+		case 'banco': {
+			// Floor-to-ceiling columns, close to the camera like the figure, so
+			// they run almost the full height instead of stopping partway up the
+			// floor - short of PLACE_SAFE_BOTTOM, same as everything else here.
+			const pillarTop = 140;
+			const pillarW = 74;
+			for (const px of [width * 0.04, width * 0.87]) {
+				ctx.fillStyle = '#dbe3ee';
+				ctx.fillRect(px, pillarTop, pillarW, PLACE_SAFE_BOTTOM - pillarTop);
+				ctx.fillStyle = '#c3ccd9';
+				roundRect(ctx, px - 14, pillarTop - 28, pillarW + 28, 32, 6);
+				ctx.fill();
+			}
+			ctx.beginPath();
+			ctx.moveTo(width * 0.22, pillarTop + 10);
+			ctx.lineTo(width * 0.5, pillarTop - 90);
+			ctx.lineTo(width * 0.78, pillarTop + 10);
+			ctx.closePath();
+			ctx.fillStyle = '#c3ccd9';
+			ctx.fill();
+			// The teller counter: grounded at the figure's own floor line, tall
+			// enough to read as a real desk, and kept entirely to the right of
+			// where the figure stands (x < 0.4) so it is never behind the
+			// figure's own silhouette - nothing here needs to cross the figure
+			// to read as "at the bank".
+			const counterX = width * 0.56;
+			const counterW = width * 0.30;
+			const counterH = 400;
+			ctx.fillStyle = '#8a93a3';
+			roundRect(ctx, counterX, GROUND_Y - counterH, counterW, counterH, 10);
+			ctx.fill();
+			ctx.fillStyle = '#6f7887';
+			ctx.fillRect(counterX, GROUND_Y - counterH, counterW, 22);
+			break;
+		}
+		case 'calle': {
+			// A row of houses at the far wall's depth (HORIZON_Y), not the
+			// figure's own floor - see drawHouseShape - kept clear of the
+			// figure's two possible stances (centre and left-third).
+			const roofColors = ['#b25c42', '#9c5236', '#a85f3f'];
+			const wallColors = ['#e7dcc8', '#dfd2ba', '#e2d6c0'];
+			const scales = [1.3, 1.7, 1.05];
+			[0.10, 0.74, 0.92].forEach((fx, i) => {
+				drawHouseShape(ctx, width * fx, HORIZON_Y - 4, scales[i], roofColors[i], wallColors[i]);
+			});
+			// The road markings sit right at the figure's own floor line, in a
+			// shallow band well clear of the subtitle panel below.
+			ctx.fillStyle = 'rgba(255,255,255,0.4)';
+			ctx.lineWidth = 8;
+			ctx.setLineDash([36, 28]);
+			ctx.beginPath();
+			ctx.moveTo(0, GROUND_Y + 26);
+			ctx.lineTo(width, GROUND_Y + 26);
+			ctx.stroke();
+			ctx.setLineDash([]);
+			break;
+		}
+		case 'sala': {
+			const winX = width * 0.60;
+			ctx.fillStyle = '#bcd4ee';
+			roundRect(ctx, winX, 140, 300, 620, 14);
+			ctx.fill();
+			ctx.strokeStyle = 'rgba(20,30,45,0.4)';
+			ctx.lineWidth = 8;
+			ctx.beginPath();
+			ctx.moveTo(winX + 150, 140);
+			ctx.lineTo(winX + 150, 760);
+			ctx.moveTo(winX, 450);
+			ctx.lineTo(winX + 300, 450);
+			ctx.stroke();
+			// A couch built from three grounded shapes - backrest, armrest, seat
+			// cushion, drawn in that order so the cushion sits in front of the
+			// other two - fully inside the frame with margin on the left, not
+			// cropped against it.
+			const couchX = width * 0.09;
+			ctx.fillStyle = '#7c5a46';
+			roundRect(ctx, couchX, GROUND_Y - 280, 300, 220, 20);
+			ctx.fill();
+			ctx.fillStyle = '#6a4c3a';
+			roundRect(ctx, couchX, GROUND_Y - 230, 70, 230, 18);
+			ctx.fill();
+			ctx.fillStyle = '#8a6851';
+			roundRect(ctx, couchX + 50, GROUND_Y - 130, 280, 130, 22);
+			ctx.fill();
+			// A rug, kept in a shallow band at the figure's own floor line so it
+			// never reaches down toward the subtitle panel.
+			ctx.fillStyle = 'rgba(255,255,255,0.06)';
+			ctx.beginPath();
+			ctx.ellipse(width * 0.5, GROUND_Y + 20, 300, 20, 0, 0, Math.PI * 2);
+			ctx.fill();
+			break;
+		}
+	}
+}
+
+function drawBackground(ctx: SKRSContext2D, style: FrameStyle, place: Place) {
+	const { width, height, background } = style;
+	// The wall runs from the top down to the back wall/floor line...
+	ctx.fillStyle = background;
+	ctx.fillRect(0, 0, width, HORIZON_Y);
+	// ...and the floor from there to the bottom of the frame: the figure's own
+	// feet (GROUND_Y) land well inside this, not at its near edge, because the
+	// floor is closer to the camera than the wall behind it (see HORIZON_Y).
+	ctx.fillStyle = shade(background, place === 'calle' ? 12 : -16);
+	ctx.fillRect(0, HORIZON_Y, width, height - HORIZON_Y);
+
+	// The line itself - the single cue that turns "a wall colour and a floor
+	// colour" into "a room": a fixed dark tone, so it reads against a light or
+	// a dark brand colour alike, unlike the wash it sits between.
+	ctx.strokeStyle = 'rgba(8,10,14,0.55)';
+	ctx.lineWidth = 6;
+	ctx.beginPath();
+	ctx.moveTo(0, HORIZON_Y);
+	ctx.lineTo(width, HORIZON_Y);
 	ctx.stroke();
+
+	drawPlaceDetails(ctx, place, width);
 }
 
 function drawShadow(ctx: SKRSContext2D, x: number, scale: number) {
@@ -888,23 +1125,133 @@ function drawShadow(ctx: SKRSContext2D, x: number, scale: number) {
 	ctx.restore();
 }
 
+// ---- Camera: one slow move per scene, eased rather than linear so it reads
+// as a deliberate choice instead of a slide. Selected by scene index so two
+// scenes back to back never move the same way. Pan magnitudes are kept under
+// each profile's own margin (540*(zoom-1) horizontally, 960*(zoom-1)
+// vertically, at the profile's *lowest* zoom) so the zoomed-in background
+// always still covers the canvas edges - a drifting camera at zoom 1 would
+// expose an unpainted strip at the edge it drifts away from.
+interface CameraProfile { zoomFrom: number; zoomTo: number; panXFrom: number; panXTo: number; panYFrom: number; panYTo: number; }
+
+const CAMERA_PROFILES: CameraProfile[] = [
+	{ zoomFrom: 1.00, zoomTo: 1.09, panXFrom: 0, panXTo: 0, panYFrom: 0, panYTo: 0 },       // straight push-in
+	{ zoomFrom: 1.06, zoomTo: 1.06, panXFrom: -20, panXTo: 20, panYFrom: 0, panYTo: 0 },    // lateral drift
+	{ zoomFrom: 1.05, zoomTo: 1.10, panXFrom: 20, panXTo: -20, panYFrom: 0, panYTo: 0 },    // push-in while drifting
+	{ zoomFrom: 1.06, zoomTo: 1.06, panXFrom: 18, panXTo: -18, panYFrom: -10, panYTo: 10 }, // diagonal drift
+];
+
+function cameraFor(sceneIndex: number, t: number, duration: number) {
+	const profile = CAMERA_PROFILES[sceneIndex % CAMERA_PROFILES.length];
+	const eased = easeInOut(clamp(duration > 0 ? t / duration : 0, 0, 1));
+	return {
+		zoom: lerp(profile.zoomFrom, profile.zoomTo, eased),
+		panX: lerp(profile.panXFrom, profile.panXTo, eased),
+		panY: lerp(profile.panYFrom, profile.panYTo, eased),
+	};
+}
+
+// ---- Transitions: how the edit cuts from one scene to the next. Chosen once
+// per boundary by the caller (see pickTransition) and rendered as a handful
+// of extra frames blending the two scenes' end/start poses (drawTransitionFrame)
+// - never as a per-frame ffmpeg filter. A crossfade filter has to re-encode
+// the whole assembled video, which is the "doubles the render" cost this
+// worker can't afford; blending a dozen frames in the same canvas pipeline
+// that already draws every frame costs nothing extra by comparison.
+export type TransitionKind = 'cut' | 'fade' | 'slideleft' | 'slideright';
+export const TRANSITION_SECONDS = 0.35;
+const FAST_DIALOGUE_WORDS_PER_SECOND = 2.6;
+
+/**
+ * A hard cut suits fast dialogue - there is no time for a dissolve to
+ * register before the next line starts. A change of place gets a crossfade
+ * or a slide (alternating by boundary index, so a run of place changes
+ * doesn't slide the same way every time); anything else gets a short
+ * crossfade, which is still an edit rather than the flat fade-to-black this
+ * replaces.
+ */
+export function pickTransition(
+	previous: { prop: ScenePropType; action: SceneAction },
+	next: { prop: ScenePropType; action: SceneAction },
+	previousWordsPerSecond: number,
+	boundaryIndex: number,
+): TransitionKind {
+	if (previousWordsPerSecond >= FAST_DIALOGUE_WORDS_PER_SECOND) return 'cut';
+	if (placeFor(previous.prop, previous.action) !== placeFor(next.prop, next.action)) {
+		return boundaryIndex % 2 === 0 ? 'slideleft' : 'slideright';
+	}
+	return 'fade';
+}
+
+/**
+ * One frame of a crossfade or slide between the frozen last frame of a scene
+ * (`from`) and the frozen first frame of the next (`to`). `ratio` runs 0..1
+ * across the transition.
+ */
+export function drawTransitionFrame(ctx: SKRSContext2D, from: Canvas, to: Canvas, kind: TransitionKind, ratio: number, width: number) {
+	const eased = easeInOut(clamp(ratio, 0, 1));
+	if (kind === 'slideleft' || kind === 'slideright') {
+		const dir = kind === 'slideleft' ? -1 : 1;
+		const offset = eased * width * dir;
+		ctx.drawImage(from, offset, 0);
+		ctx.drawImage(to, offset - dir * width, 0);
+	} else {
+		ctx.drawImage(from, 0, 0);
+		ctx.globalAlpha = eased;
+		ctx.drawImage(to, 0, 0);
+		ctx.globalAlpha = 1;
+	}
+}
+
 /**
  * Draws one complete frame of a scene. `t` is seconds elapsed inside the
  * scene, `duration` its full length; everything else is derived so the same
  * call renders any frame independently.
+ *
+ * `wordTimings`, when given, highlights whichever word of the subtitle is
+ * being spoken at `t` (see estimateWordTimings in voice.ts for how those
+ * times are approximated). `fadeEdges` fades to black only at the true start
+ * or end of the whole video - the join between two scenes is a transition
+ * clip the caller inserts (see pickTransition/drawTransitionFrame), not a
+ * fade drawn here.
  */
-export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number, duration: number, style: FrameStyle, mouth: number | null = null) {
+export function drawSceneFrame(
+	ctx: SKRSContext2D,
+	scene: FrameScene,
+	t: number,
+	duration: number,
+	style: FrameStyle,
+	mouth: number | null = null,
+	wordTimings: WordTiming[] | null = null,
+	fadeEdges: { in: boolean; out: boolean } | null = null,
+) {
 	const { width, height, ink } = style;
 	const cycleSeconds = scene.action === 'caminar' ? 1.0 : 2.2;
 	const phase = (t / cycleSeconds) % 1;
+	const place = placeFor(scene.prop, scene.action);
 
-	drawBackground(ctx, style);
+	// The camera move applies to the "world" only - background, prop and
+	// figure - never to the UI drawn after ctx.restore() below, so subtitles
+	// and the scene counter stay put and legible regardless of the move.
+	const camera = cameraFor(scene.index, t, duration);
+	ctx.save();
+	ctx.translate(width / 2 + camera.panX, height / 2 + camera.panY);
+	ctx.scale(camera.zoom, camera.zoom);
+	ctx.translate(-width / 2, -height / 2);
+
+	drawBackground(ctx, style, place);
 
 	const hasProp = scene.prop !== 'ninguno';
 	const figureX = hasProp ? width * 0.33 : width * 0.5;
 	const propX = width * 0.72;
 
-	if (hasProp) {
+	// 'oficina' and 'banco' already are the backdrop - a small building icon
+	// standing for the same place next to a figure already standing in it is
+	// noise, not information, so only draw the icon when it says something the
+	// backdrop doesn't. The figure still moves aside as it would for any
+	// prop, so removing the icon doesn't recentre it and change the layout.
+	const showsPropIcon = hasProp && scene.prop !== 'oficina' && scene.prop !== 'banco';
+	if (showsPropIcon) {
 		drawProp(ctx, scene.prop, propX, GROUND_Y - 190, Math.sin(phase * Math.PI * 2) * 6, ink);
 	}
 
@@ -920,6 +1267,8 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 		drawFigure(ctx, scene.character, scene.action, phase, t, figureX, ink, 0.31, mouth);
 	}
 
+	ctx.restore();
+
 	// Scene counter, top left.
 	ctx.fillStyle = ink;
 	ctx.font = fontOf(style, 38, true);
@@ -932,8 +1281,9 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 	// Subtitle block, bottom, on a panel so it stays readable over anything.
 	const description = scene.description.trim();
 	if (description) {
-		ctx.font = fontOf(style, 44);
-		const lines = wrapLines(ctx, description, width - 200);
+		const fontKey = fontOf(style, 44);
+		ctx.font = fontKey;
+		const { lines, widths, spaceWidth } = layoutSubtitle(ctx, description, width - 200, fontKey);
 		const lineHeight = 60;
 		const blockHeight = lines.length * lineHeight;
 		const top = height - 220 - blockHeight;
@@ -942,19 +1292,47 @@ export function drawSceneFrame(ctx: SKRSContext2D, scene: FrameScene, t: number,
 		roundRect(ctx, 56, top - 32, width - 112, blockHeight + 58, 18);
 		ctx.fill();
 
-		ctx.fillStyle = ink;
-		ctx.textAlign = 'center';
+		// The word being spoken right now (approximated - see
+		// estimateWordTimings in voice.ts), highlighted the way short-form
+		// platforms' auto-captions do, so the subtitle tracks the narration
+		// instead of sitting there as a static block of text.
+		let activeIndex = -1;
+		if (wordTimings && wordTimings.length > 0) {
+			activeIndex = wordTimings.findIndex((w) => t >= w.start && t < w.end);
+			if (activeIndex === -1 && t >= wordTimings[wordTimings.length - 1].end) activeIndex = wordTimings.length - 1;
+		}
+
+		ctx.textAlign = 'left';
 		ctx.textBaseline = 'top';
-		lines.forEach((line, i) => {
-			ctx.fillText(line, width / 2, top + i * lineHeight);
+		let globalIndex = 0;
+		lines.forEach((lineWords, lineIndex) => {
+			const lineWidths = widths[lineIndex];
+			const lineWidth = lineWidths.reduce((sum, w) => sum + w, 0) + spaceWidth * (lineWords.length - 1);
+			let x = width / 2 - lineWidth / 2;
+			const y = top + lineIndex * lineHeight;
+			lineWords.forEach((word, wordIndex) => {
+				if (globalIndex === activeIndex) {
+					ctx.fillStyle = '#ffd23f';
+					roundRect(ctx, x - 6, y - 4, lineWidths[wordIndex] + 12, lineHeight - 12, 8);
+					ctx.fill();
+					ctx.fillStyle = '#20180a';
+				} else {
+					ctx.fillStyle = ink;
+				}
+				ctx.fillText(word, x, y);
+				x += lineWidths[wordIndex] + spaceWidth;
+				globalIndex += 1;
+			});
 		});
 	}
 
-	// Short fade in and out so cuts between scenes don't jar.
-	const fade = 0.28;
-	const alpha = Math.min(1, Math.min(t, Math.max(0, duration - t)) / fade);
-	if (alpha < 1) {
-		ctx.fillStyle = `rgba(0,0,0,${(1 - alpha).toFixed(3)})`;
+	// Fade to black only at the true edges of the whole video.
+	const fadeSeconds = 0.25;
+	let blackAlpha = 0;
+	if (fadeEdges?.in && t < fadeSeconds) blackAlpha = Math.max(blackAlpha, 1 - t / fadeSeconds);
+	if (fadeEdges?.out && duration - t < fadeSeconds) blackAlpha = Math.max(blackAlpha, 1 - (duration - t) / fadeSeconds);
+	if (blackAlpha > 0) {
+		ctx.fillStyle = `rgba(0,0,0,${blackAlpha.toFixed(3)})`;
 		ctx.fillRect(0, 0, width, height);
 	}
 }
