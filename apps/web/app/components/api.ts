@@ -60,9 +60,25 @@ export interface BatchCreateFailure {
     error: string;
 }
 
+// A warning names a video that IS in `creados` but came out degraded - a
+// hardcoded generic script because no model answered, or no scenes. This is
+// distinct from `fallidos`: the video exists and is in the list, it just
+// isn't what the operator asked for yet.
+// `causa` is the machine-readable half and `motivo` the sentence a person
+// reads. Both come from the server: deducing the cause by matching words in
+// the prose breaks silently the day that prose is reworded.
+export type BatchWarningCause = 'guion_generico' | 'sin_escenas' | 'guion_generico_y_sin_escenas';
+
+export interface BatchCreateWarning {
+    tema: string;
+    causa: BatchWarningCause;
+    motivo: string;
+}
+
 export interface BatchCreateResult {
     creados: VideoRecord[];
     fallidos: BatchCreateFailure[];
+    advertencias: BatchCreateWarning[];
 }
 
 // RF-024: several videos from several topics in one call. The server runs

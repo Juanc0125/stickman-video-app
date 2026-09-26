@@ -8,6 +8,8 @@ import {
     createVideosBatch,
     deleteVideo,
     type BatchCreateFailure,
+    type BatchCreateWarning,
+    type BatchWarningCause,
     type VideoRecord,
 } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
@@ -33,12 +35,27 @@ const MAX_BATCH_TOPICS = 8;
 interface BatchSummary {
     createdCount: number;
     failed: BatchCreateFailure[];
+    warnings: BatchCreateWarning[];
 }
 
 function formatElapsed(totalSeconds: number): string {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// `motivo` says what happened; this says what to do about it, which differs
+// per cause. Keyed off the server's `causa` rather than its prose: the two
+// were coupled through the word "escena" for a while, and that would have
+// started showing the wrong advice the first time a sentence was reworded.
+const NEXT_STEP: Record<BatchWarningCause, string> = {
+    guion_generico: 'Vuelve a generar el guion desde el panel de este video cuando el modelo responda.',
+    sin_escenas: 'Pulsa "Generar escenas" en el panel de este video.',
+    guion_generico_y_sin_escenas: 'Regenera el guion cuando el modelo responda y despues genera las escenas.',
+};
+
+function warningNextStep(warning: BatchCreateWarning): string {
+    return NEXT_STEP[warning.causa] ?? NEXT_STEP.guion_generico;
 }
 
 export default function VideoList({ videos, loading, loadError, selectedId, onSelect, onCreated, onDeleted }: VideoListProps) {
@@ -146,7 +163,13 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
             for (let index = result.creados.length - 1; index >= 0; index -= 1) {
                 onCreated(result.creados[index]);
             }
-            setBatchResult({ createdCount: result.creados.length, failed: result.fallidos });
+            setBatchResult({
+                createdCount: result.creados.length,
+                failed: result.fallidos,
+                // Defensive default: the backend is adding this field, so an
+                // older response without it must still render cleanly.
+                warnings: result.advertencias ?? [],
+            });
             // Leaving only the failed topics in the box makes retrying a single click.
             setBatchTopics(result.fallidos.length > 0 ? result.fallidos.map((f) => f.tema).join('\n') : '');
         } catch (error) {
@@ -298,25 +321,61 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                         </div>
                     )}
 
-                    {mode === 'batch' && batchResult && !submitting && (
-                        <div className="space-y-1 rounded border border-white/10 bg-white/5 px-3 py-2 text-xs">
-                            <p className="text-slate-200">
-                                Se crearon {batchResult.createdCount} de {batchResult.createdCount + batchResult.failed.length} videos.
-                            </p>
-                            {batchResult.failed.length > 0 && (
-                                <>
-                                    <ul className="space-y-1 text-amber-300">
-                                        {batchResult.failed.map((failure, index) => (
-                                            <li key={`${failure.tema}-${index}`}>
-                                                <span className="font-medium">&quot;{failure.tema}&quot;</span>: {failure.error}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <p className="text-slate-400">Esos temas quedaron arriba para reintentarlos.</p>
-                                </>
-                            )}
-                        </div>
-                    )}
+                    {mode === 'batch' && batchResult && !submitting && (() => {
+                        const total = batchResult.createdCount + batchResult.failed.length;
+                        // Every warning names a video that IS in `creados` - it isn't
+                        // a third bucket of videos, it's a flag on some of the ones
+                        // already counted as created.
+                        const cleanCount = batchResult.createdCount - batchResult.warnings.length;
+                        const hasIssues = batchResult.warnings.length > 0 || batchResult.failed.length > 0;
+                        const breakdown = [
+                            cleanCount > 0 ? `${cleanCount} sin problemas` : null,
+                            batchResult.warnings.length > 0 ? `${batchResult.warnings.length} con advertencia` : null,
+                            batchResult.failed.length > 0
+                                ? `${batchResult.failed.length} fallido${batchResult.failed.length === 1 ? '' : 's'}`
+                                : null,
+                        ].filter(Boolean).join(', ');
+
+                        return (
+                            <div className="space-y-2 rounded border border-white/10 bg-white/5 px-3 py-2 text-xs" aria-live="polite">
+                                <p className="text-slate-200">
+                                    Se crearon {batchResult.createdCount} de {total} video{total === 1 ? '' : 's'}
+                                    {hasIssues ? `: ${breakdown}.` : '.'}
+                                </p>
+
+                                {batchResult.warnings.length > 0 && (
+                                    <div className="space-y-1 rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5">
+                                        <p className="font-medium text-amber-200">
+                                            Advertencia: se crearon pero salieron incompletos. Revísalos antes de aprobarlos.
+                                        </p>
+                                        <ul className="space-y-1 text-amber-100">
+                                            {batchResult.warnings.map((warning, index) => (
+                                                <li key={`${warning.tema}-${index}`}>
+                                                    <span className="font-medium">&quot;{warning.tema}&quot;</span>: {warning.motivo}
+                                                    {' '}
+                                                    <span className="text-amber-300/80">{warningNextStep(warning)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {batchResult.failed.length > 0 && (
+                                    <div className="space-y-1 rounded border border-red-400/30 bg-red-500/10 px-2 py-1.5">
+                                        <p className="font-medium text-red-300">No se pudieron crear:</p>
+                                        <ul className="space-y-1 text-red-200">
+                                            {batchResult.failed.map((failure, index) => (
+                                                <li key={`${failure.tema}-${index}`}>
+                                                    <span className="font-medium">&quot;{failure.tema}&quot;</span>: {failure.error}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <p className="text-slate-400">Esos temas quedaron arriba para reintentarlos.</p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     <button
                         type="submit"
