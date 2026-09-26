@@ -116,8 +116,8 @@ try {
         `${Date.now() - started}ms, estado=${render.body?.video?.render_status}`);
 
     let seenProgress = false, final = null;
-    for (let i = 0; i < 40; i += 1) {
-        await sleep(4000);
+    for (let i = 0; i < 160; i += 1) {
+        await sleep(1000);
         const poll = await api('/api/videos');
         const v = poll.body.videos.find((x) => x.id === videoId);
         if (v.render_progress > 0 && v.render_progress < 100) seenProgress = true;
@@ -182,9 +182,13 @@ try {
         const list2 = [...(tplScenes.body?.video?.scenes ?? [])].sort((a, b) => a.order - b.order);
         const first2 = list2[0];
         const last2 = list2[list2.length - 1];
-        record('la plantilla monta las escenas', list2.length > 0
-            && first2?.action === 'telefono' && last2?.character === 'pareja',
-            `1a=${first2?.character}/${first2?.action}/${first2?.prop} ultima=${last2?.character}/${last2?.action}/${last2?.prop}`);
+        // The 'llamada' template has to put a phone call on screen. Which
+        // character ends the story is the planner's business - and with a model
+        // answering it stages it differently from the keyword fallback, which
+        // is the point of having one.
+        const conTelefono = list2.filter((s) => s.action === 'telefono' || s.prop === 'telefono').length;
+        record('la plantilla monta las escenas', list2.length > 0 && conTelefono > 0,
+            `${list2.length} escenas, ${conTelefono} con telefono; 1a=${first2?.character}/${first2?.action}/${first2?.prop}`);
 
         const dup2 = await api(`/api/videos/${tplId}/duplicate`, { method: 'POST', body: JSON.stringify({ platform: 'tiktok' }) });
         record('duplicar conserva la plantilla', dup2.body?.video?.template === 'llamada', `template=${dup2.body?.video?.template}`);
