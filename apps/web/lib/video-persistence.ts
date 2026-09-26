@@ -165,7 +165,11 @@ function buildFallbackScript(topic: string): string {
     return (/hipotec|credito|cr[eé]dito|cuota|vivienda|casa|banco/i.test(topic) ? mortgage : general).join(' ');
 }
 
-async function generateScript(topic: string, template: VideoTemplate): Promise<string> {
+// The caller needs to know whether the model actually wrote this, not just
+// receive text: `buildFallbackScript` produces the same handful of sentences
+// for every topic, and a batch that hides that behind "creado" is the bug
+// RF-024's third array exists to fix.
+export async function generateScript(topic: string, template: VideoTemplate): Promise<{ text: string; fromModel: boolean }> {
     // Telenovela structure on purpose: the client wants the "frutinovela" format
     // that works on TikTok - conflict, characters with a stake, a hook - rather
     // than the explainer tone this used to produce. The compliance limits are
@@ -185,8 +189,8 @@ async function generateScript(topic: string, template: VideoTemplate): Promise<s
         [{ role: 'user', content: `Tema: ${topic}\nEscribe la mini-telenovela.` }],
         { maxTokens: 500 },
     );
-    if (!result || !result.text.trim()) return buildFallbackScript(topic);
-    return result.text.trim();
+    if (!result || !result.text.trim()) return { text: buildFallbackScript(topic), fromModel: false };
+    return { text: result.text.trim(), fromModel: true };
 }
 
 async function createInSupabase(topic: string, platform: Platform, targetDurationSeconds: number, script: string, template: VideoTemplate): Promise<VideoRecord> {
@@ -249,8 +253,12 @@ export async function getVideo(id: string): Promise<VideoRecord | null> {
     return findVideoRecord(id);
 }
 
-export async function createVideo(topic: string, platform: Platform, targetDurationSeconds: number, template: VideoTemplate = 'libre'): Promise<VideoRecord> {
-    const script = await generateScript(topic, template);
+// `preparedScript` lets a caller that already ran generateScript (the batch
+// route, so it can inspect `fromModel` before handing the text over) skip a
+// second model call. Every existing caller omits it and keeps generating the
+// script here, unchanged.
+export async function createVideo(topic: string, platform: Platform, targetDurationSeconds: number, template: VideoTemplate = 'libre', preparedScript?: string): Promise<VideoRecord> {
+    const script = preparedScript ?? (await generateScript(topic, template)).text;
 
     try {
         return await createInSupabase(topic, platform, targetDurationSeconds, script, template);

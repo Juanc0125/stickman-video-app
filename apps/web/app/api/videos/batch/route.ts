@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getTemplate } from '@shared-types/templates';
 import type { Platform } from '@shared-types/video';
 import { POST as planScenesRoute } from '../[id]/scenes/route';
-import { createVideo } from '../../../../lib/video-persistence';
+import { createVideo, generateScript } from '../../../../lib/video-persistence';
 import type { VideoRecord } from '../store';
 
 const PLATFORMS: Platform[] = ['reels', 'tiktok', 'shorts'];
@@ -20,6 +20,21 @@ interface BatchFailure {
     error: string;
 }
 
+// Created, but not the way the operator would expect if they only read
+// "creado": the script is the hardcoded fallback, the scenes did not come out,
+// or both at once. `motivo` is one spoken sentence for a person; `causa` is
+// the same fact in a code the UI can switch on, so it offers "regenera el
+// guion" or "pulsa Generar escenas" without pattern-matching Spanish prose -
+// a rewritten sentence would silently break that the way a second copy of a
+// business rule always does here.
+type BatchWarningCause = 'guion_generico' | 'sin_escenas' | 'guion_generico_y_sin_escenas';
+
+interface BatchWarning {
+    tema: string;
+    causa: BatchWarningCause;
+    motivo: string;
+}
+
 // The scene planner - its JSON coercion and its sentence fallback - lives only
 // in [id]/scenes/route.ts. This calls that handler in process, the same way
 // copilot.ts does, instead of keeping a second copy of any of it.
@@ -30,6 +45,37 @@ async function planScenes(id: string): Promise<VideoRecord> {
         throw new Error(payload?.error ?? 'No se pudieron generar las escenas.');
     }
     return payload.video;
+}
+
+// One entry per combination of what quietly went wrong, null when nothing
+// did. `scriptIsFallback` comes straight from generateScript; `sceneOutcome`
+// is 'ok' when con_escenas was never asked for or came back with at least one
+// scene, 'empty' when the planner returned zero scenes without throwing, and
+// 'failed' when it threw. 'guion_generico_y_sin_escenas' is a third causa, not
+// 'sin_escenas' with a longer sentence: the two underlying problems have two
+// different fixes, and squashing them into one code would send the operator
+// to only one of the two panels that actually needs attention.
+function buildWarning(scriptIsFallback: boolean, sceneOutcome: 'ok' | 'failed' | 'empty'): { causa: BatchWarningCause; motivo: string } | null {
+    const scenesMissing = sceneOutcome !== 'ok';
+    if (!scriptIsFallback && !scenesMissing) return null;
+
+    if (scriptIsFallback && scenesMissing) {
+        return {
+            causa: 'guion_generico_y_sin_escenas',
+            motivo: sceneOutcome === 'failed'
+                ? 'El modelo de lenguaje no respondio (el guion es una plantilla generica) y tampoco se pudieron generar las escenas.'
+                : 'El modelo de lenguaje no respondio (el guion es una plantilla generica) y el video no quedo con ninguna escena.',
+        };
+    }
+    if (scriptIsFallback) {
+        return { causa: 'guion_generico', motivo: 'El modelo de lenguaje no respondio, asi que el guion es una plantilla generica.' };
+    }
+    return {
+        causa: 'sin_escenas',
+        motivo: sceneOutcome === 'failed'
+            ? 'El guion quedo bien pero no se pudieron generar las escenas.'
+            : 'El guion quedo bien pero el video no quedo con ninguna escena.',
+    };
 }
 
 export async function POST(request: Request) {
@@ -86,6 +132,7 @@ export async function POST(request: Request) {
 
     const creados: VideoRecord[] = [];
     const fallidos: BatchFailure[] = [];
+    const advertencias: BatchWarning[] = [];
 
     // Sequential, not Promise.all: Groq's free tier is roughly 7000 tokens a
     // minute, and firing every script (plus every scene plan) at once trades a
@@ -93,24 +140,38 @@ export async function POST(request: Request) {
     // means a failure partway through never costs the videos already created.
     for (const tema of temas) {
         try {
-            const video = await createVideo(tema, platform, targetDurationSeconds, template);
+            // Generated here, not inside createVideo, so this route can see
+            // whether the model actually answered before deciding if the topic
+            // needs a warning - createVideo just takes the text and saves it.
+            const { text: script, fromModel } = await generateScript(tema, template);
+            const video = await createVideo(tema, platform, targetDurationSeconds, template, script);
+
             if (!conEscenas) {
                 creados.push(video);
+                const warning = buildWarning(!fromModel, 'ok');
+                if (warning) advertencias.push({ tema, ...warning });
                 continue;
             }
+
             try {
-                creados.push(await planScenes(video.id));
+                const withScenes = await planScenes(video.id);
+                creados.push(withScenes);
+                const warning = buildWarning(!fromModel, withScenes.scenes.length === 0 ? 'empty' : 'ok');
+                if (warning) advertencias.push({ tema, ...warning });
             } catch (sceneError) {
                 // The draft itself already saved with a real script; discarding it
                 // because the optional scene step failed would throw away working
                 // output over something the operator can retry from the panel.
                 console.warn(`Fallo al generar escenas para "${tema}" dentro del lote.`, sceneError);
                 creados.push(video);
+                // 'failed' always counts as scenes missing, so this is never null.
+                const warning = buildWarning(!fromModel, 'failed');
+                if (warning) advertencias.push({ tema, ...warning });
             }
         } catch (error) {
             fallidos.push({ tema, error: error instanceof Error ? error.message : 'Error desconocido.' });
         }
     }
 
-    return NextResponse.json({ creados, fallidos });
+    return NextResponse.json({ creados, fallidos, advertencias });
 }

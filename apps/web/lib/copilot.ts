@@ -285,16 +285,24 @@ function jsonInit(method: string, body: unknown): RequestInit {
     return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
 }
 
-// The batch route answers { creados, fallidos } instead of a single { video },
-// so it needs its own thin call instead of reusing callRoute above - the
-// validation and the sequential loop still live only in that route handler.
-async function callBatchRoute(body: unknown): Promise<{ creados: VideoRecord[]; fallidos: { tema: string; error: string }[] }> {
+type BatchWarningCause = 'guion_generico' | 'sin_escenas' | 'guion_generico_y_sin_escenas';
+interface BatchWarning {
+    tema: string;
+    causa: BatchWarningCause;
+    motivo: string;
+}
+
+// The batch route answers { creados, fallidos, advertencias } instead of a
+// single { video }, so it needs its own thin call instead of reusing callRoute
+// above - the validation and the sequential loop still live only in that
+// route handler.
+async function callBatchRoute(body: unknown): Promise<{ creados: VideoRecord[]; fallidos: { tema: string; error: string }[]; advertencias: BatchWarning[] }> {
     const response = await batchRoute(new Request(INTERNAL_URL, jsonInit('POST', body)));
-    const payload = await response.json().catch(() => null) as { creados?: VideoRecord[]; fallidos?: { tema: string; error: string }[]; error?: string } | null;
+    const payload = await response.json().catch(() => null) as { creados?: VideoRecord[]; fallidos?: { tema: string; error: string }[]; advertencias?: BatchWarning[]; error?: string } | null;
     if (!response.ok || !payload) {
         throw new Error(payload?.error ?? 'No se pudo generar el lote.');
     }
-    return { creados: payload.creados ?? [], fallidos: payload.fallidos ?? [] };
+    return { creados: payload.creados ?? [], fallidos: payload.fallidos ?? [], advertencias: payload.advertencias ?? [] };
 }
 
 // Accents come and go in what a model writes ("telefono" / "teléfono") while
@@ -421,7 +429,7 @@ async function generarVarios(args: ToolArgs, state: CopilotState): Promise<strin
         return `No se pudo generar el lote: ${error instanceof Error ? error.message : 'error desconocido'}.`;
     }
 
-    const { creados, fallidos } = batch;
+    const { creados, fallidos, advertencias } = batch;
     if (creados.length) {
         // The turn keeps working on the last one created, same as generar_guion.
         const last = creados[creados.length - 1];
@@ -429,11 +437,29 @@ async function generarVarios(args: ToolArgs, state: CopilotState): Promise<strin
         state.touched = last;
         state.created = true;
     }
-    state.acciones.push(`${creados.length} de ${temas.length} videos creados`);
 
-    const resumen = `Cree ${creados.length} de ${temas.length} videos, todos en borrador.`;
-    if (!fallidos.length) return resumen;
-    return `${resumen} Fallaron: ${fallidos.map((item) => `"${item.tema}" (${item.error})`).join(', ')}.`;
+    // Counted by causa, not just totalled, so the spoken summary says what
+    // needs doing next ("3 creados, 1 con guion generico") instead of a vague
+    // "con problemas" that would send the operator hunting through the panel.
+    const conGuionGenerico = advertencias.filter((item) => item.causa !== 'sin_escenas').length;
+    const conEscenasFaltantes = advertencias.filter((item) => item.causa !== 'guion_generico').length;
+    const detalleAdvertencias = [
+        conGuionGenerico ? `${conGuionGenerico} con guion generico` : '',
+        conEscenasFaltantes ? `${conEscenasFaltantes} sin escenas` : '',
+    ].filter(Boolean).join(', ');
+
+    state.acciones.push(`${creados.length} de ${temas.length} videos creados` + (detalleAdvertencias ? `, ${detalleAdvertencias}` : ''));
+
+    const partes = [`Cree ${creados.length} de ${temas.length} videos, todos en borrador.`];
+    // Spoken so the operator does not read "creado" as "listo": a canned script
+    // or a video with no scenes still counts as created, but needs a look.
+    if (advertencias.length) {
+        partes.push(`${detalleAdvertencias}: ${advertencias.map((item) => `"${item.tema}"`).join(', ')}.`);
+    }
+    if (fallidos.length) {
+        partes.push(`Fallaron: ${fallidos.map((item) => `"${item.tema}" (${item.error})`).join(', ')}.`);
+    }
+    return partes.join(' ');
 }
 
 async function editarGuion(args: ToolArgs, state: CopilotState): Promise<string> {
