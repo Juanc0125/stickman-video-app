@@ -583,6 +583,17 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
         throw new Error('RENDER_WORKER_URL es obligatoria en produccion.');
     }
     const workerUrl = (configuredWorkerUrl || 'http://localhost:8080').replace(/\/+$/, '');
+
+    // The worker now sits open to the internet at RENDER_WORKER_URL, so a
+    // shared secret is the only thing stopping anyone who finds that URL from
+    // queuing renders directly. Required in production for the same reason
+    // RENDER_WORKER_URL is: a render silently sent unauthenticated would just
+    // be rejected by the worker's own check, so fail here with a clear reason
+    // instead of a confusing 401 from that fetch.
+    const workerToken = process.env.RENDER_WORKER_TOKEN?.trim();
+    if (!workerToken && process.env.NODE_ENV === 'production') {
+        throw new Error('RENDER_WORKER_TOKEN es obligatoria en produccion.');
+    }
     const sortedScenes = [...video.scenes].sort((a, b) => a.order - b.order);
 
     // The worker answers 202 as soon as it has accepted the job and then
@@ -591,7 +602,10 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
     // model - far longer than this request may stay open.
     const response = await fetch(`${workerUrl}/render`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            ...(workerToken ? { Authorization: `Bearer ${workerToken}` } : {}),
+        },
         body: JSON.stringify({
             id,
             platform: video.platform,

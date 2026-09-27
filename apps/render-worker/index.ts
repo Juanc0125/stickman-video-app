@@ -4,7 +4,7 @@ import { access, mkdir, readFile, rename, rm, unlink, writeFile } from 'node:fs/
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { join } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import ffmpegPath from 'ffmpeg-static';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -86,6 +86,73 @@ const storageClient = supabaseUrl && supabaseServiceRoleKey
 
 if (!storageClient) {
 	console.warn('SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (o SUPABASE_SECRET_KEY) no configuradas: los MP4 solo se guardaran en el filesystem local (no sobreviven un redeploy).');
+}
+
+// Same production check video-persistence.ts already uses for RENDER_WORKER_URL
+// on the web side, kept consistent rather than inventing a second signal for
+// the same question ("are we the deployed thing or someone's machine?").
+const isProductionEnvironment = process.env.NODE_ENV === 'production';
+
+// Empty-string is treated the same as unset: a blank "secret" protects
+// nothing and would only make hasValidBearerToken() below compare against
+// an empty string, which is a valid-looking but worthless token.
+const renderWorkerToken = process.env.RENDER_WORKER_TOKEN?.trim() || null;
+
+if (!renderWorkerToken) {
+	// The unset-token case splits on environment because "fail open" and
+	// "fail closed" are each right on one side of it:
+	//
+	// - Outside production, failing OPEN is what keeps `npm run dev` and a
+	//   brand-new local checkout working with zero setup, same as this file
+	//   already does for missing Supabase storage, the TTS key and fal.ai.
+	//   Nobody sets this variable on their own machine today.
+	// - In production, failing open would leave the deployed worker taking
+	//   render jobs (real CPU minutes, real storage, real bill) from anyone
+	//   who finds the URL, from the moment this ships until someone happens
+	//   to set the variable in Railway - exactly the hole this task exists
+	//   to close. A loud log line does not close that hole; nobody reads a
+	//   healthy service's startup log. So production fails CLOSED instead
+	//   (see the /render handler and /health below) and this stays loud
+	//   only to make the reason visible in seconds, not to substitute for it.
+	if (isProductionEnvironment) {
+		console.error('¡¡¡ RENDER_WORKER_TOKEN no esta configurada en produccion !!!');
+		console.error('El endpoint /render va a rechazar todos los pedidos con 503 hasta que se configure.');
+		console.error('Configura RENDER_WORKER_TOKEN en Railway para que el worker vuelva a aceptar trabajos.');
+	} else {
+		console.error('¡¡¡ RENDER_WORKER_TOKEN no esta configurada !!!');
+		console.error('El endpoint /render acepta pedidos de cualquiera, sin clave, mientras esto no se corrija.');
+		console.error('Configura RENDER_WORKER_TOKEN en Railway (o en .env.local para desarrollo) antes de exponer este worker.');
+	}
+}
+
+// Fixed-length digest comparison: timingSafeEqual() requires equal-length
+// buffers (it throws otherwise, which would itself leak a length mismatch),
+// and comparing raw strings of different lengths short-circuits early,
+// leaking length through timing. Hashing both sides to the same 32-byte
+// SHA-256 digest first removes both leaks.
+function hashToken(value: string): Buffer {
+	return createHash('sha256').update(value, 'utf8').digest();
+}
+
+// Only called once a token is known to be configured - the caller (the
+// /render handler) deals with the unset-token case itself, since that one
+// branches on environment (fail open in dev, fail closed in production)
+// rather than on anything about the request.
+function hasValidBearerToken(request: IncomingMessage, expectedToken: string): boolean {
+	const header = request.headers.authorization;
+	if (typeof header !== 'string' || !header.startsWith('Bearer ')) return false;
+
+	const provided = header.slice('Bearer '.length);
+	return timingSafeEqual(hashToken(provided), hashToken(expectedToken));
+}
+
+// Surfaced on /health (see below) so a worker that is up but refusing every
+// render for lack of a token is diagnosable from outside in seconds, instead
+// of looking either dead or silently insecure.
+function renderAuthStatus(): string {
+	if (renderWorkerToken) return 'configurado';
+	if (isProductionEnvironment) return 'bloqueado: falta RENDER_WORKER_TOKEN, /render rechaza todo con 503';
+	return 'sin token: modo desarrollo, /render acepta todo sin clave';
 }
 
 // Surfaced on /health so it's possible to tell "storage was never configured"
@@ -575,6 +642,10 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 
 const server = createServer(async (request, response) => {
 	if (request.method === 'GET' && request.url === '/health') {
+		// Stays open and answers 200 even when /render is refusing every job
+		// below (no token, in production): a deploy that cannot be inspected
+		// is worse than one that is visibly down, and render_auth is exactly
+		// what turns "looks dead" into "diagnosable in seconds".
 		sendJson(response, 200, {
 			ok: true,
 			service: 'render-worker',
@@ -582,6 +653,7 @@ const server = createServer(async (request, response) => {
 			video_engine: isAiVideoEnabled() ? aiVideoModel() : 'canvas',
 			bucket: storageBucket,
 			last_storage_error: lastStorageError,
+			render_auth: renderAuthStatus(),
 		});
 		return;
 	}
@@ -608,6 +680,28 @@ const server = createServer(async (request, response) => {
 
 	if (request.method !== 'POST' || request.url !== '/render') {
 		sendJson(response, 404, { error: 'Ruta no encontrada.' });
+		return;
+	}
+
+	// Checked before parsing the body: a rejected caller - unauthorized or
+	// hitting a misconfigured deploy - shouldn't cost us even the JSON parse,
+	// let alone a render.
+	if (!renderWorkerToken) {
+		if (isProductionEnvironment) {
+			// 503, not 401: the server is missing its own configuration, the
+			// caller did nothing wrong. That distinction is what should point
+			// whoever reads this at "set RENDER_WORKER_TOKEN in Railway"
+			// instead of a permissions rabbit hole that isn't theirs to fix.
+			sendJson(response, 503, { error: 'El worker no puede aceptar renders: falta configurar RENDER_WORKER_TOKEN en este despliegue.' });
+			return;
+		}
+		// Outside production: fail open (see the loud startup warning above)
+		// so `npm run dev` and a fresh, not-yet-configured deploy keep working.
+	} else if (!hasValidBearerToken(request, renderWorkerToken)) {
+		// Missing header and wrong token get the exact same status and
+		// message so neither response tells an attacker which one they got
+		// wrong.
+		sendJson(response, 401, { error: 'No autorizado.' });
 		return;
 	}
 
