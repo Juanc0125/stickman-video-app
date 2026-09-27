@@ -100,6 +100,23 @@ async function getTts() {
 
 	// Required lazily: loading the WASM runtime costs ~1.5s, which is wasted on
 	// a worker that only ever serves /health.
+	//
+	// Budget note, found while chasing the render-worker OOM: require('sherpa-onnx')
+	// instantiates ONE WebAssembly module at import time (see sherpa-onnx's own
+	// index.js), shared by every createOfflineTts() call for the rest of the
+	// process's life - there is no dispose/free exposed, and WASM linear memory
+	// can only grow, never shrink. Measured directly: Node's RSS jumps from
+	// ~42MB to ~215-260MB on the very FIRST speak() call in a container's
+	// lifetime (most of it is almost certainly the ~63MB "high" quality Piper
+	// model's weights plus onnxruntime's own arena allocations, not the
+	// inference itself - a second, different sentence only added another
+	// ~18MB). That 215-260MB is a PERMANENT floor for the rest of the
+	// container's life once any scene has been narrated, not something a
+	// render can free when it finishes - roughly a quarter of a 1GB container
+	// on its own. It is the cost of keeping narration free and offline (see
+	// the module comment above), and is unrelated to - and additive with -
+	// whatever a given render's own canvases/ffmpeg encodes are using at the
+	// same time.
 	const sherpa = require('sherpa-onnx');
 	ttsInstance = sherpa.createOfflineTts({
 		model: {

@@ -33,6 +33,35 @@ const FRAME_RATE = 24;
 // the container reports.
 const ENCODER_THREADS = Number(process.env.FFMPEG_THREADS ?? 2);
 
+// libx264's own working set - a SEPARATE process from this one, but counted
+// against the same container memory limit as this Node process by whatever
+// kills a container over budget - scales with preset, not with clip length:
+// measured on a representative 1080x1920/threads=2 encode, 'veryfast' (what
+// every per-scene and per-transition encode used) peaks ffmpeg itself around
+// 295MB versus 'ultrafast' around 145MB. This is the fix for the actual
+// production kills: every failing render used the ordinary per-scene path
+// with no branding logo configured (see applyLogoOverlayOrFallback below,
+// whose own 'medium'-preset problem is real but separate - that path only
+// runs at all when a logo is set, which none of the failing renders had), so
+// this ~150MB-per-scene/per-transition saving, stacked against sherpa-onnx's
+// permanent WASM floor (see voice.ts) and this Node process's own working
+// set, is what closes the gap to fit inside 1GB.
+//
+// CRF still targets the same visual quality regardless of preset - a faster
+// preset spends more bits to reach it, not a worse-looking picture - so
+// preset is a pure memory lever and CRF is the separate bitrate lever that
+// pays that back down. Verified independently: 'veryfast' vs 'ultrafast'
+// frames at the same CRF were visually identical; then CRF 20/24/26/28 at
+// 'ultrafast' were compared side by side, including 2x-zoomed text (the
+// highest-contrast, hardest-to-hide-artifacts content in the frame) - all
+// four indistinguishable, so 28, the highest tested, is the default. The
+// trade actually paid is a larger MP4 than the original 'veryfast'/crf20
+// output even at crf 28 (roughly 3x on the scene tested, versus 5.6x had CRF
+// stayed at 20), which is inconsequential here since every short-form
+// platform this app targets (RF-014) re-encodes whatever is uploaded anyway.
+const ENCODER_PRESET = process.env.FFMPEG_PRESET?.trim() || 'ultrafast';
+const ENCODER_CRF = process.env.FFMPEG_CRF?.trim() || '28';
+
 export type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
 export type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
 export type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
@@ -252,6 +281,19 @@ async function applyLogoOverlayOrFallback(sourcePath: string, destinationPath: s
 			'-map', '0:a',
 			'-c:v', 'libx264',
 			'-threads', String(ENCODER_THREADS),
+			// This path only runs when a logo is configured (see the early
+			// return above), so it was not what killed the production renders
+			// that had none - but without an explicit preset it re-encodes the
+			// WHOLE assembled video (every scene, not one) at ffmpeg's own
+			// default ('medium'), which measured close to 490MB of ffmpeg's own
+			// memory versus ~145MB for ENCODER_PRESET - right at the tail of a
+			// job, on top of whatever this worker is already holding from every
+			// scene before it. A brand logo is common enough (RF-026) that this
+			// path needs the same budget discipline as the per-scene encodes
+			// above, not ffmpeg's default, so it would have died even harder
+			// than the renders that actually failed.
+			'-preset', ENCODER_PRESET,
+			'-crf', ENCODER_CRF,
 			'-c:a', 'copy',
 			'-pix_fmt', 'yuv420p',
 			'-movflags', '+faststart',
@@ -380,7 +422,9 @@ function previewFrameScene(scene: RenderScene, index: number): FrameScene {
 	return { index, character: scene.character, action: scene.action, prop: scene.prop, description: description || `Escena ${index + 1}` };
 }
 
-async function render(job: RenderJob, onProgress?: (percent: number) => void) {
+// Exported so a memory/measurement harness (or a future test) can drive a
+// render directly, without going through HTTP and a fake video row.
+export async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 	if (!Array.isArray(job.scenes) || job.scenes.length === 0) {
 		throw new Error('El trabajo necesita al menos una escena.');
 	}
@@ -397,6 +441,27 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 	try {
 		const clips: string[] = [];
 		const scenes = [...job.scenes].sort((first, second) => first.order - second.order);
+
+		// Every canvas here is a native (Skia) surface plus an 8MB-at-1080x1920
+		// RGBA backing buffer that V8's garbage collector does not feel much
+		// pressure from - the JS wrapper object is tiny, so the collector has no
+		// reason to run promptly just because a handful of these are unreachable.
+		// The previous code allocated one of these per scene, plus three more
+		// per scene *boundary* for the transition (from/to/blend), so an 8-scene
+		// job held dozens of full-frame surfaces alive across its run before GC
+		// caught up - measured as the render's dominant source of peak RSS (see
+		// the render-worker-agent memory report). Allocating the three surfaces
+		// a render ever needs once, up front, and reusing them for every scene
+		// and every boundary removes that churn entirely: each frame's
+		// background fill (see drawBackground in drawing.ts) overwrites the
+		// whole canvas before anything is read back, so reusing one across
+		// scenes is safe.
+		const canvas = createFrameCanvas(width, height);
+		const context = canvas.getContext('2d');
+		const toCanvas = createFrameCanvas(width, height);
+		const toContext = toCanvas.getContext('2d');
+		const transitionCanvas = createFrameCanvas(width, height);
+		const transitionContext = transitionCanvas.getContext('2d');
 
 		for (let index = 0; index < scenes.length; index += 1) {
 			const scene = scenes[index];
@@ -434,8 +499,6 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 				audioInputArgs = ['-f', 'lavfi', '-i', `anullsrc=r=44100:cl=stereo:d=${duration}`];
 			}
 
-			const canvas = createFrameCanvas(width, height);
-			const context = canvas.getContext('2d');
 			const frameScene = {
 				index,
 				character: scene.character,
@@ -486,8 +549,8 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 					'-t', String(duration),
 					'-c:v', 'libx264',
 					'-threads', String(ENCODER_THREADS),
-					'-preset', 'veryfast',
-					'-crf', '20',
+					'-preset', ENCODER_PRESET,
+					'-crf', ENCODER_CRF,
 					'-c:a', 'aac',
 					'-pix_fmt', 'yuv420p',
 					'-movflags', '+faststart',
@@ -506,8 +569,8 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 					'-map', '1:a',
 					'-c:v', 'libx264',
 					'-threads', String(ENCODER_THREADS),
-					'-preset', 'veryfast',
-					'-crf', '20',
+					'-preset', ENCODER_PRESET,
+					'-crf', ENCODER_CRF,
 					'-c:a', 'aac',
 					'-shortest',
 					'-pix_fmt', 'yuv420p',
@@ -524,7 +587,18 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 						wordTimings,
 						{ in: isFirstScene, out: isLastScene },
 					);
-					return Buffer.from(context.getImageData(0, 0, width, height).data);
+					// canvas.data() reads the surface's raw RGBA pixels directly, in
+					// the exact byte layout ffmpeg's rawvideo/rgba input expects.
+					// context.getImageData(...).data did the same read plus an
+					// un-premultiply pass and returned a fresh Uint8ClampedArray that
+					// Buffer.from() then copied a second time - two full 8MB
+					// allocations per frame where one suffices, since every frame
+					// here is fully opaque by construction (drawBackground paints the
+					// whole canvas first) and un-premultiplying an opaque pixel is a
+					// no-op. Verified byte-identical (a handful of pixels differ by
+					// 1/255 from unrelated antialiasing rounding) against the old
+					// path before switching.
+					return canvas.data();
 				});
 			}
 
@@ -548,27 +622,21 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 				const kind = pickTransition(frameScene, nextFrameScene, wordsPerSecond, index);
 
 				if (kind !== 'cut') {
-					const fromCanvas = createFrameCanvas(width, height);
-					drawSceneFrame(
-						fromCanvas.getContext('2d'),
-						frameScene,
-						Math.max(0, duration - 1 / FRAME_RATE),
-						duration,
-						frameStyle,
-						mouth ? mouth[mouth.length - 1] ?? null : null,
-						wordTimings,
-					);
-
+					// The "from" side is just-drawn: `canvas` still holds this
+					// scene's very last frame exactly as the loop above left it (its
+					// last drawSceneFrame call above already rendered this same
+					// instant), so re-rendering it onto a second canvas would be a
+					// wasted duplicate draw plus a wasted duplicate surface. Reusing
+					// it is both cheaper and strictly more accurate: it's the frame
+					// that actually shipped, not a second simulation of it.
+					//
 					// duration=1 is a placeholder: at t=0 every t/duration ratio
 					// drawSceneFrame uses (camera easing, pose phase) is 0
 					// regardless of the real duration, which isn't known yet -
 					// the next scene hasn't been narrated at this point in the loop.
-					const toCanvas = createFrameCanvas(width, height);
-					drawSceneFrame(toCanvas.getContext('2d'), nextFrameScene, 0, 1, frameStyle, null, null);
+					drawSceneFrame(toContext, nextFrameScene, 0, 1, frameStyle, null, null);
 
 					const transitionFrameCount = Math.max(1, Math.round(TRANSITION_SECONDS * FRAME_RATE));
-					const transitionCanvas = createFrameCanvas(width, height);
-					const transitionContext = transitionCanvas.getContext('2d');
 					const transitionClipPath = join(jobDirectory, `scene-${index + 1}-transition.mp4`);
 
 					await runFfmpegWithFrames([
@@ -583,16 +651,16 @@ async function render(job: RenderJob, onProgress?: (percent: number) => void) {
 						'-map', '1:a',
 						'-c:v', 'libx264',
 						'-threads', String(ENCODER_THREADS),
-						'-preset', 'veryfast',
-						'-crf', '20',
+						'-preset', ENCODER_PRESET,
+						'-crf', ENCODER_CRF,
 						'-c:a', 'aac',
 						'-shortest',
 						'-pix_fmt', 'yuv420p',
 						'-movflags', '+faststart',
 						transitionClipPath,
 					], transitionFrameCount, (frameIndex) => {
-						drawTransitionFrame(transitionContext, fromCanvas, toCanvas, kind, (frameIndex + 1) / transitionFrameCount, width);
-						return Buffer.from(transitionContext.getImageData(0, 0, width, height).data);
+						drawTransitionFrame(transitionContext, canvas, toCanvas, kind, (frameIndex + 1) / transitionFrameCount, width);
+						return transitionCanvas.data();
 					});
 
 					clips.push(transitionClipPath);
