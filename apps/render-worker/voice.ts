@@ -15,7 +15,10 @@ import { extract } from 'tar-stream';
 // container into VOICE_CACHE_DIR. Rendering waits on that download the first
 // time; every later render reuses it.
 const MODEL_NAME = process.env.VOICE_MODEL ?? 'vits-piper-es_MX-claude-high';
-const MODEL_FILE = process.env.VOICE_MODEL_FILE ?? 'es_MX-claude-high.onnx';
+// Every piper archive holds one .onnx named after the model without the
+// vendor prefix, so changing voice is one variable. VOICE_MODEL_FILE stays as
+// an escape hatch for a model that breaks the convention.
+const MODEL_FILE = process.env.VOICE_MODEL_FILE ?? `${MODEL_NAME.replace(/^vits-piper-/, '')}.onnx`;
 const MODEL_URL = `https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/${MODEL_NAME}.tar.bz2`;
 const CACHE_DIR = process.env.VOICE_CACHE_DIR ?? join(process.cwd(), '.voice-cache');
 const SPEAKING_RATE = Number(process.env.VOICE_SPEED ?? 1);
