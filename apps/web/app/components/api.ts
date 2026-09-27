@@ -23,8 +23,27 @@ async function parseJsonSafe(response: Response): Promise<unknown> {
     }
 }
 
-async function request<T>(input: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(input, init);
+// The middleware answers every /api/** call with 401 once the session cookie
+// is gone (expired, or signed out in another tab). Login itself can also
+// answer 401 for a wrong password - that one must NOT bounce the browser,
+// since the person is already on /login and needs to see the message.
+interface RequestOptions extends RequestInit {
+    skipAuthRedirect?: boolean;
+}
+
+function redirectToLogin(): void {
+    if (typeof window === 'undefined') return;
+    if (window.location.pathname === '/login') return;
+    window.location.href = '/login';
+}
+
+async function request<T>(input: string, init?: RequestOptions): Promise<T> {
+    const { skipAuthRedirect, ...requestInit } = init ?? {};
+    const response = await fetch(input, requestInit);
+    if (response.status === 401 && !skipAuthRedirect) {
+        redirectToLogin();
+        throw new Error('La sesión expiró. Inicia sesión de nuevo.');
+    }
     const data = await parseJsonSafe(response);
     if (!response.ok) {
         const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
@@ -35,6 +54,25 @@ async function request<T>(input: string, init?: RequestInit): Promise<T> {
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+// The three auth endpoints, kept here so every call to the server - including
+// these - goes through the one `request()` chokepoint above.
+export async function login(email: string, password: string): Promise<void> {
+    await request<unknown>('/api/auth/login', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ email, password }),
+        skipAuthRedirect: true,
+    });
+}
+
+export async function logout(): Promise<void> {
+    await request<unknown>('/api/auth/logout', { method: 'POST', skipAuthRedirect: true });
+}
+
+export async function fetchSession(): Promise<{ email: string | null }> {
+    return request<{ email: string | null }>('/api/auth/session', { skipAuthRedirect: true });
+}
 
 export async function fetchVideos(): Promise<VideoRecord[]> {
     const data = await request<{ videos: VideoRecord[] }>('/api/videos');
@@ -207,11 +245,7 @@ export async function applyBrandTemplate(id: string, templateId: string): Promis
 }
 
 export async function deleteBrandTemplate(templateId: string): Promise<void> {
-    const response = await fetch(`/api/brand-templates/${templateId}`, { method: 'DELETE' });
-    if (!response.ok && response.status !== 204) {
-        const body = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? 'No se pudo eliminar la plantilla de marca.');
-    }
+    await request<unknown>(`/api/brand-templates/${templateId}`, { method: 'DELETE' });
 }
 
 export async function duplicateVideo(id: string, platform: Platform): Promise<VideoRecord> {
@@ -224,11 +258,7 @@ export async function duplicateVideo(id: string, platform: Platform): Promise<Vi
 }
 
 export async function deleteVideo(id: string): Promise<void> {
-    const response = await fetch(`/api/videos/${id}`, { method: 'DELETE' });
-    if (!response.ok && response.status !== 204) {
-        const body = await response.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? 'No se pudo eliminar el video.');
-    }
+    await request<unknown>(`/api/videos/${id}`, { method: 'DELETE' });
 }
 
 export async function deleteScene(id: string, sceneId: string): Promise<VideoRecord> {

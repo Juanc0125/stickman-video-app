@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchVideos, type VideoRecord } from './api';
+import { fetchSession, fetchVideos, logout, type VideoRecord } from './api';
 import VideoList from './video-list';
 import VideoWorkspace from './video-workspace';
 import Assistant from './assistant';
@@ -11,6 +11,11 @@ export default function VideoStudio() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    // Who is signed in, for the header. Middleware already guarantees a
+    // session exists before this component ever renders, so a failed lookup
+    // here just leaves the email blank rather than blocking the studio.
+    const [email, setEmail] = useState<string | null>(null);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         fetchVideos()
@@ -18,6 +23,23 @@ export default function VideoStudio() {
             .catch((error) => setLoadError(error instanceof Error ? error.message : 'No se pudieron cargar los videos.'))
             .finally(() => setLoading(false));
     }, []);
+
+    useEffect(() => {
+        fetchSession()
+            .then((session) => setEmail(session.email))
+            .catch(() => undefined);
+    }, []);
+
+    async function handleLogout() {
+        setLoggingOut(true);
+        try {
+            await logout();
+        } catch {
+            // The cookie may already be gone (e.g. expired seconds ago) -
+            // either way, the destination is the same.
+        }
+        window.location.href = '/login';
+    }
 
     // Rendering runs in the background on the worker, which reports progress on
     // the video row - so while anything is rendering, keep refreshing the list.
@@ -78,6 +100,22 @@ export default function VideoStudio() {
                                 {rendering} generando
                             </span>
                         )}
+                    </div>
+                    <div className="flex items-center gap-2.5 border-l border-white/10 pl-3 text-xs text-slate-400">
+                        {email && (
+                            <span className="hidden max-w-[11rem] truncate sm:inline" title={email}>
+                                {email}
+                            </span>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => { void handleLogout(); }}
+                            disabled={loggingOut}
+                            aria-label="Cerrar sesión"
+                            className="rounded-full border border-white/15 px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {loggingOut ? 'Saliendo...' : 'Salir'}
+                        </button>
                     </div>
                 </div>
             </header>
