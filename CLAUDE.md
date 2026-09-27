@@ -47,6 +47,7 @@ Dale al usuario un resumen corto: qué hizo cada agente, y **toda decisión de d
 
 - `npm run verify` falla con `EPERM` mientras el servidor de desarrollo tiene tomado `apps/web/.next`, y OneDrive sincronizando la carpeta puede tomarlo igual. Detén el servidor, borra `apps/web/.next`, reintenta. **EPERM no es un error de código.**
 - `npm run dev` levanta web (3000) y worker (8080) juntos. También está la configuración de arranque *Stickman* de Warp.
+- **Antes de lanzar desde Warp, libera los puertos 3000 y 8080.** Next 16 rechaza una segunda instancia sobre el mismo directorio, y la pestaña de Warp muere sin decir nada: parece que el lanzamiento falló cuando lo que sobraba era el proceso anterior.
 - El worker corre con `tsx` sin watch: un cambio en su código exige reiniciarlo.
 - `npm run check:ai` dice qué proveedor de lenguaje responde de verdad, y si además sabe usar herramientas. Hoy responde Groq; la clave vieja de OpenAI está sin saldo. El plan gratuito de Groq da ~7.000 tokens por minuto y cada turno del copiloto cuesta ~2.000, así que a la tercera o cuarta pregunta seguida se satura y cae al modo básico por palabras clave, **avisándolo en pantalla**. `npm run set:ai-key -- <proveedor>` instala una clave nueva sin que pase por pantalla ni por el chat.
 - El render worker redeclara los tipos del dominio en vez de importar `@shared-types`. Hoy coinciden; el día que uno cambie, dibujará algo distinto de lo guardado sin error de compilación.
