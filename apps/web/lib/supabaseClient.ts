@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+// Exported so lib/supabase-server.ts can build session-aware clients (auth
+// cookies) against the same project without re-reading the env vars a second
+// way and drifting from this resolution order.
+export const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+export const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
     ?? process.env.SUPABASE_PUBLISHABLE_KEY
     ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
