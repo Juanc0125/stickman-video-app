@@ -13,11 +13,26 @@
 //   E2E_WEB_URL=https://staging.example E2E_WORKER_URL=https://worker.example node scripts/e2e.mjs
 //
 // Exits non-zero when any check fails, so CI can gate on it.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const withoutTrailingSlash = (url) => url.replace(/\/+$/, '');
+
+// The suite needs the account password, and it lives in .env.local like every
+// other secret. Same precedence scripts/dev.mjs uses: apps/web first, the repo
+// root last so the root wins.
+
+const raiz = join(dirname(fileURLToPath(import.meta.url)), '..');
+for (const archivo of [join(raiz, 'apps', 'web', '.env.local'), join(raiz, '.env.local')]) {
+    let texto;
+    try { texto = readFileSync(archivo, 'utf8'); } catch { continue; }
+    for (const linea of texto.split('\n')) {
+        const m = linea.match(/^([A-Z0-9_]+)=(.*)$/);
+        if (m && m[2].trim()) process.env[m[1]] = m[2].trim();
+    }
+}
 
 const S = withoutTrailingSlash(process.env.E2E_WEB_URL ?? 'http://localhost:3000');
 const W = withoutTrailingSlash(process.env.E2E_WORKER_URL ?? 'http://localhost:8080');
@@ -33,11 +48,28 @@ function record(name, ok, detail) {
     console.log(`${ok ? 'OK  ' : 'FALLA'}  ${name}${detail ? ' — ' + detail : ''}`);
 }
 
+// The studio requires a session now, so the suite signs in like a person and
+// carries the cookie on every later call.
+// A jar keyed by name, not one flat string: Supabase rotates its auth cookie
+// and sets it in chunks, so replacing the whole header with whatever the last
+// response happened to send drops the rest of the session.
+const cookieJar = new Map();
+const cookieHeader = () => [...cookieJar].map(([k, v]) => `${k}=${v}`).join('; ');
+
 async function api(path, options = {}, base = S) {
     const response = await fetch(base + path, {
-        headers: { 'Content-Type': 'application/json' },
         ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(cookieJar.size && base === S ? { cookie: cookieHeader() } : {}),
+            ...(options.headers ?? {}),
+        },
     });
+    for (const bruta of response.headers.getSetCookie?.() ?? []) {
+        const [par] = bruta.split(';');
+        const corte = par.indexOf('=');
+        if (corte > 0) cookieJar.set(par.slice(0, corte).trim(), par.slice(corte + 1).trim());
+    }
     const text = await response.text();
     let body = null;
     try { body = text ? JSON.parse(text) : null; } catch { body = text; }
@@ -48,6 +80,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let videoId = null;
 
 console.log(`web=${S}  worker=${W}\n`);
+
+// Credentials come from the environment, never from this file: the suite
+// signs in with the same account a person uses.
+const E2E_EMAIL = process.env.E2E_EMAIL ?? 'demo@stickman.local';
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? process.env.DEMO_USER_PASSWORD ?? '';
+
+
+const entrada = await api('/api/auth/login', { method: 'POST', body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }) });
+record('iniciar sesion', entrada.status === 200 && cookieJar.size > 0,
+    entrada.status === 200 ? `sesion abierta como ${E2E_EMAIL}` : `HTTP ${entrada.status} - revisa E2E_PASSWORD o DEMO_USER_PASSWORD`);
+
+const sinSesion = await fetch(`${S}/api/videos`);
+record('la API rechaza sin sesion', sinSesion.status === 401, `HTTP ${sinSesion.status}`);
 
 try {
     // 1. health
@@ -263,7 +308,7 @@ try {
     const noName = await api('/api/brand-templates', { method: 'POST', body: JSON.stringify({ video_id: aId }) });
     record('plantilla de marca sin nombre se rechaza', noName.status === 400, `HTTP ${noName.status}`);
 
-    const delTpl = await fetch(`${S}/api/brand-templates/${brandTplId}`, { method: 'DELETE' });
+    const delTpl = await api(`/api/brand-templates/${brandTplId}`, { method: 'DELETE' });
     const afterTpl = await api('/api/brand-templates');
     record('eliminar plantilla de marca', delTpl.status === 204
         && !(afterTpl.body?.templates ?? []).some((t) => t.id === brandTplId));
