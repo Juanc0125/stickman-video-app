@@ -546,9 +546,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1790606963.7152107,
-    "seen": 1790614262.50086,
-    "ast_hash": "7c8665ed70b72e4ad9cf63ee59529c79",
+    "mtime": 1790617423.5536058,
+    "seen": 1790617461.7496016,
+    "ast_hash": "c8b99b4f4122f65ab4e01cf0a2f55230",
     "semantic_hash": ""
   },
   "scripts/graph.mjs": {
@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "apps/web/lib/ai-models.json": {
-    "mtime": 1790303845.7982368,
-    "seen": 1790303911.083318,
-    "ast_hash": "89703ceb17789ca3be79f65f275b5a3f",
+    "mtime": 1790617389.9777236,
+    "seen": 1790617461.7494109,
+    "ast_hash": "35c9c4835e5175630a3503b7e9c4f871",
     "semantic_hash": ""
   },
   "apps/web/app/api/videos/batch/route.ts": {
