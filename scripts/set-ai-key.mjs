@@ -1,6 +1,7 @@
 // Sets one AI-provider key end to end: prompts for it without echoing, refuses
 // an obviously wrong one, proves it actually answers before touching disk, and
-// only then writes it to .env.local and to Vercel.
+// only then writes it to .env.local and to whichever platform actually
+// consumes it (Vercel for groq/openrouter, Railway for fal).
 //
 // Two keys have already been lost in this project by being pasted into a chat
 // window. This script exists so that never has to happen again: the value only
@@ -10,10 +11,16 @@
 //
 //   npm run set:ai-key -- groq
 //   npm run set:ai-key -- openrouter
+//   npm run set:ai-key -- fal      (goes to Railway, not Vercel - see below)
 //   npm run set:ai-key            (asks which provider)
 //
 // With --from-local it takes the key already in .env.local instead of asking,
 // which is the case of "it works on my machine and Vercel still does not".
+//
+// groq and openrouter feed apps/web, so their key is pushed to Vercel. fal
+// feeds apps/render-worker/ai-video.ts, which runs on Railway, not Vercel -
+// pushing FAL_KEY to Vercel would leave the actual consumer unset. So fal is
+// pushed to Railway instead, through the Railway CLI.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -62,7 +69,22 @@ const PROVIDERS = {
         headers: (key) => ({ Authorization: `Bearer ${key}`, 'X-Title': 'Stickman Video Studio' }),
         alternates: MODELS.openrouter.alternates,
     },
+    fal: {
+        envVar: 'FAL_KEY',
+        // fal keys have no fixed public prefix (unlike gsk_ or sk-or-v1-), so
+        // this intentionally matches every string and leaves validation to
+        // the live probe below.
+        prefix: '',
+        // fal has no chat-completions API, so the generic probe() below does
+        // not apply - this replaces it entirely (see the dispatch in run()).
+        probe: probeFal,
+    },
 };
+
+// Railway service that runs apps/render-worker (from `railway status` against
+// the linked project). Not a secret, just a target name - update it here if
+// the service is ever renamed in the Railway dashboard.
+const RAILWAY_SERVICE = 'stickman-video-app';
 
 // Marks a Ctrl+C so the caller can tell "the operator cancelled" apart from
 // "something actually broke".
@@ -125,16 +147,63 @@ function createSession() {
 
 async function pickProvider(session) {
     while (true) {
-        const answer = (await session.ask('Proveedor (groq/openrouter): ')).trim().toLowerCase();
+        const answer = (await session.ask('Proveedor (groq/openrouter/fal): ')).trim().toLowerCase();
         if (PROVIDERS[answer]) return answer;
-        console.log('Escribe "groq" u "openrouter".');
+        console.log('Escribe "groq", "openrouter" o "fal".');
     }
+}
+
+// fal has no chat-completions endpoint, so it cannot use probeGenerico below.
+// What it does have is a queue status lookup that is free to call (unlike
+// submitting an actual generation job, which is billed) and still tells a
+// live key apart from a dead one perfectly well: a status check for a request
+// id that cannot possibly exist returns 404 once auth succeeds, or 401/403
+// before auth is even considered. Anything else is reported as-is rather than
+// guessed at, since only those three shapes have been confirmed against fal's
+// real behavior.
+async function probeFal(key) {
+    // Deliberately NOT https://queue.fal.run/fal-ai/ltx-2.3/text-to-video/requests/.../status
+    // (the model id apps/render-worker/ai-video.ts submits jobs to, in full).
+    // Verified against fal.run directly (both with no Authorization header and
+    // with a garbage one, so no real key was needed to see this): the queue's
+    // status/result routes only recognize the first two path segments
+    // (owner/model) as the app id - a status GET against the full submission
+    // path, sub-path included, returns 405 Method Not Allowed unconditionally,
+    // before auth is even checked. Dropping the sub-path restores the
+    // documented 401/404 behavior below. Auth on fal is account-scoped, not
+    // per-model, so this base path is exactly as good a probe as the full one
+    // would have been, had it worked.
+    const url = 'https://queue.fal.run/fal-ai/ltx-2.3/requests/00000000-0000-0000-0000-000000000000/status';
+    let response;
+    try {
+        response = await fetch(url, {
+            headers: { Authorization: `Key ${key}` },
+            signal: AbortSignal.timeout(40000),
+        });
+    } catch (error) {
+        return { estado: 'FALLA', detalle: `sin respuesta: ${error.message}` };
+    }
+
+    if (response.status === 401 || response.status === 403) {
+        return { estado: 'FALLA', detalle: `HTTP ${response.status}: fal.run rechazo la clave` };
+    }
+    if (response.status === 404) {
+        return { estado: 'OK', detalle: 'HTTP 404: fal.run autentico la clave (el request de prueba no existe, como se espera)' };
+    }
+
+    const text = await response.text().catch(() => '');
+    return {
+        estado: 'FALLA',
+        detalle: `respuesta inesperada de fal.run, ni 401/403 ni 404 - no se asume nada: HTTP ${response.status} ${text.slice(0, 120)}`.trim(),
+    };
 }
 
 // Identical request shape to scripts/check-ai.mjs's probe(): same tool, same
 // prompt, same timeout. A second, slightly different version of this call
-// would be one more place for the two to quietly disagree.
-async function probe(provider, key) {
+// would be one more place for the two to quietly disagree. Only used by
+// providers that speak chat-completions (groq, openrouter); a provider with
+// its own `probe` field (fal) bypasses this entirely - see the dispatch in run().
+async function probeGenerico(provider, key) {
     let response;
     try {
         response = await fetch(provider.url, {
@@ -230,7 +299,7 @@ async function run() {
     const providerArg = (rawArg ?? '').toLowerCase();
 
     if (rawArg && !PROVIDERS[providerArg]) {
-        console.error(`Proveedor desconocido: "${rawArg}". Usa "groq" u "openrouter".`);
+        console.error(`Proveedor desconocido: "${rawArg}". Usa "groq", "openrouter" o "fal".`);
         process.exitCode = 1;
         return;
     }
@@ -272,8 +341,8 @@ async function run() {
         return;
     }
 
-    console.log(`Probando la clave contra ${provider.url} ...`);
-    const test = await probe(provider, key);
+    console.log(provider.probe ? 'Probando la clave contra fal.run ...' : `Probando la clave contra ${provider.url} ...`);
+    const test = provider.probe ? await provider.probe(key) : await probeGenerico(provider, key);
     if (test.estado === 'FALLA') {
         console.error(`La clave no funciono: ${test.detalle}`);
         console.error('No se guardo nada.');
@@ -289,6 +358,40 @@ async function run() {
     }
     writeLocalEnv(provider.envVar, key);
     console.log(`Guardada en .env.local (raiz del repo) como ${provider.envVar}.`);
+
+    if (providerName === 'fal') {
+        // FAL_KEY feeds apps/render-worker, which deploys to Railway - pushing
+        // it to Vercel here would leave the actual consumer unset.
+        const who = runCommand('railway', ['whoami']);
+        if (who.status !== 0) {
+            console.log('');
+            console.log('Railway CLI no disponible: no esta instalada o no hay sesion iniciada. Se omite el envio a Railway.');
+            console.log('La clave ya quedo en .env.local. Para activarla en el worker desplegado, agregala a mano:');
+            console.log(`  1. Panel de Railway -> servicio "${RAILWAY_SERVICE}" (apps/render-worker).`);
+            console.log('  2. Pestana "Variables" -> "New Variable".');
+            console.log(`  3. Nombre "${provider.envVar}", valor: la clave que acabas de pegar aqui.`);
+            console.log('  4. Guarda y redespliega el servicio para que tome efecto.');
+            console.log('  (O corre "railway login" y vuelve a ejecutar este comando para que este script lo haga por ti.)');
+        } else {
+            // --stdin keeps the value out of argv, same reason vercel gets it
+            // through `input` above instead of as a literal env=value arg.
+            const set = runCommand('railway', ['variable', 'set', provider.envVar, '--stdin', '--service', RAILWAY_SERVICE], { input: `${key}\n` });
+            if (set.status === 0) {
+                console.log(`Railway (${RAILWAY_SERVICE}): ${provider.envVar} guardada. Railway redespliega el servicio automaticamente al cambiar una variable.`);
+            } else {
+                const text = redact(`${set.stdout ?? ''}${set.stderr ?? ''}`, key);
+                console.error(`Railway: no se pudo guardar ${provider.envVar}. ${lastLine(text)}`);
+                console.error(`La clave ya quedo en .env.local. Agregala a mano en el panel de Railway (servicio "${RAILWAY_SERVICE}" -> Variables) y redespliega.`);
+                process.exitCode = 1;
+            }
+        }
+
+        console.log('');
+        console.log('Pendiente para un humano:');
+        console.log('- Confirma en el panel de Railway que la variable llego al servicio correcto y que el redeploy termino.');
+        console.log('- Reinicia el servidor local del worker (npm run dev) para que recoja el nuevo valor de .env.local.');
+        return;
+    }
 
     const who = runCommand('vercel', ['whoami']);
     if (who.status !== 0) {
