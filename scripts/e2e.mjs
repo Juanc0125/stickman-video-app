@@ -100,6 +100,24 @@ try {
     record('worker /health', health.status === 200 && health.body?.ok === true,
         `storage=${health.body?.storage} engine=${health.body?.video_engine}`);
 
+    // Step 8 runs a real render. If the worker has FAL_KEY set it generates
+    // every scene through fal.ai, which bills per second of video - a full
+    // suite run would quietly cost real money, and it reruns often. The
+    // worker's own /health is the only honest source here: this process's
+    // environment says nothing about how the worker was started.
+    const engine = health.body?.video_engine;
+    if (engine && engine !== 'canvas' && process.env.E2E_ALLOW_PAID_RENDER !== '1') {
+        console.error(
+            `\nABORTADO antes de crear nada: el worker esta usando "${engine}", no canvas.\n`
+            + 'La suite hace un render de verdad, asi que esto generaria video pagado en fal.\n\n'
+            + 'Elige una:\n'
+            + '  - Levanta el worker sin FAL_KEY (asi renderiza con canvas y no cuesta nada).\n'
+            + '  - Si de verdad quieres pagar esta corrida: E2E_ALLOW_PAID_RENDER=1 npm run e2e\n',
+        );
+        process.exitCode = 1;
+        process.exit();
+    }
+
     const list = await api('/api/videos');
     record('GET /api/videos', list.status === 200 && Array.isArray(list.body?.videos),
         `${list.body?.videos?.length} videos`);
