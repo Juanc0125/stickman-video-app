@@ -10,6 +10,20 @@ import { writeFile } from 'node:fs/promises';
 // each regenerate charges again.
 const FAL_KEY = process.env.FAL_KEY?.trim();
 const MODEL = process.env.AI_VIDEO_MODEL?.trim() || 'fal-ai/ltx-2.3/text-to-video';
+
+// Submission and polling do NOT use the same path, and that is deliberate.
+// A model id can carry a variant suffix (fal-ai/ltx-2.3/text-to-video), and the
+// submit endpoint wants it whole. The queue's status and result routes, however,
+// identify the app by its first two segments only (owner/app): asking them for
+// /fal-ai/ltx-2.3/text-to-video/requests/<id>/status answers 405 Method Not
+// Allowed, before it even looks at the key, while /fal-ai/ltx-2.3/requests/<id>/status
+// answers 401 with a bad key -- that route exists. Verified with curl for ids of
+// 2, 3 and 5 segments.
+// Do not "unify" the two URLs for consistency: the breakage is silent. A rejected
+// poll is caught below and the scene is drawn instead, so the render still
+// succeeds while every generated video -- already paid for at submit time -- is
+// dropped on the floor. Ids with exactly two segments are their own base.
+const MODEL_BASE = MODEL.split('/').filter(Boolean).slice(0, 2).join('/');
 const RESOLUTION = process.env.AI_VIDEO_RESOLUTION?.trim() || '720p';
 const STYLE = process.env.AI_VIDEO_STYLE?.trim()
 	|| 'clean modern corporate style, warm natural lighting, shallow depth of field, professional and trustworthy, no on-screen text';
@@ -104,6 +118,7 @@ export async function generateSceneVideo(
 		// Models accept only a few discrete lengths; ours are the common ones.
 		const duration = durationSeconds <= 6 ? '5s' : durationSeconds <= 9 ? '8s' : '10s';
 
+		// Submit with the full id, variant included; poll with MODEL_BASE (see above).
 		const submitted = await falFetch(`https://queue.fal.run/${MODEL}`, {
 			method: 'POST',
 			body: JSON.stringify({ prompt, duration, aspect_ratio: '9:16', resolution: RESOLUTION }),
@@ -116,7 +131,7 @@ export async function generateSceneVideo(
 		let status = '';
 		while (Date.now() < deadline) {
 			await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-			const poll = await falFetch(`https://queue.fal.run/${MODEL}/requests/${requestId}/status`);
+			const poll = await falFetch(`https://queue.fal.run/${MODEL_BASE}/requests/${requestId}/status`);
 			status = String(poll.status ?? '');
 			if (status === 'COMPLETED') break;
 			if (status !== 'IN_QUEUE' && status !== 'IN_PROGRESS') {
@@ -125,7 +140,7 @@ export async function generateSceneVideo(
 		}
 		if (status !== 'COMPLETED') throw new Error(`fal.ai excedio el tiempo limite (${TIMEOUT_MS} ms).`);
 
-		const result = await falFetch(`https://queue.fal.run/${MODEL}/requests/${requestId}`);
+		const result = await falFetch(`https://queue.fal.run/${MODEL_BASE}/requests/${requestId}`);
 		const videoUrl = extractVideoUrl(result);
 		if (!videoUrl) throw new Error('fal.ai no devolvio una URL de video.');
 
