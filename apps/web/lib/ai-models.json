@@ -1,5 +1,6 @@
 {
   "_comment": "Single source for the default models. ai-provider.ts imports it and scripts/check-ai.mjs reads it, so the diagnostic can never report on a model the app does not use. Verified against the live catalogues on 2026-09-24. OpenRouter accepts at most three models per request, so the list is the primary plus two - picked from different vendors, since two models from one vendor saturate together. Override per environment with GROQ_MODEL / OPENROUTER_MODEL.",
+  "_comment_paid": "Every model here is :free on purpose. To move to a paid one - x-ai/grok-4.7 is the intended upgrade, USD 1.60/M in and 4.80/M out, and it fixes the copilot falling back to keyword mode when the Groq free tier saturates - the OpenRouter account must have purchased credits first. TRAP, measured on 2026-09-28: an account with no credits answers 402, and a 402 does NOT fall through to the rest of the models array - the whole request fails, taking the free models down with it. So naming a paid model here before the credits exist breaks the fallback chain entirely rather than degrading it.",
   "groq": {
     "model": "openai/gpt-oss-120b"
   },
