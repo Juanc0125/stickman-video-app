@@ -14,7 +14,10 @@ import { createSupabaseProxyClient } from './lib/supabase-server';
 // signed out - block them and nobody could ever log in. Everything else,
 // page or API, needs a session. There is deliberately no signup route to
 // exempt: accounts are created by the operator in the Supabase dashboard.
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/session'];
+// /api/health is the one non-auth exception: the cron that keeps the free
+// Supabase project from pausing has no session, and it answers two fixed
+// booleans, so there is nothing behind it to protect. See that route's header.
+const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/session', '/api/health'];
 
 function isPublicPath(pathname: string): boolean {
     return PUBLIC_PATHS.includes(pathname);
