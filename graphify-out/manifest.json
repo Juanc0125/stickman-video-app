@@ -138,10 +138,10 @@
     "semantic_hash": "cc1475203c473111dee8418d18de742d"
   },
   "apps/web/app/components/status-panel.tsx": {
-    "mtime": 1790141639.741601,
-    "seen": 1790264776.2534618,
-    "ast_hash": "68416f8e53498a71f308ddf89723aed9",
-    "semantic_hash": "68416f8e53498a71f308ddf89723aed9"
+    "mtime": 1790655486.327562,
+    "seen": 1790656026.6021948,
+    "ast_hash": "eeecb8d1502b51f0fd2aaed93a99afdd",
+    "semantic_hash": ""
   },
   "apps/web/app/components/video-list.tsx": {
     "mtime": 1790396552.8134868,
@@ -204,9 +204,9 @@
     "semantic_hash": "f17391af52139e9340b3befff9a62f11"
   },
   "apps/web/lib/video-persistence.ts": {
-    "mtime": 1790535820.7514665,
-    "seen": 1790536803.2988648,
-    "ast_hash": "0932e89771f4d7bfd3fe74b5bce66585",
+    "mtime": 1790655471.4603474,
+    "seen": 1790656026.602228,
+    "ast_hash": "b18b4a12de5d96d56374f766b5e636de",
     "semantic_hash": ""
   },
   "apps/web/next.config.ts": {
@@ -258,10 +258,10 @@
     "semantic_hash": ""
   },
   "packages/shared-types/video.ts": {
-    "mtime": 1790263596.236822,
-    "seen": 1790264776.2624094,
-    "ast_hash": "5e458340eea3454d2dae4c3fc6ea638d",
-    "semantic_hash": "5e458340eea3454d2dae4c3fc6ea638d"
+    "mtime": 1790655413.268893,
+    "seen": 1790656026.6022494,
+    "ast_hash": "6390feb2a1c1ae78b7ff1481c7435f91",
+    "semantic_hash": ""
   },
   "scripts/dev.mjs": {
     "mtime": 1789877361.5712788,
