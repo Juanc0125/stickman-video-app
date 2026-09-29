@@ -29,6 +29,29 @@ export const DEFAULT_BRANDING: Branding = {
 // on the video row.
 export type RenderStatus = 'inactivo' | 'procesando' | 'listo' | 'error';
 
+// A render that has not reported in this long is not slow, it is gone: the
+// worker container hits its memory limit and gets killed mid-job, and nothing
+// ever touches that row again. Generous enough to cover an AI-generated video,
+// which legitimately takes minutes per scene. Lives here because the server
+// that gives the row up for dead and the panel that warns about it have to
+// agree on one number.
+export const RENDER_STALL_TIMEOUT_MS = 20 * 60 * 1000;
+
+// What the person reads on a render nobody will ever finish. Says what
+// happened and what to do, without naming the machinery that broke.
+export const RENDER_STALLED_ERROR = 'La generación se interrumpió antes de terminar y no va a continuar sola. Puedes volver a intentarla cuando quieras.';
+
+// Takes raw values so it works both on a database row and on a Video already
+// mapped. No start time means the job never really began: with no clock to
+// measure against, the honest answer is "not stalled".
+export function isRenderStalled(renderStatus: unknown, renderStartedAt: unknown, now: number = Date.now()): boolean {
+    if (renderStatus !== 'procesando') return false;
+    if (typeof renderStartedAt !== 'string') return false;
+    const startedAt = Date.parse(renderStartedAt);
+    if (Number.isNaN(startedAt)) return false;
+    return now - startedAt > RENDER_STALL_TIMEOUT_MS;
+}
+
 export interface Video {
     id: string;
     user_id: string;

@@ -1,5 +1,5 @@
 import type { Branding, Platform, Scene, Video } from '@shared-types/video';
-import { DEFAULT_BRANDING } from '@shared-types/video';
+import { DEFAULT_BRANDING, RENDER_STALLED_ERROR, isRenderStalled } from '@shared-types/video';
 import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import { canTransition, transitions, videos as mockVideos } from '../app/api/videos/store';
 import { getSupabaseClient } from './supabaseClient';
@@ -8,6 +8,9 @@ import { generateWithFallback } from './ai-provider';
 type VideoRecord = Video & { scenes: Scene[] };
 type SceneInput = Omit<Scene, 'id' | 'video_id'>;
 type DatabaseRow = Record<string, unknown>;
+// Derived instead of imported from supabase-js: the factory already pins the
+// generics, and naming them here again would need an `any`.
+type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseClient>>;
 
 function nullableString(value: unknown): string | null {
     return typeof value === 'string' ? value : null;
@@ -39,8 +42,43 @@ function toScene(scene: DatabaseRow): Scene {
     };
 }
 
+// The worker that dies to the container memory limit never writes again, so
+// its row keeps claiming 'procesando' with its last percentage forever. Every
+// record the app hands out passes through here, so this is the one place the
+// give-up has to be decided; markStalledRenders() then writes it back.
+function withStalledRender(video: VideoRecord): VideoRecord {
+    if (!isRenderStalled(video.render_status, video.render_started_at)) return video;
+    // render_progress is left where it stopped: it says how far the job got.
+    return { ...video, render_status: 'error', render_error: RENDER_STALLED_ERROR };
+}
+
+// Reads are the only moment anyone looks at an abandoned row, so they are also
+// the only chance to repair it. The update is skipped entirely when nothing is
+// stalled, which is the normal case.
+async function markStalledRenders(client: SupabaseClient, rows: DatabaseRow[]): Promise<void> {
+    const stalledIds = rows
+        .filter((row) => isRenderStalled(row.render_status, row.render_started_at))
+        .map((row) => String(row.id));
+    if (!stalledIds.length) return;
+
+    try {
+        // The 'procesando' guard protects a worker that reported back between
+        // our select and this update from being buried under an error it never
+        // hit. Failures are not fatal: the caller already holds the corrected
+        // record, and the next read derives it again from render_started_at.
+        const { error } = await client
+            .from('videos')
+            .update({ render_status: 'error', render_error: RENDER_STALLED_ERROR })
+            .in('id', stalledIds)
+            .eq('render_status', 'procesando');
+        if (error) throw error;
+    } catch (error) {
+        console.warn('No fue posible marcar como error los renders colgados.', error);
+    }
+}
+
 function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRecord {
-    return {
+    return withStalledRender({
         id: String(video.id),
         user_id: String(video.user_id ?? 'demo-user'),
         topic: String(video.topic ?? ''),
@@ -58,7 +96,7 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
         render_started_at: nullableString(video.render_started_at),
         template: getTemplate(video.template).id,
         scenes: (scenes ?? []).map(toScene).sort((a, b) => a.order - b.order),
-    };
+    });
 }
 
 export async function ensureDemoUser(): Promise<string | null> {
@@ -105,7 +143,7 @@ async function readFromSupabase(): Promise<VideoRecord[]> {
     // access control for this app happens at the Next.js API route layer, not
     // via Supabase RLS.
     const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
-    if (!client) return Array.from(mockVideos.values());
+    if (!client) return Array.from(mockVideos.values()).map(withStalledRender);
 
     try {
         const { data: videosData, error: videosError } = await client.from('videos').select('*').order('created_at', { ascending: false });
@@ -115,10 +153,12 @@ async function readFromSupabase(): Promise<VideoRecord[]> {
         const { data: scenesData, error: scenesError } = await client.from('scenes').select('*');
         if (scenesError) throw scenesError;
 
+        await markStalledRenders(client, videosData);
+
         return (videosData ?? []).map((video) => toVideoRecord(video, (scenesData ?? []).filter((scene) => scene.video_id === video.id)));
     } catch (error) {
         console.warn('Fallo al leer desde Supabase, usando fallback en memoria.', error);
-        return Array.from(mockVideos.values());
+        return Array.from(mockVideos.values()).map(withStalledRender);
     }
 }
 
@@ -130,12 +170,16 @@ async function findVideoRecord(id: string): Promise<VideoRecord | null> {
             if (videoError || !videoData) throw videoError ?? new Error('Video no encontrado.');
             const { data: scenesData, error: scenesError } = await client.from('scenes').select('*').eq('video_id', id);
             if (scenesError) throw scenesError;
+
+            await markStalledRenders(client, [videoData]);
+
             return toVideoRecord(videoData, scenesData ?? []);
         } catch (error) {
             console.warn('Fallo al leer el video desde Supabase, usando fallback en memoria.', error);
         }
     }
-    return mockVideos.get(id) ?? null;
+    const local = mockVideos.get(id);
+    return local ? withStalledRender(local) : null;
 }
 
 // Used whenever the model is unavailable - which, with the API quota

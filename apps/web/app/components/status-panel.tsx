@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import type { Platform } from '@shared-types/video';
+// Same threshold the server uses to write the give-up into the row, so the
+// warning on screen and the stored state can never disagree.
+import { RENDER_STALL_TIMEOUT_MS as STALLED_AFTER_MS } from '@shared-types/video';
 import { duplicateVideo, transitionStatus, type StatusAction, type VideoRecord } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
 import StatusBadge from './status-badge';
-
-// A render that has not reported in this long is not slow, it is gone: the
-// worker restarted mid-job and nothing will ever finish it. Generous enough to
-// cover an AI-generated video, which legitimately takes minutes per scene.
-const STALLED_AFTER_MS = 20 * 60 * 1000;
 
 interface StatusPanelProps {
     video: VideoRecord;
