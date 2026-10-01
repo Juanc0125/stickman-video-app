@@ -1,0 +1,11 @@
+{
+  "name": "stickman-video-app",
+  "owner": { "name": "Camilo" },
+  "plugins": [
+    {
+      "name": "stickman",
+      "source": "./plugin",
+      "description": "Agentes y skills del estudio de video Stickman."
+    }
+  ]
+}

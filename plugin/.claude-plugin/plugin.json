@@ -1,0 +1,10 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "stickman",
+  "version": "0.1.0",
+  "description": "Los agentes y las skills del estudio de video Stickman: la puerta de calidad antes de cada commit, el despliegue verificado contra produccion, y el mantenimiento del grafo de conocimiento que evita construir dos veces lo mismo.",
+  "author": {
+    "name": "Camilo"
+  },
+  "keywords": ["stickman", "qa", "despliegue", "vercel", "railway", "graphify"]
+}

@@ -25,6 +25,28 @@ Reglas:
 - Los alcances de archivos **no se solapan a propósito**. Dos agentes editando el mismo archivo a la vez se pisan. Si un pedido obliga a cruzar la frontera, parte el trabajo, no el archivo.
 - Un subagente arranca sin contexto: dale los hechos que necesita (rutas, contratos, restricciones), no un resumen de la conversación.
 
+## Dónde viven los agentes y las skills
+
+En `plugin/`, empaquetados como un plugin de Claude Code llamado `stickman`:
+`plugin/agents/` (los seis de la tabla) y `plugin/skills/` (`verificar` y
+`desplegar`). Es una sola fuente: **no los dupliques en `.claude/`**, porque
+entonces quedan definidos dos veces y nadie sabe cuál manda.
+
+`.claude/settings.json` lo deja habilitado y está versionado, pero el
+*marketplace* se registra por máquina. En un clon nuevo hace falta una vez:
+
+```
+claude plugin marketplace add <ruta-del-repo>
+claude plugin install stickman@stickman-video-app --scope project
+```
+
+El alcance `project` importa: con `user` las skills se ofrecerían también en los
+demás proyectos de esta máquina —`urquijos-traders`, por ejemplo— donde
+`verificar` no significa nada.
+
+Para comprobar qué quedó registrado y cuántos tokens cuesta:
+`claude plugin details stickman`.
+
 ## Antes de cada commit a master
 
 1. **`qa-agent`** corre `npm run verify` y la suite end-to-end. Si falla, **no hay push**: corrige y vuelve a llamarlo.
