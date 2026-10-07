@@ -1,8 +1,8 @@
 // End-to-end check of the whole studio against a running app: it creates a
 // video, writes the script, splits it into scenes, edits one, brands it, walks
 // the approval gate, renders asynchronously until a real MP4 lands in Supabase,
-// publishes, duplicates, exercises the narrative templates, the brand templates
-// and the assistant, and finally deletes everything it made.
+// publishes, duplicates, exercises the narrative templates, the brand templates,
+// the batch route and the assistant, and finally deletes everything it made.
 //
 // It needs the app already running - `npm run dev` puts the web app on 3000 and
 // the render worker on 8080 - and it talks to the real Supabase project, so it
@@ -333,6 +333,45 @@ try {
 
     if (aId) await api(`/api/videos/${aId}`, { method: 'DELETE' });
     if (bId) await api(`/api/videos/${bId}`, { method: 'DELETE' });
+
+    // 16. lote de videos (RF-024). Two real topics plus a repeat and a blank,
+    // which the route drops quietly. Warnings are fine here - the free model
+    // tier may be saturated by now - but every topic must become a draft, and
+    // RF-012 says none of them may come out approved or rendering.
+    const batch = await api('/api/videos/batch', {
+        method: 'POST',
+        body: JSON.stringify({
+            temas: ['QA lote refinanciar', 'QA lote primera vivienda', 'qa lote refinanciar', '  '],
+            platform: 'tiktok',
+            target_duration_seconds: 12,
+            template: 'explicacion',
+            con_escenas: true,
+        }),
+    });
+    const creados = batch.body?.creados ?? [];
+    try {
+        record('lote crea un borrador por tema', batch.status === 200 && creados.length === 2
+            && (batch.body?.fallidos ?? []).length === 0
+            && creados.every((v) => v.platform === 'tiktok' && v.template === 'explicacion'),
+            `creados=${creados.length} fallidos=${batch.body?.fallidos?.length} advertencias=${batch.body?.advertencias?.length}`);
+        record('lote no aprueba ni renderiza (RF-012)', creados.length > 0
+            && creados.every((v) => v.status === 'borrador' && v.render_status === 'inactivo' && !v.video_url),
+            creados.map((v) => `${v.status}/${v.render_status}`).join(', '));
+
+        const tooMany = await api('/api/videos/batch', {
+            method: 'POST',
+            body: JSON.stringify({ temas: Array.from({ length: 9 }, (_, i) => `QA tema ${i}`) }),
+        });
+        const noTopics = await api('/api/videos/batch', { method: 'POST', body: JSON.stringify({ temas: ['', ' '] }) });
+        const badPlatform = await api('/api/videos/batch', {
+            method: 'POST',
+            body: JSON.stringify({ temas: ['QA tema'], platform: 'facebook' }),
+        });
+        record('lote rechaza entradas invalidas', tooMany.status === 400 && noTopics.status === 400 && badPlatform.status === 400,
+            `9 temas=${tooMany.status} vacio=${noTopics.status} plataforma=${badPlatform.status}`);
+    } finally {
+        for (const v of creados) await api(`/api/videos/${v.id}`, { method: 'DELETE' });
+    }
 
     // 13. delete
     const del = await api(`/api/videos/${videoId}`, { method: 'DELETE' });
