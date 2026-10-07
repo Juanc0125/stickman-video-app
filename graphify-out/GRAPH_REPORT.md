@@ -1,7 +1,7 @@
-# Graph Report - stickman-video-app  (2026-09-30)
+# Graph Report - stickman-video-app  (2026-10-06)
 
 ## Corpus Check
-- 101 files · ~72,539 words
+- 101 files · ~72,913 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 2, .ico 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7817a061`
+- Built from commit: `2f7d8a97`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -357,7 +357,7 @@ Cohesion: 0.40
 Nodes (4): How to report, Rules, What to run, Your files
 
 ## Knowledge Gaps
-- **366 isolated node(s):** `$schema`, `name`, `version`, `description`, `name` (+361 more)
+- **366 isolated node(s):** `raiz`, `S`, `W`, `mp4Path`, `results` (+361 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 425 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -370,7 +370,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.036) - this node is a cross-community bridge._
 - **Why does `CharacterType` connect `video.ts` to `api.ts`, `scenes/route.ts`, `scene-panel.tsx`, `[sceneId]/route.ts`, `copilot.ts`, `assistant.ts`, `type-parity.ts`?**
   _High betweenness centrality (0.030) - this node is a cross-community bridge._
-- **What connects `$schema`, `name`, `version` to the rest of the system?**
+- **What connects `raiz`, `S`, `W` to the rest of the system?**
   _366 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `api.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.14245014245014245 - nodes in this community are weakly interconnected._

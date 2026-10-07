@@ -6154,7 +6154,7 @@
       "file_type": "code",
       "norm_label": "fail",
       "source_file": "scripts/e2e.mjs",
-      "source_location": "L348"
+      "source_location": "L387"
     },
     {
       "id": "scripts_e2e_mp4path",
@@ -28604,17 +28604,6 @@
     },
     {
       "source": "scripts_e2e",
-      "target": "scripts_e2e_fail",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "scripts/e2e.mjs",
-      "source_location": "L348",
-      "weight": 1.0
-    },
-    {
-      "source": "scripts_e2e",
       "target": "scripts_e2e_s",
       "relation": "contains",
       "_origin": "ast",
@@ -28633,6 +28622,17 @@
       "confidence_score": 1.0,
       "source_file": "scripts/e2e.mjs",
       "source_location": "L38",
+      "weight": 1.0
+    },
+    {
+      "source": "scripts_e2e",
+      "target": "scripts_e2e_fail",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "scripts/e2e.mjs",
+      "source_location": "L387",
       "weight": 1.0
     },
     {
@@ -30022,5 +30022,5 @@
       "source_file": "apps/web/public/icons/icon-512.png"
     }
   ],
-  "built_at_commit": "7817a06156af1ce83706fb93d7dc319d6b9b43c7"
+  "built_at_commit": "2f7d8a976627a988f3cf51e55af7343b5920a2c6"
 }
