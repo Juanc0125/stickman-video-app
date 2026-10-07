@@ -14,7 +14,10 @@ import {
 	pickTransition,
 	renderTextOverlayPng,
 	TRANSITION_SECONDS,
+	type CharacterType,
 	type FrameScene,
+	type SceneAction,
+	type ScenePropType,
 } from './drawing';
 import { ensureVoiceModel, estimateWordTimings, mouthEnvelope, speak } from './voice';
 import { aiVideoModel, buildScenePrompt, generateSceneVideo, isAiVideoEnabled } from './ai-video';
@@ -62,9 +65,8 @@ const ENCODER_THREADS = Number(process.env.FFMPEG_THREADS ?? 2);
 const ENCODER_PRESET = process.env.FFMPEG_PRESET?.trim() || 'ultrafast';
 const ENCODER_CRF = process.env.FFMPEG_CRF?.trim() || '28';
 
-export type CharacterType = 'broker' | 'cliente' | 'pareja' | 'hombre' | 'mujer' | 'generico';
-export type SceneAction = 'hablar' | 'caminar' | 'senalar' | 'sentarse' | 'pensar' | 'telefono' | 'mostrar_objeto';
-export type ScenePropType = 'ninguno' | 'casa' | 'carro' | 'banco' | 'telefono' | 'documento' | 'dinero' | 'grafico' | 'oficina';
+// The scene unions (CharacterType, SceneAction, ScenePropType) come from
+// drawing.ts, the one copy checks/type-parity.ts holds against shared-types.
 export type Platform = 'reels' | 'tiktok' | 'shorts';
 export type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
