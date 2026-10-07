@@ -10,7 +10,7 @@
 // a full run by graphify-agent. This script exists to make that distinction
 // visible instead of guessed at.
 //
-//   node .claude/skills/verificar/scripts/grafo-pendiente.mjs
+//   node plugin/skills/verificar/scripts/grafo-pendiente.mjs
 //
 // Exit code 0 always: staleness is information, not a build failure.
 import { existsSync, readFileSync, statSync } from 'node:fs';

@@ -23,7 +23,7 @@ Run it after a round of work that moved, created or deleted files. Do not run it
 ## Whether a run is needed at all — measure it, do not guess
 
 ```
-node .claude/skills/verificar/scripts/grafo-pendiente.mjs
+node plugin/skills/verificar/scripts/grafo-pendiente.mjs
 ```
 
 It compares every tracked file's mtime against the `seen` timestamp the

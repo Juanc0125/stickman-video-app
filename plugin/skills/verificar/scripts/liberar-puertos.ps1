@@ -5,7 +5,7 @@
 # busy again a second later. The parent has to go too, hence /T on the tree and
 # the ParentProcessId lookup.
 #
-#   powershell -File .claude/skills/verificar/scripts/liberar-puertos.ps1
+#   powershell -File plugin/skills/verificar/scripts/liberar-puertos.ps1
 #
 # Prints what it stopped and confirms both ports are free. Exit 0 when free,
 # 1 when something is still listening - a build started against a held .next

@@ -22,7 +22,7 @@ desactualizado con documentos o imágenes pendientes:
 
 ```
 git status --short
-node .claude/skills/verificar/scripts/grafo-pendiente.mjs
+node plugin/skills/verificar/scripts/grafo-pendiente.mjs
 ```
 
 ## Empujar

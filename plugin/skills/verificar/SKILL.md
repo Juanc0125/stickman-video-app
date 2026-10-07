@@ -15,7 +15,7 @@ Corre todo desde la raíz del repositorio.
 ## 1. Liberar los puertos
 
 ```
-powershell -File .claude/skills/verificar/scripts/liberar-puertos.ps1
+powershell -File plugin/skills/verificar/scripts/liberar-puertos.ps1
 ```
 
 El servidor de desarrollo mantiene tomado `apps/web/.next`, y `next build`
@@ -106,9 +106,9 @@ del worker la deja vacía, así que dibuja con canvas.
 npm run e2e
 ```
 
-Son 34 comprobaciones e incluyen un render de verdad con descarga del MP4, así
+Son 37 comprobaciones e incluyen un render de verdad con descarga del MP4, así
 que tarda unos minutos. Recorre el flujo entero: guion, escenas, marca, la
-puerta de aprobación, publicar, duplicar, plantillas y el copiloto.
+puerta de aprobación, publicar, duplicar, plantillas, el lote y el copiloto.
 
 Si el login falla con 401, el problema es de credenciales, no de código: la
 suite entra con `E2E_EMAIL`/`E2E_PASSWORD` de `.env.local`, y cae al usuario
@@ -117,7 +117,7 @@ demo si no existen.
 ## 8. Retroalimentar el grafo
 
 ```
-node .claude/skills/verificar/scripts/grafo-pendiente.mjs
+node plugin/skills/verificar/scripts/grafo-pendiente.mjs
 ```
 
 El grafo de `graphify-out/` es lo que responde "¿esto ya existe?" antes de
