@@ -12,16 +12,16 @@
     "semantic_hash": ""
   },
   "apps/render-worker/index.ts": {
-    "mtime": 1791345775.163431,
-    "seen": 1791346082.7065864,
-    "ast_hash": "01275d13d69b55b9d967de5f9cce9697",
+    "mtime": 1791486874.5505357,
+    "seen": 1791487482.01236,
+    "ast_hash": "294e682ceeca02ac92ce8b857ba91559",
     "semantic_hash": ""
   },
   "apps/render-worker/package.json": {
-    "mtime": 1790263531.9727094,
-    "seen": 1790264776.2465715,
-    "ast_hash": "aeb24f80a728cd38400647c531ca8237",
-    "semantic_hash": "aeb24f80a728cd38400647c531ca8237"
+    "mtime": 1791487149.0827067,
+    "seen": 1791487482.012369,
+    "ast_hash": "6dba636e127d8f075a85ee1492972e3e",
+    "semantic_hash": ""
   },
   "apps/render-worker/tsconfig.json": {
     "mtime": 1790263466.9621303,
@@ -66,15 +66,15 @@
     "semantic_hash": "3578238b6ea7dad2be0246e3c1a74245"
   },
   "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts": {
-    "mtime": 1790343269.2044036,
-    "seen": 1790343349.1753414,
-    "ast_hash": "fb7b72b6ab946fdd360d2747e28fa04c",
+    "mtime": 1791485882.369154,
+    "seen": 1791487482.0125356,
+    "ast_hash": "bb6647a6dd9283fa1599d7244c317111",
     "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/scenes/route.ts": {
-    "mtime": 1790343269.2044036,
-    "seen": 1790343349.1753461,
-    "ast_hash": "5ad5ec7119d2a1a94b70ace3398081c0",
+    "mtime": 1791485708.1672997,
+    "seen": 1791487482.0125418,
+    "ast_hash": "62ca93912a31f9cda77e999aa0e103d0",
     "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/tts/route.ts": {
@@ -96,9 +96,9 @@
     "semantic_hash": "8aa3fb583847f301f03e738d144c0d29"
   },
   "apps/web/app/components/api.ts": {
-    "mtime": 1790535632.8285863,
-    "seen": 1790536803.2986705,
-    "ast_hash": "0ffc8cb67167565b84041b5ecc1f474c",
+    "mtime": 1791485702.5625098,
+    "seen": 1791487482.0125713,
+    "ast_hash": "ba8d7960a038e60933636422c936dfde",
     "semantic_hash": ""
   },
   "apps/web/app/components/branding-panel.tsx": {
@@ -114,10 +114,10 @@
     "semantic_hash": "cd40e68b9ec343d3357f19a4e9601993"
   },
   "apps/web/app/components/scene-panel.tsx": {
-    "mtime": 1790141213.662017,
-    "seen": 1790264776.2521503,
-    "ast_hash": "c49dd8289e2a237951a8616982a779ce",
-    "semantic_hash": "c49dd8289e2a237951a8616982a779ce"
+    "mtime": 1791485787.7029321,
+    "seen": 1791487482.0126052,
+    "ast_hash": "ea47450bccfa0c3668c41bd79c2754ca",
+    "semantic_hash": ""
   },
   "apps/web/app/components/script-panel.tsx": {
     "mtime": 1790098286.7381084,
@@ -156,10 +156,10 @@
     "semantic_hash": ""
   },
   "apps/web/app/components/video-workspace.tsx": {
-    "mtime": 1790225542.772243,
-    "seen": 1790264776.2534745,
-    "ast_hash": "46a4b613c8f0c17fca161a453367d3ea",
-    "semantic_hash": "46a4b613c8f0c17fca161a453367d3ea"
+    "mtime": 1791485787.6817138,
+    "seen": 1791487482.0126495,
+    "ast_hash": "24a3fb7a9702049155ead95fb5dad8b9",
+    "semantic_hash": ""
   },
   "apps/web/app/layout.tsx": {
     "mtime": 1789871753.6356878,
@@ -204,9 +204,9 @@
     "semantic_hash": "f17391af52139e9340b3befff9a62f11"
   },
   "apps/web/lib/video-persistence.ts": {
-    "mtime": 1790655471.4603474,
-    "seen": 1790656026.602228,
-    "ast_hash": "b18b4a12de5d96d56374f766b5e636de",
+    "mtime": 1791485814.5987108,
+    "seen": 1791487482.0127487,
+    "ast_hash": "efbd495f1d7d3c6b8b1a815ed634a89b",
     "semantic_hash": ""
   },
   "apps/web/next.config.ts": {
@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "packages/shared-types/video.ts": {
-    "mtime": 1790655413.268893,
-    "seen": 1790656026.6022494,
-    "ast_hash": "6390feb2a1c1ae78b7ff1481c7435f91",
+    "mtime": 1791485693.0768614,
+    "seen": 1791487482.0128195,
+    "ast_hash": "d476d6b1f4cd707a4261e95f6406c03f",
     "semantic_hash": ""
   },
   "scripts/dev.mjs": {
@@ -450,9 +450,9 @@
     "semantic_hash": "5ce9fec835c4fea06eea4f77ad01764a"
   },
   "apps/web/app/components/assistant.tsx": {
-    "mtime": 1790476045.255692,
-    "seen": 1790477172.0574417,
-    "ast_hash": "8b2912612a701ff39d7c69f6a0d4d4cc",
+    "mtime": 1791486200.5176673,
+    "seen": 1791487482.0125818,
+    "ast_hash": "b0d971dec896909b1784abdd855a406c",
     "semantic_hash": ""
   },
   "apps/web/lib/ai-provider.ts": {
@@ -486,9 +486,9 @@
     "semantic_hash": "3237855f551c963226614ea680819ca8"
   },
   "scripts/check-ai.mjs": {
-    "mtime": 1790303824.3678708,
-    "seen": 1790303911.0833492,
-    "ast_hash": "7cd2f29c91f90aa6e7eaf12fe39b3395",
+    "mtime": 1791486112.9410515,
+    "seen": 1791487482.0128446,
+    "ast_hash": "54cc5b3e9bccba33ff4bac355d34f393",
     "semantic_hash": ""
   },
   "scripts/e2e.mjs": {
@@ -534,9 +534,9 @@
     "semantic_hash": ""
   },
   "apps/web/lib/ai-models.json": {
-    "mtime": 1790617389.9777236,
-    "seen": 1790617461.7494109,
-    "ast_hash": "35c9c4835e5175630a3503b7e9c4f871",
+    "mtime": 1791486090.7893882,
+    "seen": 1791487482.0126877,
+    "ast_hash": "4bdc3047c60e3f689e06182167ca4890",
     "semantic_hash": ""
   },
   "apps/web/app/api/videos/batch/route.ts": {
@@ -669,6 +669,66 @@
     "mtime": 1791345840.4736097,
     "seen": 1791346082.7068052,
     "ast_hash": "52f7b756f8cac035631f9af3e7b2daa5",
+    "semantic_hash": ""
+  },
+  "apps/render-worker/scripts/sound-library.mjs": {
+    "mtime": 1791486177.7715511,
+    "seen": 1791487482.0123777,
+    "ast_hash": "9502bad1c44d0c2891b997e39c54eb65",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/sounds/[id]/route.ts": {
+    "mtime": 1791485864.2442994,
+    "seen": 1791487482.012477,
+    "ast_hash": "c2eeb3b4f1086d44bd801a89dde2f6dc",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/sounds/route.ts": {
+    "mtime": 1791485862.5958598,
+    "seen": 1791487482.0124836,
+    "ast_hash": "5279a540f2de5e975865d1d5d76d83eb",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/sounds/upload-url/route.ts": {
+    "mtime": 1791485863.442925,
+    "seen": 1791487482.0124888,
+    "ast_hash": "73c9ec1b33dcd8bd1c87332452a321ed",
+    "semantic_hash": ""
+  },
+  "apps/web/app/api/videos/[id]/music/route.ts": {
+    "mtime": 1791485865.0603552,
+    "seen": 1791487482.012522,
+    "ast_hash": "a262d7620b4eb6316441d1275afab4b3",
+    "semantic_hash": ""
+  },
+  "apps/web/app/components/assistant-entity.tsx": {
+    "mtime": 1791486180.662891,
+    "seen": 1791487482.0125766,
+    "ast_hash": "eff01688c4c43d09af1af2fb5201a04c",
+    "semantic_hash": ""
+  },
+  "apps/web/app/components/sound-panel.tsx": {
+    "mtime": 1791485934.449335,
+    "seen": 1791487482.0126214,
+    "ast_hash": "e8365856a307be1d6abf35fb826cc61e",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/sounds.ts": {
+    "mtime": 1791485760.7434435,
+    "seen": 1791487482.0127242,
+    "ast_hash": "a5263fd824dff2e3db316842d7cc7d49",
+    "semantic_hash": ""
+  },
+  "packages/shared-types/sounds.ts": {
+    "mtime": 1791485691.9844446,
+    "seen": 1791487482.0128074,
+    "ast_hash": "d8e26c88636be9fff0fbcc2442095360",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261008000000_sounds.sql": {
+    "mtime": 1791485891.5810502,
+    "seen": 1791487482.0129213,
+    "ast_hash": "2f0c7b7758d89683b30bc56e2ee94c06",
     "semantic_hash": ""
   }
 }
