@@ -110,15 +110,22 @@ async function probe(provider) {
     // studio, so it is reported as a partial pass rather than a pass.
     const message = body?.choices?.[0]?.message ?? {};
     const call = message.tool_calls?.[0];
+    // OpenRouter falls through its models array on a 404 or 429, so a dead
+    // primary still comes back 200 - answered by an alternate. Reporting the
+    // configured name hid exactly that on 2026-10-06: the primary had stopped
+    // being free and a slow alternate was serving every turn.
+    const served = typeof body?.model === 'string' && body.model !== provider.model
+        ? ` (respondio el respaldo ${body.model}, NO el principal)`
+        : '';
     return call
-        ? { estado: 'OK', detalle: `llamo a ${call.function?.name} con ${call.function?.arguments}` }
-        : { estado: 'PARCIAL', detalle: `respondio texto pero no uso la herramienta: "${String(message.content ?? '').slice(0, 70)}"` };
+        ? { estado: served ? 'RESPALDO' : 'OK', detalle: `llamo a ${call.function?.name} con ${call.function?.arguments}${served}` }
+        : { estado: 'PARCIAL', detalle: `respondio texto pero no uso la herramienta: "${String(message.content ?? '').slice(0, 70)}"${served}` };
 }
 
 let alguno = false;
 for (const provider of PROVIDERS) {
     const { estado, detalle } = await probe(provider);
-    if (estado === 'OK') alguno = true;
+    if (estado === 'OK' || estado === 'RESPALDO') alguno = true;
     console.log(`${estado.padEnd(9)} ${provider.id} (${provider.model})\n          ${detalle}\n`);
 }
 
