@@ -4,6 +4,7 @@ import { getTemplate, type VideoTemplate } from '@shared-types/templates';
 import { canTransition, transitions, videos as mockVideos } from '../app/api/videos/store';
 import { getSupabaseClient } from './supabaseClient';
 import { generateWithFallback } from './ai-provider';
+import { SOUNDS_MIGRATION_MISSING_ERROR, isMissingSchemaError, resolveSoundUrls } from './sounds';
 
 type VideoRecord = Video & { scenes: Scene[] };
 type SceneInput = Omit<Scene, 'id' | 'video_id'>;
@@ -39,6 +40,8 @@ function toScene(scene: DatabaseRow): Scene {
         description: String(scene.description ?? ''),
         duration_seconds: Number(scene.duration_seconds ?? 0),
         audio_url: nullableString(scene.audio_url),
+        // Absent until the RF-010 migration is applied; null reads as "no effect".
+        sound_effect_id: nullableString(scene.sound_effect_id),
     };
 }
 
@@ -77,6 +80,17 @@ async function markStalledRenders(client: SupabaseClient, rows: DatabaseRow[]): 
     }
 }
 
+// RF-010 columns are written only when they carry a value, so inserts keep
+// working against a database the sounds migration has not reached yet (null
+// is the column default anyway).
+function musicColumn(musicId: string | null | undefined): { music_id?: string } {
+    return musicId ? { music_id: musicId } : {};
+}
+
+function soundEffectColumn(soundEffectId: string | null | undefined): { sound_effect_id?: string } {
+    return soundEffectId ? { sound_effect_id: soundEffectId } : {};
+}
+
 function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRecord {
     return withStalledRender({
         id: String(video.id),
@@ -95,6 +109,7 @@ function toVideoRecord(video: DatabaseRow, scenes: DatabaseRow[] = []): VideoRec
         render_error: nullableString(video.render_error),
         render_started_at: nullableString(video.render_started_at),
         template: getTemplate(video.template).id,
+        music_id: nullableString(video.music_id),
         scenes: (scenes ?? []).map(toScene).sort((a, b) => a.order - b.order),
     });
 }
@@ -284,6 +299,7 @@ function buildLocalVideoRecord(topic: string, platform: Platform, targetDuration
         render_progress: 0,
         render_error: null,
         render_started_at: null,
+        music_id: null,
         created_at: new Date().toISOString(),
     };
     return { ...video, scenes: [] };
@@ -354,6 +370,7 @@ export async function replaceScenes(id: string, scenes: SceneInput[]): Promise<V
                     description: scene.description,
                     duration_seconds: scene.duration_seconds,
                     audio_url: scene.audio_url,
+                    ...soundEffectColumn(scene.sound_effect_id),
                 }));
                 const { error: insertError } = await client.from('scenes').insert(rows);
                 if (insertError) throw insertError;
@@ -380,6 +397,9 @@ export async function updateScene(id: string, sceneId: string, patch: Partial<Sc
     if (client) {
         try {
             const { error: updateError } = await client.from('scenes').update(patch).eq('id', sceneId).eq('video_id', id);
+            if (updateError && 'sound_effect_id' in patch && isMissingSchemaError(updateError)) {
+                throw new Error(SOUNDS_MIGRATION_MISSING_ERROR);
+            }
             if (updateError) throw updateError;
 
             const { data: videoData, error: videoError } = await client.from('videos').select('*').eq('id', id).single();
@@ -388,6 +408,7 @@ export async function updateScene(id: string, sceneId: string, patch: Partial<Sc
             if (scenesError) throw scenesError;
             return toVideoRecord(videoData, scenesData ?? []);
         } catch (error) {
+            if (error instanceof Error && error.message === SOUNDS_MIGRATION_MISSING_ERROR) throw error;
             console.warn('Fallo al actualizar la escena en Supabase, usando fallback en memoria.', error);
         }
     }
@@ -462,6 +483,33 @@ export async function updateBranding(id: string, branding: Partial<Branding>): P
     return updated;
 }
 
+// RF-010: like branding, the soundtrack is presentation and leaves the
+// approval status alone. Validating the id (exists, is music) is the route's
+// job; this only stores it.
+export async function setVideoMusic(id: string, musicId: string | null): Promise<VideoRecord> {
+    const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
+    if (client) {
+        try {
+            const { data: updated, error } = await client.from('videos').update({ music_id: musicId }).eq('id', id).select('*').maybeSingle();
+            if (error && isMissingSchemaError(error)) throw new Error(SOUNDS_MIGRATION_MISSING_ERROR);
+            if (error) throw error;
+            if (updated) {
+                const { data: scenesData } = await client.from('scenes').select('*').eq('video_id', id);
+                return toVideoRecord(updated, scenesData ?? []);
+            }
+        } catch (error) {
+            if (error instanceof Error && error.message === SOUNDS_MIGRATION_MISSING_ERROR) throw error;
+            console.warn('Fallo al actualizar la musica en Supabase, usando fallback en memoria.', error);
+        }
+    }
+
+    const video = mockVideos.get(id);
+    if (!video) throw new Error('Video no encontrado.');
+    const updated = { ...video, music_id: musicId };
+    mockVideos.set(id, updated);
+    return updated;
+}
+
 export async function duplicateForPlatform(id: string, platform: Platform): Promise<VideoRecord> {
     const original = await findVideoRecord(id);
     if (!original) throw new Error('Video no encontrado.');
@@ -474,6 +522,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
         description: scene.description,
         duration_seconds: scene.duration_seconds,
         audio_url: scene.audio_url,
+        sound_effect_id: scene.sound_effect_id,
     }));
 
     const client = getSupabaseClient({ serviceRole: true }) ?? getSupabaseClient();
@@ -489,6 +538,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
                 status: 'borrador',
                 branding: original.branding,
                 source_video_id: original.id,
+                ...musicColumn(original.music_id),
             }).select().single();
             if (videoError || !videoData) throw videoError ?? new Error('No se pudo duplicar el video.');
 
@@ -503,6 +553,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
                     description: scene.description,
                     duration_seconds: scene.duration_seconds,
                     audio_url: scene.audio_url,
+                    ...soundEffectColumn(scene.sound_effect_id),
                 }));
                 const { error: insertError } = await client.from('scenes').insert(rows);
                 if (insertError) throw insertError;
@@ -533,6 +584,7 @@ export async function duplicateForPlatform(id: string, platform: Platform): Prom
         render_error: null,
         render_started_at: null,
         template: original.template,
+        music_id: original.music_id,
         created_at: new Date().toISOString(),
     };
     const record: VideoRecord = {
@@ -640,6 +692,12 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
     }
     const sortedScenes = [...video.scenes].sort((a, b) => a.order - b.order);
 
+    // The worker gets playable URLs, never ids: it has no access to the sound
+    // catalog. A sound deleted since it was chosen resolves to null and the
+    // video renders without it.
+    const soundUrls = await resolveSoundUrls([video.music_id, ...sortedScenes.map((scene) => scene.sound_effect_id)]);
+    const urlFor = (soundId: string | null) => (soundId ? soundUrls.get(soundId) ?? null : null);
+
     // The worker answers 202 as soon as it has accepted the job and then
     // reports progress on the video row, so this only has to confirm the job
     // was queued. A render can run for minutes once scenes come from an AI
@@ -654,6 +712,7 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
             id,
             platform: video.platform,
             branding: video.branding,
+            music_url: urlFor(video.music_id),
             scenes: sortedScenes.map((scene) => ({
                 order: scene.order,
                 character: scene.character,
@@ -662,6 +721,7 @@ export async function renderVideo(id: string): Promise<VideoRecord> {
                 description: scene.description,
                 duration_seconds: scene.duration_seconds,
                 audio_url: scene.audio_url,
+                sound_effect_url: urlFor(scene.sound_effect_id),
             })),
         }),
     });

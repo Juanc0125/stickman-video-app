@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
 import { generateWithFallback } from '../../../../../../lib/ai-provider';
+import { getSound } from '../../../../../../lib/sounds';
 import { deleteScene, getVideo, updateScene } from '../../../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string; sceneId: string }> };
@@ -189,6 +190,24 @@ export async function PATCH(request: Request, context: RouteContext) {
             return NextResponse.json({ error: 'La duracion debe ser un numero positivo.' }, { status: 400 });
         }
         patch.duration_seconds = value;
+    }
+
+    // RF-010: one optional effect per scene, from the library or an upload.
+    if ('sound_effect_id' in body) {
+        const value = body.sound_effect_id;
+        if (value !== null) {
+            if (typeof value !== 'string') {
+                return NextResponse.json({ error: 'sound_effect_id debe ser un texto o null.' }, { status: 400 });
+            }
+            const sound = await getSound(value);
+            if (!sound) {
+                return NextResponse.json({ error: 'El efecto de sonido elegido no existe.' }, { status: 400 });
+            }
+            if (sound.kind !== 'efecto') {
+                return NextResponse.json({ error: 'El sonido elegido es una musica de fondo, no un efecto.' }, { status: 400 });
+            }
+        }
+        patch.sound_effect_id = value;
     }
 
     if (Object.keys(patch).length === 0) {

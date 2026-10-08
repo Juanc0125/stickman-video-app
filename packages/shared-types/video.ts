@@ -69,6 +69,7 @@ export interface Video {
     render_error: string | null;
     render_started_at: string | null; // lets the UI spot a job whose worker died
     template: VideoTemplate; // RF-019: narrative shape the scenes follow
+    music_id: string | null; // RF-010: 'biblioteca:<slug>' | 'subido:<uuid>', one background track per video
 }
 
 export interface Scene {
@@ -81,4 +82,5 @@ export interface Scene {
     description: string; // the narration line for this scene; also doubles as the subtitle text
     duration_seconds: number;
     audio_url: string | null;
+    sound_effect_id: string | null; // RF-010: optional effect played at the start of the scene
 }

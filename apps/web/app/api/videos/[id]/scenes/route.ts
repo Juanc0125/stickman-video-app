@@ -89,6 +89,7 @@ function buildScenesFromAiJson(raw: unknown): SceneInput[] | null {
             description: coerceDescription(record.description, `Escena ${index + 1}`),
             duration_seconds: coerceDuration(record.duration_seconds, 4),
             audio_url: null,
+            sound_effect_id: null,
         };
     });
 }
@@ -119,7 +120,7 @@ function buildSentenceFallback(script: string, targetDurationSeconds: number, te
         // closing line; the rest cycle.
         if (beats.length > 0) {
             const beat = isLast ? beats[beats.length - 1] : beats[index % Math.max(1, beats.length - 1)];
-            return { order: index + 1, ...beat, description: line, duration_seconds: clampedDuration, audio_url: null };
+            return { order: index + 1, ...beat, description: line, duration_seconds: clampedDuration, audio_url: null, sound_effect_id: null };
         }
 
         // Who is speaking, read off the line itself. A line that quotes or
@@ -148,9 +149,9 @@ function buildSentenceFallback(script: string, targetDurationSeconds: number, te
         else if (/muestra|aqui esta|te traigo|resultado/.test(text)) action = 'mostrar_objeto';
 
         // Every one of these stories resolves the same way: the couple, the house.
-        if (isLast) return { order: index + 1, character: 'pareja' as const, action: 'hablar' as const, prop: 'casa' as const, description: line, duration_seconds: clampedDuration, audio_url: null };
+        if (isLast) return { order: index + 1, character: 'pareja' as const, action: 'hablar' as const, prop: 'casa' as const, description: line, duration_seconds: clampedDuration, audio_url: null, sound_effect_id: null };
 
-        return { order: index + 1, character, action, prop, description: line, duration_seconds: clampedDuration, audio_url: null };
+        return { order: index + 1, character, action, prop, description: line, duration_seconds: clampedDuration, audio_url: null, sound_effect_id: null };
     });
 }
 
