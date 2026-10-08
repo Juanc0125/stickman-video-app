@@ -6,7 +6,8 @@
     "dev": "tsx index.ts",
     "build": "tsc",
     "check:types": "tsc -p tsconfig.check.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "sounds:library": "node scripts/sound-library.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

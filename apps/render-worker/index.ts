@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, readFile, rename, rm, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { join } from 'node:path';
@@ -65,6 +65,18 @@ const ENCODER_THREADS = Number(process.env.FFMPEG_THREADS ?? 2);
 const ENCODER_PRESET = process.env.FFMPEG_PRESET?.trim() || 'ultrafast';
 const ENCODER_CRF = process.env.FFMPEG_CRF?.trim() || '28';
 
+// Every clip's audio is encoded to the same rate and layout, and padded with
+// silence to the clip's full length. The concat demuxer below copies packets
+// without re-encoding, so it needs both: the narration comes out of the voice
+// model as 22.05 kHz mono while transitions and silent scenes were 44.1 kHz
+// stereo, and copying those into one track left the audio decoding at the
+// wrong rate (measured: a 23 s video carried 39 s of narration, drifting
+// further out of sync after every transition). And with -shortest alone a
+// drawn scene ended where its narration did, so the requested duration and
+// the pause after each line were cut, and every clip's audio length differed
+// from its video length - which is also what RF-010's effects are timed by.
+const CLIP_AUDIO_ARGS = ['-c:a', 'aac', '-ar', '48000', '-ac', '2'];
+
 // The scene unions (CharacterType, SceneAction, ScenePropType) come from
 // drawing.ts, the one copy checks/type-parity.ts holds against shared-types.
 export type Platform = 'reels' | 'tiktok' | 'shorts';
@@ -78,6 +90,9 @@ type RenderScene = {
 	description: string;
 	duration_seconds: number;
 	audio_url: string | null;
+	// RF-010: one optional effect per scene, already resolved to a public URL
+	// by the web app (null when none, or when its id no longer exists).
+	sound_effect_url?: string | null;
 };
 
 export type Branding = {
@@ -93,6 +108,8 @@ type RenderJob = {
 	platform: Platform;
 	branding: Branding;
 	scenes: RenderScene[];
+	// RF-010: one background track for the whole video, as a public URL.
+	music_url?: string | null;
 };
 
 const port = Number(process.env.PORT ?? 8080);
@@ -308,6 +325,134 @@ async function applyLogoOverlayOrFallback(sourcePath: string, destinationPath: s
 	}
 }
 
+// ---- Music and sound effects (RF-010) ----
+
+// Background music sits well under the narration even before ducking: the
+// library is normalised to about -18 dB mean, so this puts it near -33 dB.
+const MUSIC_VOLUME = 0.18;
+// Effects are short, peak-normalised accents; at 1.0 they jumped out over the
+// voice, so they are pulled down a little.
+const EFFECT_VOLUME = 0.6;
+const MUSIC_FADE_IN_SECONDS = 1;
+const MUSIC_FADE_OUT_SECONDS = 1.5;
+// Overlap between two consecutive copies of a track that is shorter than the
+// video. A plain splice would click: AAC can't reproduce a file's first and
+// last ~20ms exactly, so even the library's sample-exact loops end up with a
+// step at the seam, and an uploaded song was never meant to loop at all.
+const MUSIC_LOOP_CROSSFADE_SECONDS = 0.08;
+const MUSIC_MIN_SECONDS = 1;
+// Every input is brought to one format before mixing, since narration (mono,
+// whatever rate the voice model speaks at), music and effects all differ.
+const MIX_SAMPLE_RATE = 48000;
+const MIX_FORMAT = `aresample=${MIX_SAMPLE_RATE},aformat=sample_fmts=fltp:channel_layouts=stereo`;
+// Ducking: the narration is the compressor's key, so the music dips about
+// 8-10 dB while someone speaks and comes back within half a second of a pause.
+const DUCKING = 'sidechaincompress=threshold=0.04:ratio=4:attack=20:release=400:knee=4';
+
+type TimedEffect = { url: string; startSeconds: number };
+
+function nonEmptyUrl(value: unknown): string | null {
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+// One extra ffmpeg pass over the concatenated video that only touches audio:
+// the video stream is copied, so this costs a few seconds and the memory of an
+// audio decode, not another x264 encode. Returns the path of the mixed video,
+// or the untouched source when there is nothing to mix or the mix fails - a
+// broken music URL must never cost the person their video (same convention as
+// applyLogoOverlayOrFallback).
+async function mixSoundsOrKeep(
+	sourcePath: string,
+	jobDirectory: string,
+	musicUrl: string | null,
+	effects: TimedEffect[],
+	totalSeconds: number,
+): Promise<string> {
+	if (!musicUrl && effects.length === 0) return sourcePath;
+
+	const mixedPath = join(jobDirectory, 'mixed-output.mp4');
+	try {
+		const inputs: string[] = ['-i', sourcePath];
+		const graph: string[] = [];
+		const mixLabels = ['[voice]'];
+		let nextInput = 1;
+
+		if (musicUrl) {
+			// Decoded once to raw PCM on disk, and only as much as the video
+			// needs (a three-minute upload is cut at the video's length): the
+			// copies below then read a local file instead of downloading the URL
+			// once per loop, and the byte count gives the exact duration without
+			// a separate probe.
+			const musicPcmPath = join(jobDirectory, 'music.pcm');
+			await runFfmpeg([
+				'-y', '-i', musicUrl, '-vn',
+				'-t', String(totalSeconds + 1),
+				'-ac', '2', '-ar', String(MIX_SAMPLE_RATE), '-f', 's16le', musicPcmPath,
+			]);
+			const musicSeconds = (await stat(musicPcmPath)).size / (MIX_SAMPLE_RATE * 2 * 2);
+			if (musicSeconds < MUSIC_MIN_SECONDS) throw new Error(`La musica dura ${musicSeconds.toFixed(2)} s, demasiado corta para usarla de fondo.`);
+
+			const copies = musicSeconds >= totalSeconds
+				? 1
+				: 1 + Math.ceil((totalSeconds - musicSeconds) / (musicSeconds - MUSIC_LOOP_CROSSFADE_SECONDS));
+			for (let copy = 0; copy < copies; copy += 1) {
+				inputs.push('-f', 's16le', '-ar', String(MIX_SAMPLE_RATE), '-ac', '2', '-i', musicPcmPath);
+			}
+
+			let musicLabel = `[${nextInput}:a]`;
+			for (let copy = 1; copy < copies; copy += 1) {
+				const joined = `[loop${copy}]`;
+				graph.push(`${musicLabel}[${nextInput + copy}:a]acrossfade=d=${MUSIC_LOOP_CROSSFADE_SECONDS}:c1=qsin:c2=qsin${joined}`);
+				musicLabel = joined;
+			}
+			nextInput += copies;
+
+			const fadeOutStart = Math.max(0, totalSeconds - MUSIC_FADE_OUT_SECONDS);
+			graph.push(`[0:a]${MIX_FORMAT},asplit=2[voice][duckkey]`);
+			graph.push(
+				`${musicLabel}${MIX_FORMAT},atrim=0:${totalSeconds.toFixed(3)},asetpts=PTS-STARTPTS,volume=${MUSIC_VOLUME},`
+				+ `afade=t=in:st=0:d=${MUSIC_FADE_IN_SECONDS},afade=t=out:st=${fadeOutStart.toFixed(3)}:d=${MUSIC_FADE_OUT_SECONDS}[bed]`,
+			);
+			graph.push(`[bed][duckkey]${DUCKING}[music]`);
+			mixLabels.push('[music]');
+		} else {
+			graph.push(`[0:a]${MIX_FORMAT}[voice]`);
+		}
+
+		effects.forEach((effect, effectIndex) => {
+			inputs.push('-i', effect.url);
+			const delayMs = Math.max(0, Math.round(effect.startSeconds * 1000));
+			graph.push(`[${nextInput}:a]${MIX_FORMAT},adelay=delays=${delayMs}:all=1,volume=${EFFECT_VOLUME}[fx${effectIndex}]`);
+			mixLabels.push(`[fx${effectIndex}]`);
+			nextInput += 1;
+		});
+
+		// normalize=0: amix would otherwise divide every input by the input
+		// count, and the narration has to stay exactly as loud as it was.
+		// duration=first: the narration track defines the video's length.
+		graph.push(`${mixLabels.join('')}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0:normalize=0[mixed]`);
+
+		await runFfmpeg([
+			'-y',
+			...inputs,
+			'-filter_complex', graph.join(';'),
+			'-map', '0:v',
+			'-map', '[mixed]',
+			'-c:v', 'copy',
+			'-c:a', 'aac',
+			'-b:a', '160k',
+			'-ar', String(MIX_SAMPLE_RATE),
+			'-movflags', '+faststart',
+			mixedPath,
+		]);
+		return mixedPath;
+	} catch (error) {
+		console.warn('Fallo al mezclar la musica o los efectos de sonido, se conserva el video sin mezcla.', error);
+		await unlink(mixedPath).catch(() => undefined);
+		return sourcePath;
+	}
+}
+
 function runFfmpeg(args: string[]) {
 	return new Promise<void>((resolve, reject) => {
 		const childProcess = spawn(process.env.FFMPEG_PATH ?? ffmpegPath ?? 'ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
@@ -443,6 +588,13 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 	try {
 		const clips: string[] = [];
 		const scenes = [...job.scenes].sort((first, second) => first.order - second.order);
+		// Running length of the assembled video, so each scene's sound effect
+		// can be placed where that scene starts once the clips are concatenated.
+		// Counted from what each clip actually encodes (whole frames), not the
+		// requested duration, and transitions included, or every effect after
+		// the first transition would land early.
+		let elapsedSeconds = 0;
+		const timedEffects: TimedEffect[] = [];
 
 		// Every canvas here is a native (Skia) surface plus an 8MB-at-1080x1920
 		// RGBA backing buffer that V8's garbage collector does not feel much
@@ -519,6 +671,9 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 			const isFirstScene = index === 0;
 			const isLastScene = index === scenes.length - 1;
 
+			const effectUrl = nonEmptyUrl(scene.sound_effect_url);
+			if (effectUrl) timedEffects.push({ url: effectUrl, startSeconds: elapsedSeconds });
+
 			// When an AI model is configured, the scene's footage comes from it
 			// and we only add our own text and narration on top. Generation is
 			// best-effort: if it fails or is not configured, the scene is drawn
@@ -548,12 +703,13 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 					+ `[bg][1:v]overlay=0:0[outv]`,
 					'-map', '[outv]',
 					'-map', '2:a',
+					'-af', 'apad',
 					'-t', String(duration),
 					'-c:v', 'libx264',
 					'-threads', String(ENCODER_THREADS),
 					'-preset', ENCODER_PRESET,
 					'-crf', ENCODER_CRF,
-					'-c:a', 'aac',
+					...CLIP_AUDIO_ARGS,
 					'-pix_fmt', 'yuv420p',
 					'-movflags', '+faststart',
 					clipPath,
@@ -569,11 +725,13 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 					...audioInputArgs,
 					'-map', '0:v',
 					'-map', '1:a',
+					'-af', 'apad',
+					'-t', String(frameCount / FRAME_RATE),
 					'-c:v', 'libx264',
 					'-threads', String(ENCODER_THREADS),
 					'-preset', ENCODER_PRESET,
 					'-crf', ENCODER_CRF,
-					'-c:a', 'aac',
+					...CLIP_AUDIO_ARGS,
 					'-shortest',
 					'-pix_fmt', 'yuv420p',
 					'-movflags', '+faststart',
@@ -605,6 +763,9 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 			}
 
 			clips.push(clipPath);
+			// The AI path cuts at -t duration; the drawn path ends with its last
+			// frame (its audio is padded to that length, see CLIP_AUDIO_ARGS).
+			elapsedSeconds += generatedPath ? duration : frameCount / FRAME_RATE;
 
 			// The join to the next scene: a hard cut, a crossfade or a slide (see
 			// pickTransition). Built as a handful of extra frames blending the
@@ -655,7 +816,7 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 						'-threads', String(ENCODER_THREADS),
 						'-preset', ENCODER_PRESET,
 						'-crf', ENCODER_CRF,
-						'-c:a', 'aac',
+						...CLIP_AUDIO_ARGS,
 						'-shortest',
 						'-pix_fmt', 'yuv420p',
 						'-movflags', '+faststart',
@@ -666,6 +827,7 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 					});
 
 					clips.push(transitionClipPath);
+					elapsedSeconds += transitionFrameCount / FRAME_RATE;
 				}
 			}
 
@@ -688,8 +850,12 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 			concatOutputPath,
 		]);
 
+		// Mixed before the logo so the logo's re-encode (the expensive one)
+		// copies the finished audio rather than the other way round.
+		const soundtrackPath = await mixSoundsOrKeep(concatOutputPath, jobDirectory, nonEmptyUrl(job.music_url), timedEffects, elapsedSeconds);
+
 		const outputPath = join(renderDirectory, `${jobId}.mp4`);
-		await applyLogoOverlayOrFallback(concatOutputPath, outputPath, branding);
+		await applyLogoOverlayOrFallback(soundtrackPath, outputPath, branding);
 
 		const filename = `${jobId}.mp4`;
 		const uploadedUrl = await uploadToSupabase(outputPath, filename);
