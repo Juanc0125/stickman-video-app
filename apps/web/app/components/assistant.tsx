@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { VideoRecord } from './api';
+import AssistantEntity, { type EntityMood } from './assistant-entity';
 
 interface AssistantProps {
     videos: VideoRecord[];
@@ -41,14 +42,27 @@ type Recognition = {
 // is a one-line change, not a hunt through the function body.
 const RECOGNITION_LANG = process.env.NEXT_PUBLIC_RECOGNITION_LANG ?? 'es-MX';
 
-function getRecognition(continuous: boolean): Recognition | null {
+// How long the operator has to stay quiet before what they said is sent. The
+// engine marks a phrase "final" at any half-second breath, so sending on the
+// first final result cut people off mid-thought; this is the pause that means
+// "I'm done", not the pause that means "let me think".
+const PAUSE_TO_SEND_MS = 2500;
+// Once the engine has settled everything it heard (nothing interim left), a
+// shorter silence is enough: the phrase is already complete, and waiting the
+// full pause on top of the model's own latency is what made it feel slow.
+const SETTLED_PAUSE_MS = 1200;
+
+function getRecognition(): Recognition | null {
     if (typeof window === 'undefined') return null;
     const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!Ctor) return null;
     const recognition = new Ctor();
     recognition.lang = RECOGNITION_LANG;
-    recognition.continuous = continuous;
+    // Continuous for press-to-talk too: non-continuous sessions end themselves
+    // at the first pause, which is the same cut-off with a different cause.
+    // When to stop is decided here, by PAUSE_TO_SEND_MS or by a second press.
+    recognition.continuous = true;
     // Always on: showing the partial transcript as it is heard is the whole
     // fix for "press, talk into silence, nothing moves until the phrase ends".
     recognition.interimResults = true;
@@ -83,6 +97,9 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     const speakingRef = useRef(false);
     const busyRef = useRef(false);
     const [busy, setBusy] = useState(false);
+    // Bumped on each heard or spoken word; the figure turns it into motion.
+    const [pulse, setPulse] = useState(0);
+    const onVoiceActivity = () => setPulse((current) => current + 1);
     const [input, setInput] = useState('');
     const [turns, setTurns] = useState<Turn[]>([]);
     const greeted = useRef(false);
@@ -96,6 +113,18 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     // reports the error and the stop as two separate events.
     const lastErrorRef = useRef<string | null>(null);
     const transcriptRef = useRef<HTMLDivElement>(null);
+    // send() is often called from a recognition callback built renders ago,
+    // where `turns` and `selected` are frozen at that moment: the copilot then
+    // got a history missing the last exchanges and lost the thread by voice.
+    // These refs are what send() reads, so it always sees the current state.
+    const turnsRef = useRef<Turn[]>([]);
+    const selectedRef = useRef(selected);
+    const modeloRef = useRef<boolean | null>(null);
+    useEffect(() => {
+        turnsRef.current = turns;
+        selectedRef.current = selected;
+        modeloRef.current = modelo;
+    }, [turns, selected, modelo]);
 
     useEffect(() => {
         transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' });
@@ -184,6 +213,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         };
         utterance.onend = finish;
         utterance.onerror = finish;
+        utterance.onboundary = onVoiceActivity;
         window.speechSynthesis.speak(utterance);
     }
 
@@ -219,7 +249,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
 
         setInput('');
         const history = [
-            ...turns.map((turn) => ({ role: turn.who === 'tu' ? 'user' as const : 'assistant' as const, content: turn.text })),
+            ...turnsRef.current.map((turn) => ({ role: turn.who === 'tu' ? 'user' as const : 'assistant' as const, content: turn.text })),
             { role: 'user' as const, content: text },
         ];
         setTurns((current) => [...current, { who: 'tu', text }]);
@@ -233,7 +263,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             const response = await fetch('/api/copilot', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoId: selected?.id ?? null, messages: history }),
+                body: JSON.stringify({ videoId: selectedRef.current?.id ?? null, messages: history }),
             });
             const data = await response.json() as {
                 reply?: string; error?: string;
@@ -259,7 +289,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             busyRef.current = false;
 
             say(data.reply ?? 'Hecho.');
-            if (!data.provider && modelo !== false) {
+            if (!data.provider && modeloRef.current !== false) {
                 say('Aviso: estoy respondiendo en modo basico, sin modelo de lenguaje. Entiendo ordenes concretas pero no conversacion libre. Se arregla configurando GROQ_API_KEY o OPENROUTER_API_KEY.', false);
             }
         } catch (error) {
@@ -270,11 +300,11 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     }
 
     // Shared by the press-to-talk button and hands-free mode: both are just
-    // "start one recognition session", they differ only in continuous and in
-    // what happens on onend, which is decided below from handsFreeRef.
+    // "start one recognition session", they differ only in what happens on
+    // onend, which is decided below from handsFreeRef.
     function beginListening() {
         if (recognitionRef.current || busyRef.current || speakingRef.current) return;
-        const recognition = getRecognition(handsFreeRef.current);
+        const recognition = getRecognition();
         if (!recognition) {
             // Kept visible rather than hidden when unsupported: a control that
             // silently does nothing reads as a bug, and the reason is worth
@@ -289,24 +319,45 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         }
 
         let handled = false;
+        // Everything the engine has settled on so far in this session. Rebuilt
+        // from the whole results list on every event rather than appended from
+        // resultIndex, so a phrase the engine revises can never be counted twice.
+        let heard = '';
+        let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+        const clearPause = () => {
+            if (pauseTimer) clearTimeout(pauseTimer);
+            pauseTimer = null;
+        };
+        // Sends what was heard exactly once, whichever comes first: the pause,
+        // a second press of the mic, or the browser ending the session.
+        const commit = () => {
+            clearPause();
+            const said = heard.trim();
+            if (handled || !said) return false;
+            handled = true;
+            setInterim('');
+            void send(said);
+            return true;
+        };
+
         recognition.onresult = (event) => {
             if (handled) return;
-            let interimText = '';
-            let finalText = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
+            let settled = '';
+            let pending = '';
+            for (let i = 0; i < event.results.length; i++) {
                 const result = event.results[i];
                 const transcript = result[0]?.transcript ?? '';
-                if (result.isFinal) finalText += transcript;
-                else interimText += transcript;
+                if (result.isFinal) settled += transcript;
+                else pending += transcript;
             }
-            setInterim(interimText);
-            const said = finalText.trim();
-            if (said) {
-                handled = true;
-                setInterim('');
-                recognition.stop();
-                void send(said);
-            }
+            heard = settled;
+            setInterim(`${settled}${pending}`.trim());
+            // Any new sound restarts the countdown: only a real pause sends.
+            clearPause();
+            pauseTimer = setTimeout(() => {
+                if (commit()) recognition.stop();
+            }, pending.trim() ? PAUSE_TO_SEND_MS : SETTLED_PAUSE_MS);
+            onVoiceActivity();
         };
         recognition.onerror = (event) => {
             lastErrorRef.current = event.error ?? null;
@@ -314,6 +365,9 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         recognition.onend = () => {
             recognitionRef.current = null;
             setListening(false);
+            // Stopped by a second press, or closed by the browser on its own:
+            // either way what was already heard is sent, not thrown away.
+            commit();
             if (!handled) setInterim('');
 
             const error = lastErrorRef.current;
@@ -382,14 +436,16 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         ? 'Hablame o escribeme'
         : 'Voz apagada: te respondo por escrito';
 
+    const mood: EntityMood = speaking ? 'speaking' : busy ? 'thinking' : listening ? 'listening' : 'idle';
+
     const micPlaceholder = speaking
         ? 'El asistente esta hablando...'
         : listening
-        ? (handsFree ? 'Escuchando en modo manos libres...' : 'Escuchando...')
+        ? (handsFree ? 'Escuchando... haz una pausa para enviar' : 'Escuchando... pausa o pulsa el microfono para enviar')
         : 'Escribe o pulsa el microfono';
 
     return (
-        <section className="glass flex max-h-[34rem] min-h-[24rem] flex-col overflow-hidden rounded-2xl">
+        <section className="glass flex max-h-[42rem] min-h-[30rem] flex-col overflow-hidden rounded-2xl">
             <header className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3">
                 <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -453,6 +509,14 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     speaking ? 'animate-pulse bg-sky-400' : listening ? 'animate-pulse bg-red-400' : busy ? 'bg-amber-400' : 'bg-emerald-400'
                 }`} aria-hidden="true" />
             </header>
+
+            {/* The assistant's body, between the controls and the conversation:
+                it is what tells you, at a glance, whether it is listening,
+                thinking or talking. */}
+            <div className="flex flex-col items-center border-b border-white/10 py-2">
+                <AssistantEntity mood={mood} pulse={pulse} />
+                <span className="text-xs text-slate-400" aria-live="polite">{statusText}</span>
+            </div>
 
             <div ref={transcriptRef} className="thin-scroll flex-1 space-y-3 overflow-y-auto p-4">
                 {turns.map((turn, index) => (
