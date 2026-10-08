@@ -1,12 +1,15 @@
 'use client';
 
-import type { VideoRecord } from './api';
+import { useCallback, useEffect, useState } from 'react';
+import type { SoundAsset } from '@shared-types/sounds';
+import { fetchSounds, type VideoRecord } from './api';
 import { PLATFORM_LABELS } from './constants';
 import StatusBadge from './status-badge';
 import ScriptPanel from './script-panel';
 import ScenePanel from './scene-panel';
 import BrandingPanel from './branding-panel';
 import StatusPanel from './status-panel';
+import SoundPanel from './sound-panel';
 
 interface VideoWorkspaceProps {
     video: VideoRecord | null;
@@ -21,6 +24,31 @@ function brandSignature(video: VideoRecord): string {
 }
 
 export default function VideoWorkspace({ video, onUpdated, onDuplicated }: VideoWorkspaceProps) {
+    // RF-010: one sound list for the music picker, the per-scene effect
+    // pickers and the business uploads, so a sound uploaded in one place is
+    // offered in the others without a second fetch.
+    const [sounds, setSounds] = useState<SoundAsset[]>([]);
+    const [soundsLoading, setSoundsLoading] = useState(true);
+    const [soundsError, setSoundsError] = useState('');
+
+    const loadSounds = useCallback(async () => {
+        try {
+            setSounds(await fetchSounds());
+            setSoundsError('');
+        } catch (err) {
+            setSoundsError(err instanceof Error ? err.message : 'No se pudieron cargar los sonidos.');
+        } finally {
+            setSoundsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Deferred by a tick, as in the branding panel: the lint rule cannot
+        // tell that state only changes once the fetch resolves.
+        const timer = setTimeout(() => { void loadSounds(); }, 0);
+        return () => clearTimeout(timer);
+    }, [loadSounds]);
+
     if (!video) {
         return (
             <section className="rounded-2xl border border-dashed border-white/12 px-8 py-12">
@@ -97,7 +125,15 @@ export default function VideoWorkspace({ video, onUpdated, onDuplicated }: Video
                 show actually changed - without it the textarea keeps the old
                 script and the colour pickers the old brand. */}
             <ScriptPanel key={`guion:${video.script}`} video={video} onUpdated={onUpdated} />
-            <ScenePanel video={video} onUpdated={onUpdated} />
+            <ScenePanel video={video} sounds={sounds} soundsLoading={soundsLoading} onUpdated={onUpdated} />
+            <SoundPanel
+                video={video}
+                sounds={sounds}
+                soundsLoading={soundsLoading}
+                soundsError={soundsError}
+                onSoundsChanged={setSounds}
+                onUpdated={onUpdated}
+            />
             <BrandingPanel key={`marca:${brandSignature(video)}`} video={video} onUpdated={onUpdated} />
             <StatusPanel video={video} onUpdated={onUpdated} onDuplicated={onDuplicated} />
         </div>

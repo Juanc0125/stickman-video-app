@@ -2,6 +2,7 @@
 // Error with a Spanish message (taken from the API's own `{ error }` body when available) so
 // callers can show it directly to the user.
 
+import type { SoundAsset, SoundKind } from '@shared-types/sounds';
 import type { BrandTemplate, VideoTemplate } from '@shared-types/templates';
 import type {
     CharacterType,
@@ -182,6 +183,8 @@ export interface ScenePatch {
     prop?: ScenePropType;
     description?: string;
     duration_seconds?: number;
+    // RF-010: null clears the effect. Only ids of kind 'efecto' are accepted.
+    sound_effect_id?: string | null;
 }
 
 export async function updateScene(id: string, sceneId: string, patch: ScenePatch): Promise<VideoRecord> {
@@ -263,5 +266,68 @@ export async function deleteVideo(id: string): Promise<void> {
 
 export async function deleteScene(id: string, sceneId: string): Promise<VideoRecord> {
     const data = await request<{ video: VideoRecord }>(`/api/videos/${id}/scenes/${sceneId}`, { method: 'DELETE' });
+    return data.video;
+}
+
+// RF-010: background music and sound effects. The library sounds and the ones
+// the business uploaded come back in one list; `origin` tells them apart.
+export async function fetchSounds(): Promise<SoundAsset[]> {
+    const data = await request<{ sonidos: SoundAsset[] }>('/api/sounds');
+    return data.sonidos;
+}
+
+export interface SoundUploadTicket {
+    path: string;
+    token: string;
+    signed_url: string;
+}
+
+export async function requestSoundUpload(file: File): Promise<SoundUploadTicket> {
+    return request<SoundUploadTicket>('/api/sounds/upload-url', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ filename: file.name, content_type: file.type, size: file.size }),
+    });
+}
+
+// The file goes straight from the browser to Supabase Storage: Vercel cuts
+// request bodies above 4.5 MB, so it can never travel through our API. The
+// token in the signed URL is the only credential the storage endpoint needs.
+// Same multipart shape supabase-js' uploadToSignedUrl sends, so the stored
+// object keeps the file's own content type.
+export async function uploadSoundFile(ticket: SoundUploadTicket, file: File): Promise<void> {
+    const body = new FormData();
+    body.append('cacheControl', '3600');
+    body.append('', file);
+    let response: Response;
+    try {
+        response = await fetch(ticket.signed_url, { method: 'PUT', headers: { 'x-upsert': 'false' }, body });
+    } catch {
+        throw new Error('No se pudo conectar con el almacenamiento para subir el audio.');
+    }
+    if (!response.ok) {
+        throw new Error('El almacenamiento rechazó el archivo de audio. Intenta de nuevo o prueba con otro archivo.');
+    }
+}
+
+export async function registerSound(name: string, kind: SoundKind, path: string, licencia: string): Promise<SoundAsset> {
+    const data = await request<{ sonido: SoundAsset }>('/api/sounds', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ name, kind, path, licencia }),
+    });
+    return data.sonido;
+}
+
+export async function deleteSound(id: string): Promise<void> {
+    await request<unknown>(`/api/sounds/${id}`, { method: 'DELETE' });
+}
+
+export async function setVideoMusic(id: string, musicId: string | null): Promise<VideoRecord> {
+    const data = await request<{ video: VideoRecord }>(`/api/videos/${id}/music`, {
+        method: 'PATCH',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ music_id: musicId }),
+    });
     return data.video;
 }

@@ -1,21 +1,25 @@
 'use client';
 
 import { useState } from 'react';
+import type { SoundAsset } from '@shared-types/sounds';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
 import { deleteScene, generateScenes, generateVoice, regenerateScene, updateScene, type ScenePatch, type VideoRecord } from './api';
 import { ACTION_OPTIONS, CHARACTER_OPTIONS, PROP_OPTIONS } from './constants';
 
 interface ScenePanelProps {
     video: VideoRecord;
+    sounds: SoundAsset[];
+    soundsLoading: boolean;
     onUpdated: (video: VideoRecord) => void;
 }
 
-export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
+export default function ScenePanel({ video, sounds, soundsLoading, onUpdated }: ScenePanelProps) {
     const [generatingAll, setGeneratingAll] = useState(false);
     const [generatingVoice, setGeneratingVoice] = useState(false);
     const [panelError, setPanelError] = useState('');
     const [voiceNotice, setVoiceNotice] = useState('');
 
+    const effects = sounds.filter((sound) => sound.kind === 'efecto');
     const scenes = [...video.scenes].sort((a, b) => a.order - b.order);
     const totalDuration = scenes.reduce((sum, scene) => sum + scene.duration_seconds, 0);
 
@@ -116,6 +120,8 @@ export default function ScenePanel({ video, onUpdated }: ScenePanelProps) {
                                 videoId={video.id}
                                 scene={scene}
                                 index={index}
+                                effects={effects}
+                                soundsLoading={soundsLoading}
                                 onUpdated={onUpdated}
                             />
                         ))}
@@ -130,16 +136,20 @@ interface SceneRowProps {
     videoId: string;
     scene: Scene;
     index: number;
+    effects: SoundAsset[];
+    soundsLoading: boolean;
     onUpdated: (video: VideoRecord) => void;
 }
 
-function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
+function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: SceneRowProps) {
     const [description, setDescription] = useState(scene.description);
     const [durationSeconds, setDurationSeconds] = useState(scene.duration_seconds);
     const [busyAction, setBusyAction] = useState<'select' | 'text' | 'regenerate' | 'delete' | null>(null);
     const [error, setError] = useState('');
 
     const busy = busyAction !== null;
+    const effectId = scene.sound_effect_id ?? '';
+    const selectedEffect = effects.find((effect) => effect.id === effectId) ?? null;
     const textDirty = description !== scene.description || durationSeconds !== scene.duration_seconds;
 
     async function applyPatch(patch: ScenePatch, mode: 'select' | 'text') {
@@ -165,6 +175,10 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
 
     async function handlePropChange(value: ScenePropType) {
         await applyPatch({ prop: value }, 'select');
+    }
+
+    async function handleEffectChange(value: string) {
+        await applyPatch({ sound_effect_id: value === '' ? null : value }, 'select');
     }
 
     async function handleSaveText() {
@@ -313,6 +327,45 @@ function SceneRow({ videoId, scene, index, onUpdated }: SceneRowProps) {
                 >
                     {busyAction === 'text' ? 'Guardando...' : 'Guardar cambios'}
                 </button>
+            </div>
+
+            <div className="mt-2">
+                <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`effect-${scene.id}`}>Efecto de sonido</label>
+                {/* Read straight from the record, not copied into state, so the
+                    row's key does not need it: re-keying on every effect change
+                    would throw away an unsaved description. */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <select
+                        id={`effect-${scene.id}`}
+                        value={effectId}
+                        onChange={(event) => handleEffectChange(event.target.value)}
+                        disabled={busy}
+                        className="min-w-0 flex-1 rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none sm:max-w-xs"
+                    >
+                        <option value="">Ninguno</option>
+                        {effectId !== '' && !selectedEffect && (
+                            <option value={effectId} disabled>
+                                {soundsLoading ? 'Cargando sonidos...' : 'Sonido no disponible'}
+                            </option>
+                        )}
+                        {effects.map((effect) => (
+                            <option key={effect.id} value={effect.id}>
+                                {effect.origin === 'subido' ? `${effect.name} (subido)` : effect.name}
+                            </option>
+                        ))}
+                    </select>
+                    {selectedEffect && (
+                        <audio
+                            key={selectedEffect.id}
+                            controls
+                            preload="none"
+                            src={selectedEffect.url}
+                            aria-label={`Escuchar el efecto ${selectedEffect.name}`}
+                            className="h-9 min-w-0 flex-1"
+                        />
+                    )}
+                </div>
+                <p className="mt-1 text-xs text-slate-400">Suena al empezar la escena.</p>
             </div>
 
             {scene.audio_url && (
