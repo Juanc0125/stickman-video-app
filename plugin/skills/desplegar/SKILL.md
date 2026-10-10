@@ -95,10 +95,12 @@ previews. Para probar uno sin esperar a su horario: `vercel crons run`.
 
 ## El worker de Railway es aparte
 
-Railway no se despliega con el push a `master`. Si el cambio toca
-`apps/render-worker/**`, ese servicio necesita su propio despliegue, y el worker
-corre con `tsx` sin watch: hasta que no reinicie, sigue ejecutando el código
-viejo aunque el repositorio ya tenga el nuevo.
+El push a `master` también dispara un despliegue en Railway (proyecto
+`caring-dream`, servicio `stickman-video-app`), pero es un despliegue aparte del
+de Vercel: compruébalo por separado. Con el MCP de Railway, `list-deployments`
+devuelve `meta.commitHash` y `status`; busca `SUCCESS` con tu sha. El worker
+corre con `tsx` sin watch: hasta que ese despliegue no termine, sigue
+ejecutando el código viejo aunque el repositorio ya tenga el nuevo.
 
 Cuidado con lo que vive solo en Railway: `FAL_KEY` no está puesta ahí a
 propósito, porque encenderla hace que cada render cueste dólares. Un despliegue
