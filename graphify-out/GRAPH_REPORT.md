@@ -1,7 +1,7 @@
 # Graph Report - stickman-video-app  (2026-10-12)
 
 ## Corpus Check
-- 114 files · ~86,570 words
+- 114 files · ~86,659 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 2, .ico 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bc3105b5`
+- Built from commit: `1e7868dd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -97,8 +97,8 @@
 - supabase/migrations (esquema de la base de datos)
 
 ## God Nodes (most connected - your core abstractions)
-1. `render()` - 24 edges
-2. `getSupabaseClient()` - 24 edges
+1. `getSupabaseClient()` - 24 edges
+2. `render()` - 24 edges
 3. `next` - 21 edges
 4. `getVideo()` - 20 edges
 5. `getTemplate()` - 19 edges

@@ -593,7 +593,7 @@
       "file_type": "code",
       "norm_label": "avatarclip",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L35"
+      "source_location": "L39"
     },
     {
       "id": "apps_render_worker_heygen_avatarscene",
@@ -606,7 +606,7 @@
       "file_type": "code",
       "norm_label": "avatarscene",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L40"
+      "source_location": "L44"
     },
     {
       "id": "apps_render_worker_voice_speech",
@@ -3495,7 +3495,7 @@
       "file_type": "code",
       "norm_label": "heygenerror()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L57"
+      "source_location": "L61"
     },
     {
       "id": "apps_render_worker_heygen_heygenfetch",
@@ -3507,7 +3507,7 @@
       "file_type": "code",
       "norm_label": "heygenfetch()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L65"
+      "source_location": "L69"
     },
     {
       "id": "apps_render_worker_heygen_sleep",
@@ -3519,7 +3519,7 @@
       "file_type": "code",
       "norm_label": "sleep()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L75"
+      "source_location": "L79"
     },
     {
       "id": "apps_render_worker_heygen_startavatarscenes",
@@ -3531,7 +3531,7 @@
       "file_type": "code",
       "norm_label": "startavatarscenes()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L146"
+      "source_location": "L150"
     },
     {
       "id": "apps_render_worker_heygen_submit",
@@ -3543,7 +3543,7 @@
       "file_type": "code",
       "norm_label": "submit()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L79"
+      "source_location": "L83"
     },
     {
       "id": "apps_render_worker_heygen_waitanddownload",
@@ -3555,7 +3555,7 @@
       "file_type": "code",
       "norm_label": "waitanddownload()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L110"
+      "source_location": "L114"
     },
     {
       "id": "apps_render_worker_voice_clampindex",
@@ -4839,7 +4839,7 @@
       "file_type": "code",
       "norm_label": "heygenmissingconfig()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L46"
+      "source_location": "L50"
     },
     {
       "id": "apps_render_worker_heygen_isheygenenabled",
@@ -4851,7 +4851,7 @@
       "file_type": "code",
       "norm_label": "isheygenenabled()",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L53"
+      "source_location": "L57"
     },
     {
       "id": "apps_render_worker_index_applylogooverlayorfallback",
@@ -6719,7 +6719,7 @@
       "file_type": "code",
       "norm_label": "timeout_ms",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L31"
+      "source_location": "L35"
     },
     {
       "id": "apps_render_worker_heygen_voice_id",
@@ -12091,7 +12091,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L54",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -12103,7 +12103,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L155",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -12115,12 +12115,12 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L157",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
       "source": "apps_render_worker_heygen_submit",
-      "target": "apps_render_worker_heygen_sleep",
+      "target": "apps_render_worker_heygen_heygenfetch",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12132,6 +12132,18 @@
     },
     {
       "source": "apps_render_worker_heygen_submit",
+      "target": "apps_render_worker_heygen_sleep",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "apps/render-worker/heygen.ts",
+      "source_location": "L104",
+      "weight": 1.0
+    },
+    {
+      "source": "apps_render_worker_heygen_submit",
       "target": "apps_render_worker_heygen_heygenerror",
       "relation": "calls",
       "_origin": "ast",
@@ -12139,19 +12151,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L103",
-      "weight": 1.0
-    },
-    {
-      "source": "apps_render_worker_heygen_submit",
-      "target": "apps_render_worker_heygen_heygenfetch",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L96",
+      "source_location": "L107",
       "weight": 1.0
     },
     {
@@ -12163,7 +12163,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L112",
+      "source_location": "L116",
       "weight": 1.0
     },
     {
@@ -12175,7 +12175,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L113",
+      "source_location": "L117",
       "weight": 1.0
     },
     {
@@ -12187,7 +12187,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L115",
+      "source_location": "L119",
       "weight": 1.0
     },
     {
@@ -23706,7 +23706,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L110",
+      "source_location": "L114",
       "weight": 1.0
     },
     {
@@ -23717,7 +23717,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L146",
+      "source_location": "L150",
       "weight": 1.0
     },
     {
@@ -23772,7 +23772,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L31",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -23783,7 +23783,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L35",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -23794,7 +23794,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L40",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -23805,7 +23805,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L46",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -23816,7 +23816,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L53",
+      "source_location": "L57",
       "weight": 1.0
     },
     {
@@ -23827,7 +23827,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L57",
+      "source_location": "L61",
       "weight": 1.0
     },
     {
@@ -23838,7 +23838,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L65",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -23849,7 +23849,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L75",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -23860,7 +23860,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "apps/render-worker/heygen.ts",
-      "source_location": "L79",
+      "source_location": "L83",
       "weight": 1.0
     },
     {
@@ -31841,5 +31841,5 @@
       "source_file": "apps/web/public/icons/icon-512.png"
     }
   ],
-  "built_at_commit": "bc3105b5a7582c4af8aa9e4f79fe23aa22c88080"
+  "built_at_commit": "1e7868dd3088265c318a63ca383593dba558dba6"
 }
