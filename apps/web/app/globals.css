@@ -2,106 +2,297 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design tokens. Tailwind's theme (tailwind.config.ts) carries the same
+   values as utilities; these variables are for the hand-written CSS below
+   and for anything that needs a colour outside a class name. */
 :root {
-  --background: #0a0f18;
-  --foreground: #e8eef7;
-  --muted: #8fa3bd;
-  --border: rgba(255, 255, 255, 0.10);
-  --accent: #4d9bff;
+  --background: #070b14;
+  --surface: #0f1828;
+  --surface-raised: #131e31;
+  --foreground: #e6edf7;
+  --muted: #94a3b8;
+  --border: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(148, 163, 184, 0.28);
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
+  --focus: #6098fa;
+  --radius-panel: 1rem;
+  --radius-control: 0.625rem;
+  color-scheme: dark;
 }
 
-* {
-  box-sizing: border-box;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: theme('fontFamily.sans');
+    line-height: 1.5;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  /* One visible focus style for every interactive element, keyboard only.
+     Components may add their own ring on top, but nothing can end up with no
+     indicator at all. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* Form controls that carry no background class would otherwise fall back
+     to the browser's white and go unreadable on the dark ground. An element
+     selector loses to any utility, so a control that sets its own still wins. */
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="password"],
+  input[type="email"],
+  select,
+  textarea {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--foreground);
+  }
+
+  input[type="file"] {
+    color: var(--muted);
+  }
+
+  /* The dropdown list itself is drawn by the OS, which ignores the dark
+     styling on the <select> and would otherwise render white text on white. */
+  select option,
+  select optgroup {
+    background: #131e31;
+    color: var(--foreground);
+  }
+
+  ::placeholder {
+    color: #64748b;
+  }
+
+  ::selection {
+    background: rgba(59, 130, 246, 0.35);
+  }
+
+  audio {
+    color-scheme: dark;
+  }
 }
 
-html {
-  scroll-behavior: smooth;
+@layer components {
+  /* Page ground: two soft brand glows over a faint grid. Pure CSS, so it costs
+     no download and stays put (fixed) while the panels scroll over it. */
+  .app-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgba(37, 99, 235, 0.22), transparent 60%),
+      radial-gradient(50rem 36rem at 100% 0%, rgba(79, 70, 229, 0.16), transparent 60%),
+      radial-gradient(40rem 30rem at 50% 110%, rgba(14, 165, 233, 0.08), transparent 60%),
+      var(--background);
+  }
+
+  .app-backdrop::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
+  }
+
+  /* Panels: the one card style the whole studio is built from. */
+  .panel {
+    @apply rounded-2xl border bg-ink-850/80 shadow-panel;
+    border-color: var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .panel-pad {
+    @apply p-4 sm:p-5;
+  }
+
+  .panel-title {
+    @apply text-[0.95rem] font-semibold leading-6 tracking-tight text-slate-50;
+  }
+
+  .panel-subtitle {
+    @apply text-sm leading-relaxed text-slate-400;
+  }
+
+  /* Small uppercase label above a group inside a panel. */
+  .eyebrow {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400;
+  }
+
+  .divider {
+    @apply border-t;
+    border-color: var(--border);
+  }
+
+  /* Sub-card inside a panel: a scene, an uploaded sound, a saved template. */
+  .tile {
+    @apply rounded-xl border bg-white/[0.025];
+    border-color: var(--border);
+  }
+
+  /* Buttons. One base plus a variant; sizes are separate so any variant can
+     be small. Every variant keeps WCAG AA contrast between label and fill. */
+  .btn {
+    @apply inline-flex h-10 shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] px-4 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-sm {
+    @apply h-8 gap-1.5 px-3 text-xs;
+  }
+
+  .btn-block {
+    @apply w-full;
+  }
+
+  .btn-primary {
+    @apply bg-brand-600 text-white shadow-sm shadow-brand-900/40 hover:bg-brand-700 enabled:active:bg-brand-800;
+  }
+
+  .btn-secondary {
+    @apply border bg-white/[0.04] text-slate-100 hover:bg-white/[0.09];
+    border-color: var(--border-strong);
+  }
+
+  .btn-ghost {
+    @apply text-slate-300 hover:bg-white/[0.07] hover:text-white;
+  }
+
+  /* Approval: the one action that commits the client. Bright green with dark
+     text so it reads as distinct from every other blue button. */
+  .btn-approve {
+    @apply bg-emerald-400 font-semibold text-emerald-950 hover:bg-emerald-300;
+  }
+
+  .btn-warning {
+    @apply bg-amber-400 font-semibold text-amber-950 hover:bg-amber-300;
+  }
+
+  .btn-danger {
+    @apply border border-red-400/35 text-red-200 hover:bg-red-500/15;
+  }
+
+  /* Square icon-only button (delete, mute...). Pair with an aria-label. */
+  .btn-icon {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .btn-icon-danger {
+    @apply hover:bg-red-500/15 hover:text-red-300;
+  }
+
+  /* Form fields. */
+  .label {
+    @apply mb-1.5 block text-xs font-medium text-slate-300;
+  }
+
+  .field {
+    @apply block w-full rounded-[var(--radius-control)] border bg-white/[0.04] px-3 py-2 text-sm text-slate-100 transition-colors placeholder:text-slate-500 hover:border-slate-400/40 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+    border-color: var(--border-strong);
+  }
+
+  .field-sm {
+    @apply px-2.5 py-1.5;
+  }
+
+  .hint {
+    @apply text-xs leading-relaxed text-slate-400;
+  }
+
+  .file-input {
+    @apply block w-full rounded-[var(--radius-control)] border border-dashed bg-white/[0.02] p-2 text-sm text-slate-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700 disabled:opacity-60;
+    border-color: var(--border-strong);
+  }
+
+  .checkbox {
+    @apply mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-brand-500;
+  }
+
+  /* Inline messages. Error is assertive in colour only; screen readers get
+     role="alert" where the component sets it. */
+  .alert {
+    @apply flex gap-2.5 rounded-xl border px-3.5 py-3 text-sm leading-relaxed;
+  }
+
+  .alert-error {
+    @apply border-red-400/30 bg-red-500/10 text-red-200;
+  }
+
+  .alert-warning {
+    @apply border-amber-400/30 bg-amber-400/10 text-amber-100;
+  }
+
+  .alert-info {
+    @apply border-brand-400/30 bg-brand-500/10 text-brand-100;
+  }
+
+  .alert-success {
+    @apply border-emerald-400/30 bg-emerald-400/10 text-emerald-100;
+  }
+
+  /* Small pill for metadata: platform, duration, scene count. */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-slate-300;
+    border-color: var(--border);
+  }
+
+  /* Spinner for buttons and inline loading states. */
+  .spinner {
+    @apply inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent;
+  }
+
+  /* Placeholder block while content loads. */
+  .skeleton {
+    @apply rounded-lg bg-white/[0.06];
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+    background-size: 200% 100%;
+    animation: skeleton-sweep 1.4s ease-in-out infinite;
+  }
 }
 
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-a {
-  color: inherit;
-}
-
-/* Form controls carry border and focus utilities but no background class, so
-   without this they fall back to the browser's white and go unreadable on the
-   dark ground. An element selector loses to any utility, so a panel that does
-   set its own background still wins. */
-input[type="text"],
-input[type="number"],
-input[type="search"],
-input[type="password"],
-input[type="email"],
-select,
-textarea {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--foreground);
-}
-
-input[type="file"] {
-  color: var(--muted);
-}
-
-/* The dropdown list itself is drawn by the OS, which ignores the dark styling
-   on the <select> and would otherwise render white text on white. */
-select option {
-  background: #141c28;
-  color: var(--foreground);
-}
-
-::placeholder {
-  color: #64748b;
-}
-
-/* Frosted panel. Scoped to a class rather than applied to every <section> so a
-   panel can opt out. */
-.glass {
-  background: rgba(255, 255, 255, 0.045);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.glass-strong {
-  background: rgba(10, 16, 26, 0.72);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-/* Slow drift on the backdrop so a static screen still feels alive. Disabled
-   for anyone who asked the system for less motion. */
-@keyframes backdrop-drift {
-  0%, 100% { transform: scale(1.06) translate3d(0, 0, 0); }
-  50% { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
-}
-
-.backdrop-layer {
-  animation: backdrop-drift 48s ease-in-out infinite;
+@keyframes skeleton-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(77, 155, 255, 0.45); }
-  70% { box-shadow: 0 0 0 16px rgba(77, 155, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(77, 155, 255, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45); }
+  70% { box-shadow: 0 0 0 14px rgba(248, 113, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
 }
 
 .listening-ring {
@@ -109,14 +300,23 @@ select option {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop-layer,
-  .listening-ring {
+  .listening-ring,
+  .skeleton {
     animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
 
 /* Thin scrollbars, so a scrolling transcript does not cut the panel with a
    chunky light-coloured bar. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
 .thin-scroll::-webkit-scrollbar {
   width: 8px;
 }

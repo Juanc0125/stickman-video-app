@@ -180,18 +180,24 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
     }
 
     return (
-        <div className="space-y-4">
-            <section className="glass rounded-2xl p-4">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Crear nuevo video</h2>
+        <div className="space-y-5">
+            <section className="panel panel-pad" aria-labelledby="create-video-title">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 id="create-video-title" className="panel-title">Crear nuevo video</h2>
+                        <p className="hint">También puedes pedírselo al asistente.</p>
+                    </div>
+                </div>
 
-                <div role="group" aria-label="Modo de creación" className="mb-3 grid grid-cols-2 gap-2 text-sm">
+                {/* Segmented control: one track, the active option raised. */}
+                <div role="group" aria-label="Modo de creación" className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.08] bg-ink-950/50 p-1 text-sm">
                     <button
                         type="button"
                         aria-pressed={mode === 'single'}
                         onClick={() => handleModeChange('single')}
                         disabled={submitting}
-                        className={`rounded px-3 py-1.5 font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                            mode === 'single' ? 'bg-sky-500 text-white' : 'border border-white/15 text-slate-300 hover:bg-white/10'
+                        className={`h-8 rounded-lg px-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            mode === 'single' ? 'bg-ink-700 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-100'
                         }`}
                     >
                         Un video
@@ -201,31 +207,31 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                         aria-pressed={mode === 'batch'}
                         onClick={() => handleModeChange('batch')}
                         disabled={submitting}
-                        className={`rounded px-3 py-1.5 font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                            mode === 'batch' ? 'bg-sky-500 text-white' : 'border border-white/15 text-slate-300 hover:bg-white/10'
+                        className={`h-8 rounded-lg px-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                            mode === 'batch' ? 'bg-ink-700 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-100'
                         }`}
                     >
                         Varios videos
                     </button>
                 </div>
 
-                <form onSubmit={mode === 'single' ? handleSubmit : handleBatchSubmit} className="space-y-3">
+                <form onSubmit={mode === 'single' ? handleSubmit : handleBatchSubmit} className="space-y-4">
                     {mode === 'single' ? (
                         <div>
-                            <label className="mb-1 block text-sm font-medium" htmlFor="new-video-topic">Tema</label>
+                            <label className="label" htmlFor="new-video-topic">Tema</label>
                             <input
                                 id="new-video-topic"
                                 type="text"
                                 value={topic}
                                 onChange={(event) => setTopic(event.target.value)}
                                 placeholder="Ej. Cómo elegir la mejor tasa hipotecaria"
-                                className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                                className="field"
                                 disabled={submitting}
                             />
                         </div>
                     ) : (
                         <div>
-                            <label className="mb-1 block text-sm font-medium" htmlFor="new-video-batch-topics">
+                            <label className="label" htmlFor="new-video-batch-topics">
                                 Temas (uno por línea, máximo {MAX_BATCH_TOPICS})
                             </label>
                             <textarea
@@ -234,89 +240,91 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                 value={batchTopics}
                                 onChange={(event) => setBatchTopics(event.target.value)}
                                 placeholder={'Cómo elegir la mejor tasa hipotecaria\nQué es el enganche\nPrecalificación vs preaprobación'}
-                                className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                                className="field leading-relaxed"
                                 disabled={submitting}
                             />
-                            <p className={`mt-1 text-xs ${batchTopicsCount > MAX_BATCH_TOPICS ? 'text-red-300' : 'text-slate-400'}`}>
+                            <p className={`mt-1.5 text-xs tabular-nums ${batchTopicsCount > MAX_BATCH_TOPICS ? 'text-red-300' : 'text-slate-400'}`}>
                                 {batchTopicsCount}/{MAX_BATCH_TOPICS} temas
                             </p>
                         </div>
                     )}
 
-                    <div>
-                        <label className="mb-1 block text-sm font-medium" htmlFor="new-video-platform">Plataforma</label>
-                        <select
-                            id="new-video-platform"
-                            value={platform}
-                            onChange={(event) => setPlatform(event.target.value as Platform)}
-                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
-                            disabled={submitting}
-                        >
-                            {PLATFORM_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                        <div>
+                            <label className="label" htmlFor="new-video-platform">Plataforma</label>
+                            <select
+                                id="new-video-platform"
+                                value={platform}
+                                onChange={(event) => setPlatform(event.target.value as Platform)}
+                                className="field"
+                                disabled={submitting}
+                            >
+                                {PLATFORM_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="label" htmlFor="new-video-duration">Duración objetivo (segundos)</label>
+                            <input
+                                id="new-video-duration"
+                                type="number"
+                                min={5}
+                                step={1}
+                                value={duration}
+                                onChange={(event) => setDuration(Number(event.target.value))}
+                                className="field"
+                                disabled={submitting}
+                            />
+                            {mode === 'batch' && (
+                                <p className="hint mt-1.5">Se aplica a todos los videos del lote.</p>
+                            )}
+                        </div>
                     </div>
                     <div>
-                        <label className="mb-1 block text-sm font-medium" htmlFor="new-video-template">Plantilla</label>
+                        <label className="label" htmlFor="new-video-template">Plantilla</label>
                         <select
                             id="new-video-template"
                             value={template}
                             onChange={(event) => setTemplate(event.target.value as VideoTemplate)}
-                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                            className="field"
                             disabled={submitting}
                         >
                             {VIDEO_TEMPLATES.map((option) => (
                                 <option key={option.id} value={option.id}>{option.label}</option>
                             ))}
                         </select>
-                        <p className="mt-1 text-xs text-slate-400">{getTemplate(template).description}</p>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm font-medium" htmlFor="new-video-duration">Duración objetivo (segundos)</label>
-                        <input
-                            id="new-video-duration"
-                            type="number"
-                            min={5}
-                            step={1}
-                            value={duration}
-                            onChange={(event) => setDuration(Number(event.target.value))}
-                            className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
-                            disabled={submitting}
-                        />
-                        {mode === 'batch' && (
-                            <p className="mt-1 text-xs text-slate-400">Se aplica a todos los videos del lote.</p>
-                        )}
+                        <p className="hint mt-1.5">{getTemplate(template).description}</p>
                     </div>
 
                     {mode === 'batch' && (
-                        <div className="flex items-start gap-2">
+                        <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
                             <input
                                 id="new-video-con-escenas"
                                 type="checkbox"
                                 checked={conEscenas}
                                 onChange={(event) => setConEscenas(event.target.checked)}
                                 disabled={submitting}
-                                className="mt-0.5 h-4 w-4 rounded border-white/30 accent-sky-500"
+                                className="checkbox"
                             />
-                            <label htmlFor="new-video-con-escenas" className="text-sm">
+                            <label htmlFor="new-video-con-escenas" className="text-sm text-slate-100">
                                 Generar escenas automáticamente
-                                <span className="block text-xs text-slate-400">
+                                <span className="hint mt-0.5 block">
                                     Recomendado: un borrador con escenas ya se puede revisar. Sin esto habría que generarlas después, una por una.
                                 </span>
                             </label>
                         </div>
                     )}
 
-                    {formError && <p className="text-sm text-red-300">{formError}</p>}
+                    {formError && <p role="alert" className="alert alert-error">{formError}</p>}
 
                     {mode === 'batch' && submitting && (
-                        <div className="flex items-center gap-2 rounded border border-sky-400/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200" aria-live="polite">
-                            <span className="h-4 w-4 flex-none animate-spin rounded-full border-2 border-white/20 border-t-sky-300" aria-hidden="true" />
+                        <div className="alert alert-info text-xs" aria-live="polite">
+                            <span className="spinner mt-0.5 text-brand-300" aria-hidden="true" />
                             <span>
                                 Creando {batchTopicsList.length} videos con IA. Esto puede tardar varios minutos porque cada uno es al menos una llamada al modelo — no cierres esta pantalla.
                                 {' '}
-                                <span className="font-mono text-sky-300">{formatElapsed(batchElapsed)}</span>
+                                <span className="font-mono text-brand-200">{formatElapsed(batchElapsed)}</span>
                             </span>
                         </div>
                     )}
@@ -337,14 +345,14 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                         ].filter(Boolean).join(', ');
 
                         return (
-                            <div className="space-y-2 rounded border border-white/10 bg-white/5 px-3 py-2 text-xs" aria-live="polite">
-                                <p className="text-slate-200">
+                            <div className="tile space-y-2 px-3.5 py-3 text-xs" aria-live="polite">
+                                <p className="text-sm text-slate-100">
                                     Se crearon {batchResult.createdCount} de {total} video{total === 1 ? '' : 's'}
                                     {hasIssues ? `: ${breakdown}.` : '.'}
                                 </p>
 
                                 {batchResult.warnings.length > 0 && (
-                                    <div className="space-y-1 rounded border border-amber-400/30 bg-amber-500/10 px-2 py-1.5">
+                                    <div className="space-y-1 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-2">
                                         <p className="font-medium text-amber-200">
                                             Advertencia: se crearon pero salieron incompletos. Revísalos antes de aprobarlos.
                                         </p>
@@ -353,7 +361,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                                 <li key={`${warning.tema}-${index}`}>
                                                     <span className="font-medium">&quot;{warning.tema}&quot;</span>: {warning.motivo}
                                                     {' '}
-                                                    <span className="text-amber-300/80">{warningNextStep(warning)}</span>
+                                                    <span className="text-amber-200/90">{warningNextStep(warning)}</span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -361,8 +369,8 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                 )}
 
                                 {batchResult.failed.length > 0 && (
-                                    <div className="space-y-1 rounded border border-red-400/30 bg-red-500/10 px-2 py-1.5">
-                                        <p className="font-medium text-red-300">No se pudieron crear:</p>
+                                    <div className="space-y-1 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-2">
+                                        <p className="font-medium text-red-200">No se pudieron crear:</p>
                                         <ul className="space-y-1 text-red-200">
                                             {batchResult.failed.map((failure, index) => (
                                                 <li key={`${failure.tema}-${index}`}>
@@ -370,7 +378,7 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                                                 </li>
                                             ))}
                                         </ul>
-                                        <p className="text-slate-400">Esos temas quedaron arriba para reintentarlos.</p>
+                                        <p className="text-slate-300">Esos temas quedaron arriba para reintentarlos.</p>
                                     </div>
                                 )}
                             </div>
@@ -380,8 +388,9 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                     <button
                         type="submit"
                         disabled={submitting || (mode === 'batch' && (batchTopicsCount === 0 || batchTopicsCount > MAX_BATCH_TOPICS))}
-                        className="w-full rounded bg-sky-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-primary btn-block"
                     >
+                        {submitting && <span className="spinner" aria-hidden="true" />}
                         {mode === 'single'
                             ? (submitting ? 'Generando guion con IA...' : 'Crear video')
                             : (submitting
@@ -391,51 +400,90 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                 </form>
             </section>
 
-            <section className="glass rounded-2xl p-4">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Videos</h2>
-                {loading && <p className="text-sm text-slate-400">Cargando videos...</p>}
-                {loadError && <p className="text-sm text-red-300">{loadError}</p>}
-                {!loading && !loadError && videos.length === 0 && (
-                    <p className="text-sm text-slate-400">Aún no hay videos. Crea el primero arriba.</p>
+            <section className="panel panel-pad" aria-labelledby="video-list-title">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                    <h2 id="video-list-title" className="panel-title">Tus videos</h2>
+                    {!loading && videos.length > 0 && (
+                        <span className="chip tabular-nums">{videos.length}</span>
+                    )}
+                </div>
+                {loading && (
+                    <ul className="space-y-2" aria-label="Cargando videos">
+                        {[0, 1, 2].map((key) => (
+                            <li key={key} className="tile space-y-2 p-3">
+                                <div className="skeleton h-4 w-3/4" />
+                                <div className="skeleton h-3 w-1/3" />
+                            </li>
+                        ))}
+                    </ul>
                 )}
-                {deleteError && <p className="mb-2 text-sm text-red-300">{deleteError}</p>}
+                {loadError && <p role="alert" className="alert alert-error">{loadError}</p>}
+                {!loading && !loadError && videos.length === 0 && (
+                    <div className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.12] px-4 py-8 text-center">
+                        <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05] text-slate-400" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="5" width="18" height="14" rx="3" />
+                                <path d="m10 9 5 3-5 3z" />
+                            </svg>
+                        </span>
+                        <p className="text-sm font-medium text-slate-200">Aún no hay videos</p>
+                        <p className="hint mt-1">Crea el primero arriba o díselo al asistente.</p>
+                    </div>
+                )}
+                {deleteError && <p role="alert" className="alert alert-error mb-3">{deleteError}</p>}
                 <ul className="space-y-2">
-                    {videos.map((video) => (
-                        <li
-                            key={video.id}
-                            className={`group relative rounded border transition ${
-                                video.id === selectedId ? 'border-sky-400/50 bg-white/5' : 'border-white/10 hover:bg-white/10'
-                            }`}
-                        >
-                            <button
-                                type="button"
-                                onClick={() => onSelect(video.id)}
-                                className="w-full px-3 py-2 pr-10 text-left text-sm"
+                    {videos.map((video) => {
+                        const isSelected = video.id === selectedId;
+                        return (
+                            <li
+                                key={video.id}
+                                className={`group relative rounded-xl border transition-colors ${
+                                    isSelected
+                                        ? 'border-brand-400/50 bg-brand-500/[0.08] shadow-[inset_3px_0_0_0_theme(colors.brand.400)]'
+                                        : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16] hover:bg-white/[0.05]'
+                                }`}
                             >
-                                <div className="font-medium line-clamp-1">{video.topic}</div>
-                                <div className="mt-1 flex items-center justify-between gap-2">
-                                    <span className="text-xs text-slate-400">{PLATFORM_LABELS[video.platform]}</span>
-                                    <StatusBadge status={video.status} />
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleDelete(video)}
-                                disabled={deletingId === video.id}
-                                aria-label={`Eliminar ${video.topic}`}
-                                title="Eliminar video"
-                                className="absolute right-1.5 top-1.5 rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 md:opacity-0 md:group-hover:opacity-100"
-                            >
-                                {deletingId === video.id ? (
-                                    <span className="block h-4 w-4 animate-spin rounded-full border-2 border-white/15 border-t-red-600" />
-                                ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                                        <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
-                                    </svg>
-                                )}
-                            </button>
-                        </li>
-                    ))}
+                                <button
+                                    type="button"
+                                    onClick={() => onSelect(video.id)}
+                                    aria-current={isSelected ? 'true' : undefined}
+                                    className="w-full rounded-xl px-3.5 py-3 pr-11 text-left text-sm"
+                                >
+                                    <div className="line-clamp-2 font-medium leading-snug text-slate-50">{video.topic}</div>
+                                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                        <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                                            {PLATFORM_LABELS[video.platform]}
+                                            <span aria-hidden="true">·</span>
+                                            <span className="tabular-nums">{video.target_duration_seconds}s</span>
+                                            {video.render_status === 'procesando' && (
+                                                <span className="ml-1 inline-flex items-center gap-1 text-brand-200">
+                                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-300" aria-hidden="true" />
+                                                    <span className="tabular-nums">{video.render_progress}%</span>
+                                                </span>
+                                            )}
+                                        </span>
+                                        <StatusBadge status={video.status} />
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDelete(video)}
+                                    disabled={deletingId === video.id}
+                                    aria-label={`Eliminar ${video.topic}`}
+                                    title="Eliminar video"
+                                    className="btn-icon btn-icon-danger absolute right-2 top-2 md:opacity-0 md:focus-visible:opacity-100 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                                >
+                                    {deletingId === video.id ? (
+                                        <span className="spinner text-red-300" aria-hidden="true" />
+                                    ) : (
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                                            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </li>
+                        );
+                    })}
                 </ul>
             </section>
         </div>

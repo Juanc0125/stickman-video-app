@@ -71,52 +71,63 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
     }
 
     return (
-        <div className="space-y-4">
-            <section className="glass rounded-2xl p-4">
-                <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Estado y aprobación</h3>
+        <div className="space-y-5">
+            {/* The human gate (RF-012). A faint brand ring sets it apart from the
+                editing panels above, since it is where the decision is made. */}
+            <section className="panel panel-pad ring-1 ring-inset ring-brand-400/15">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="panel-title">Estado y aprobación</h3>
                     <StatusBadge status={video.status} />
                 </div>
 
-                {actionError && <p className="mb-3 text-sm text-red-300">{actionError}</p>}
+                {actionError && <p className="alert alert-error mb-4" role="alert">{actionError}</p>}
 
                 {video.status === 'borrador' && (
                     <div>
-                        <p className="mb-2 text-sm text-slate-300">
+                        <p className="mb-4 text-sm leading-relaxed text-slate-300">
                             El video está en borrador. Envíalo a aprobación cuando el guion y las escenas estén listos.
                         </p>
                         <button
                             type="button"
                             onClick={() => runAction('submit')}
                             disabled={busy}
-                            className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="btn btn-primary"
                         >
+                            {actionLoading === 'submit' && <span className="spinner" aria-hidden="true" />}
                             {actionLoading === 'submit' ? 'Enviando...' : 'Enviar a aprobación'}
                         </button>
                     </div>
                 )}
 
                 {video.status === 'pendiente_aprobacion' && (
-                    <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3">
-                        <p className="mb-3 text-sm font-medium text-amber-200">
-                            Este video requiere aprobación humana antes de poder generarse o publicarse. Revisa el
-                            guion, las escenas y la marca antes de decidir.
-                        </p>
+                    <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+                        <div className="mb-4 flex gap-3">
+                            <svg className="mt-0.5 shrink-0 text-amber-300" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z" />
+                                <path d="m9 12 2 2 4-4" />
+                            </svg>
+                            <p className="text-sm font-medium leading-relaxed text-amber-100">
+                                Este video requiere aprobación humana antes de poder generarse o publicarse. Revisa el
+                                guion, las escenas y la marca antes de decidir.
+                            </p>
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             <button
                                 type="button"
                                 onClick={() => runAction('approve')}
                                 disabled={busy}
-                                className="rounded bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="btn btn-approve"
                             >
+                                {actionLoading === 'approve' && <span className="spinner" aria-hidden="true" />}
                                 {actionLoading === 'approve' ? 'Aprobando...' : 'Aprobar'}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => runAction('reject')}
                                 disabled={busy}
-                                className="rounded border border-red-400/30 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="btn btn-danger"
                             >
+                                {actionLoading === 'reject' && <span className="spinner" aria-hidden="true" />}
                                 {actionLoading === 'reject' ? 'Rechazando...' : 'Rechazar y volver a borrador'}
                             </button>
                         </div>
@@ -128,9 +139,9 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                         <p className="text-sm text-slate-300">El video fue aprobado. Ya puedes generar el archivo final.</p>
 
                         {stalled ? (
-                            <div className="rounded border border-amber-400/30 bg-amber-400/10 p-3">
+                            <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
                                 <p className="text-sm font-medium text-amber-200">Esta generacion se quedo colgada.</p>
-                                <p className="mt-1 text-xs text-amber-200/80">
+                                <p className="mt-1 text-xs text-amber-100/90">
                                     Empezo hace mas de {Math.round(STALLED_AFTER_MS / 60000)} minutos y el servidor dejo de
                                     reportar, normalmente porque se reinicio a mitad del trabajo. Puedes volver a lanzarla.
                                 </p>
@@ -138,24 +149,27 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                     type="button"
                                     onClick={() => runAction('render')}
                                     disabled={busy}
-                                    className="mt-3 rounded bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="btn btn-warning mt-3"
                                 >
                                     {actionLoading === 'render' ? 'Reintentando...' : 'Reintentar generacion'}
                                 </button>
                             </div>
                         ) : rendering ? (
-                            <div className="rounded border border-sky-400/25 bg-sky-500/10 p-3">
+                            <div className="rounded-xl border border-brand-400/25 bg-brand-500/10 p-4">
                                 <div className="mb-2 flex items-center justify-between">
-                                    <span className="text-sm font-medium text-sky-100">Generando el video...</span>
-                                    <span className="font-mono text-sm tabular-nums text-sky-100">{video.render_progress}%</span>
+                                    <span className="flex items-center gap-2 text-sm font-medium text-brand-100">
+                                        <span className="spinner text-brand-300" aria-hidden="true" />
+                                        Generando el video...
+                                    </span>
+                                    <span className="font-mono text-sm tabular-nums text-brand-100">{video.render_progress}%</span>
                                 </div>
-                                <div className="h-2 w-full overflow-hidden rounded bg-sky-500/20">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-brand-500/20">
                                     <div
-                                        className="h-full rounded bg-sky-400 transition-all duration-500"
+                                        className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-300 transition-all duration-500"
                                         style={{ width: `${Math.max(2, video.render_progress)}%` }}
                                     />
                                 </div>
-                                <p className="mt-2 text-xs text-sky-200">
+                                <p className="mt-2 text-xs text-brand-200">
                                     Puedes cerrar esta pantalla: el trabajo sigue en el servidor y el progreso se actualiza solo.
                                 </p>
                             </div>
@@ -164,32 +178,34 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                 type="button"
                                 onClick={() => runAction('render')}
                                 disabled={busy}
-                                className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="btn btn-primary"
                             >
+                                {actionLoading === 'render' && <span className="spinner" aria-hidden="true" />}
                                 {actionLoading === 'render' ? 'Enviando...' : video.video_url ? 'Regenerar video final' : 'Generar video'}
                             </button>
                         )}
 
                         {video.render_status === 'error' && video.render_error && (
-                            <div className="rounded border border-red-400/30 bg-red-500/10 p-3">
+                            <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-4">
                                 <p className="text-sm font-medium text-red-200">No se pudo generar el video.</p>
                                 <p className="mt-1 break-words font-mono text-xs text-red-300">{video.render_error}</p>
                             </div>
                         )}
 
                         {video.video_url && (
-                            <div className="space-y-2 rounded border border-white/10 p-3">
-                                <video controls src={video.video_url} className="w-full max-w-xs rounded" />
+                            <div className="tile space-y-3 p-3.5">
+                                <video controls src={video.video_url} className="w-full max-w-[16rem] rounded-xl border border-white/10 bg-black" />
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <a href={video.video_url} download className="text-sm font-medium text-sky-300 underline">
+                                    <a href={video.video_url} download className="btn btn-secondary">
                                         Descargar MP4
                                     </a>
                                     <button
                                         type="button"
                                         onClick={() => runAction('publish')}
                                         disabled={busy}
-                                        className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="btn btn-primary"
                                     >
+                                        {actionLoading === 'publish' && <span className="spinner" aria-hidden="true" />}
                                         {actionLoading === 'publish' ? 'Publicando...' : 'Publicar'}
                                     </button>
                                 </div>
@@ -199,12 +215,12 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                 )}
 
                 {video.status === 'publicado' && (
-                    <div className="space-y-2">
-                        <p className="text-sm font-medium text-emerald-300">Este video ya fue publicado.</p>
+                    <div className="space-y-3">
+                        <p className="alert alert-success font-medium">Este video ya fue publicado.</p>
                         {video.video_url && (
-                            <div className="space-y-2 rounded border border-white/10 p-3">
-                                <video controls src={video.video_url} className="w-full max-w-xs rounded" />
-                                <a href={video.video_url} download className="text-sm font-medium text-sky-300 underline">
+                            <div className="tile space-y-3 p-3.5">
+                                <video controls src={video.video_url} className="w-full max-w-[16rem] rounded-xl border border-white/10 bg-black" />
+                                <a href={video.video_url} download className="btn btn-secondary">
                                     Descargar MP4
                                 </a>
                             </div>
@@ -213,9 +229,9 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                 )}
             </section>
 
-            <section className="glass rounded-2xl p-4">
-                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400">Duplicar para otra plataforma</h3>
-                <p className="mb-3 text-sm text-slate-300">
+            <section className="panel panel-pad">
+                <h3 className="panel-title mb-1">Duplicar para otra plataforma</h3>
+                <p className="panel-subtitle mb-4">
                     Reutiliza el guion, las escenas y la marca de este video para crear un nuevo borrador dirigido a
                     otra plataforma. El nuevo video inicia su propio ciclo de aprobación.
                 </p>
@@ -227,7 +243,8 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                             value={duplicatePlatform}
                             onChange={(event) => setDuplicatePlatform(event.target.value as Platform)}
                             disabled={duplicating}
-                            className="rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                            aria-label="Plataforma del nuevo borrador"
+                            className="field w-full sm:w-auto"
                         >
                             {otherPlatforms.map((option) => (
                                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -237,13 +254,14 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                             type="button"
                             onClick={handleDuplicate}
                             disabled={duplicating}
-                            className="rounded border border-sky-400/50 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            className="btn btn-secondary"
                         >
+                            {duplicating && <span className="spinner" aria-hidden="true" />}
                             {duplicating ? 'Duplicando...' : `Duplicar para ${PLATFORM_LABELS[duplicatePlatform]}`}
                         </button>
                     </div>
                 )}
-                {duplicateError && <p className="mt-2 text-sm text-red-300">{duplicateError}</p>}
+                {duplicateError && <p className="alert alert-error mt-3" role="alert">{duplicateError}</p>}
             </section>
         </div>
     );

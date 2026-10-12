@@ -173,12 +173,15 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
     }
 
     return (
-        <section className="glass rounded-2xl p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Marca (branding)</h3>
+        <section className="panel panel-pad">
+            <div className="mb-4">
+                <h3 className="panel-title">Marca (branding)</h3>
+                <p className="hint">Colores, tipografía y logo que el video lleva en pantalla.</p>
+            </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="mb-1 block text-sm font-medium" htmlFor="primary-color">Color primario</label>
+                    <label className="label" htmlFor="primary-color">Color primario</label>
                     <div className="flex items-center gap-2">
                         <input
                             id="primary-color"
@@ -186,13 +189,13 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                             value={primaryColor}
                             onChange={(event) => setPrimaryColor(event.target.value)}
                             disabled={saving}
-                            className="h-9 w-14 cursor-pointer rounded border border-white/15"
+                            className="h-10 w-14 cursor-pointer rounded-lg border border-white/20 bg-transparent p-1"
                         />
-                        <span className="text-sm text-slate-400">{primaryColor}</span>
+                        <span className="font-mono text-sm uppercase text-slate-300">{primaryColor}</span>
                     </div>
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm font-medium" htmlFor="secondary-color">Color secundario</label>
+                    <label className="label" htmlFor="secondary-color">Color secundario</label>
                     <div className="flex items-center gap-2">
                         <input
                             id="secondary-color"
@@ -200,13 +203,13 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                             value={secondaryColor}
                             onChange={(event) => setSecondaryColor(event.target.value)}
                             disabled={saving}
-                            className="h-9 w-14 cursor-pointer rounded border border-white/15"
+                            className="h-10 w-14 cursor-pointer rounded-lg border border-white/20 bg-transparent p-1"
                         />
-                        <span className="text-sm text-slate-400">{secondaryColor}</span>
+                        <span className="font-mono text-sm uppercase text-slate-300">{secondaryColor}</span>
                     </div>
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm font-medium" htmlFor="font-family">Tipografía</label>
+                    <label className="label" htmlFor="font-family">Tipografía</label>
                     {/* A select, not free text: only these four typefaces ship with the
                         renderer, and a name it cannot honour would silently do nothing. */}
                     <select
@@ -214,7 +217,7 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                         value={FONT_OPTIONS.some((option) => option.value === fontFamily) ? fontFamily : 'sans'}
                         onChange={(event) => setFontFamily(event.target.value)}
                         disabled={saving}
-                        className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field"
                     >
                         {FONT_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -222,13 +225,13 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                     </select>
                 </div>
                 <div>
-                    <label className="mb-1 block text-sm font-medium" htmlFor="logo-position">Posición del logo</label>
+                    <label className="label" htmlFor="logo-position">Posición del logo</label>
                     <select
                         id="logo-position"
                         value={logoPosition}
                         onChange={(event) => setLogoPosition(event.target.value as LogoPosition)}
                         disabled={saving}
-                        className="w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field"
                     >
                         {LOGO_POSITION_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -237,23 +240,24 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                 </div>
             </div>
 
-            {saveError && <p className="mt-3 text-sm text-red-300">{saveError}</p>}
+            {saveError && <p className="alert alert-error mt-3" role="alert">{saveError}</p>}
             <div className="mt-3">
                 <button
                     type="button"
                     onClick={handleSaveBranding}
                     disabled={saving || !dirty}
-                    className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn-primary"
                 >
+                    {saving && <span className="spinner" aria-hidden="true" />}
                     {saving ? 'Guardando...' : 'Guardar cambios de marca'}
                 </button>
             </div>
 
-            <div className="mt-5 border-t border-white/10 pt-4">
-                <label className="mb-1 block text-sm font-medium" htmlFor="logo-upload">Logo</label>
+            <div className="divider mt-6 pt-5">
+                <label className="label" htmlFor="logo-upload">Logo</label>
                 {branding.logo_url && (
                     // eslint-disable-next-line @next/next/no-img-element -- external/base64-derived Supabase Storage URL, not a static local asset.
-                    <img src={branding.logo_url} alt="Logo actual de la marca" className="mb-2 h-16 w-auto rounded border border-white/10 bg-white/5 object-contain p-1" />
+                    <img src={branding.logo_url} alt="Logo actual de la marca" className="mb-3 h-16 w-auto rounded-lg border border-white/10 bg-white/5 object-contain p-1.5" />
                 )}
                 <input
                     id="logo-upload"
@@ -262,16 +266,21 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                     accept={ACCEPTED_LOGO_TYPES}
                     onChange={handleLogoChange}
                     disabled={uploading}
-                    className="block w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+                    className="file-input"
                 />
-                <p className="mt-1 text-xs text-slate-400">PNG, JPG, WEBP o SVG. Máximo 2MB.</p>
-                {uploading && <p className="mt-1 text-sm text-slate-400">Subiendo logo...</p>}
-                {uploadError && <p className="mt-1 text-sm text-red-300">{uploadError}</p>}
+                <p className="hint mt-1.5">PNG, JPG, WEBP o SVG. Máximo 2MB.</p>
+                {uploading && (
+                    <p className="mt-2 flex items-center gap-2 text-sm text-slate-300" role="status">
+                        <span className="spinner text-brand-300" aria-hidden="true" />
+                        Subiendo logo...
+                    </p>
+                )}
+                {uploadError && <p className="alert alert-error mt-2" role="alert">{uploadError}</p>}
             </div>
 
-            <div className="mt-5 border-t border-white/10 pt-4">
-                <h4 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-400">Plantillas de marca</h4>
-                <p className="mb-3 text-sm text-slate-300">
+            <div className="divider mt-6 pt-5">
+                <h4 className="panel-title mb-1">Plantillas de marca</h4>
+                <p className="panel-subtitle mb-4">
                     Guarda esta identidad (colores, tipografía, logo y su posición) con un nombre y aplícala a
                     cualquier otro video para producir contenido consistente sin repetir la configuración.
                 </p>
@@ -285,26 +294,27 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                         maxLength={80}
                         disabled={savingTemplate}
                         aria-label="Nombre de la plantilla de marca"
-                        className="min-w-0 flex-1 rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field min-w-0 flex-1"
                     />
                     <button
                         type="button"
                         onClick={handleSaveTemplate}
                         disabled={savingTemplate || !templateName.trim()}
-                        className="rounded border border-sky-400/50 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-secondary"
                     >
+                        {savingTemplate && <span className="spinner" aria-hidden="true" />}
                         {savingTemplate ? 'Guardando...' : 'Guardar como plantilla'}
                     </button>
                 </div>
 
-                {templateError && <p className="mt-2 text-sm text-red-300">{templateError}</p>}
+                {templateError && <p className="alert alert-error mt-3" role="alert">{templateError}</p>}
 
                 {brandTemplates.length === 0 ? (
-                    <p className="mt-3 text-sm text-slate-400">Todavía no hay plantillas de marca guardadas.</p>
+                    <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] px-4 py-5 text-center text-sm text-slate-400">Todavía no hay plantillas de marca guardadas.</p>
                 ) : (
                     <ul className="mt-3 space-y-2">
                         {brandTemplates.map((template) => (
-                            <li key={template.id} className="flex items-center gap-2 rounded border border-white/10 px-3 py-2">
+                            <li key={template.id} className="tile flex items-center gap-2.5 px-3.5 py-2.5">
                                 <span className="flex shrink-0 gap-1" aria-hidden="true">
                                     <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: template.branding.primary_color }} />
                                     <span className="h-4 w-4 rounded-full border border-white/20" style={{ backgroundColor: template.branding.secondary_color }} />
@@ -314,7 +324,7 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                                     type="button"
                                     onClick={() => handleApplyTemplate(template)}
                                     disabled={applyingId === template.id}
-                                    className="rounded bg-sky-500 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="btn btn-primary btn-sm"
                                 >
                                     {applyingId === template.id ? 'Aplicando...' : 'Aplicar'}
                                 </button>
@@ -324,7 +334,7 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
                                     disabled={deletingTemplateId === template.id}
                                     aria-label={`Eliminar la plantilla ${template.name}`}
                                     title="Eliminar plantilla"
-                                    className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="btn-icon btn-icon-danger"
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                                         <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { VideoRecord } from './api';
 import AssistantEntity, { type EntityMood } from './assistant-entity';
+import { LogoMark } from './logo';
 import { createRecordedRecognition } from './recorded-dictation';
 
 interface AssistantProps {
@@ -448,14 +449,16 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         : 'Escribe o pulsa el microfono';
 
     return (
-        <section className="glass flex max-h-[42rem] min-h-[30rem] flex-col overflow-hidden rounded-2xl">
-            <header className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-3">
-                <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/icon-192.png" alt="" width={26} height={26} className="rounded-full" />
-                </span>
+        <section className="panel flex max-h-[44rem] min-h-[30rem] flex-col overflow-hidden" aria-label="Asistente de voz">
+            <header className="flex flex-wrap items-center gap-2 border-b border-white/[0.07] px-4 py-3">
+                <LogoMark size={32} />
                 <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-semibold text-white">Asistente</span>
+                    <span className="flex items-center gap-2">
+                        <span className="panel-title">Asistente</span>
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${
+                            speaking ? 'animate-pulse bg-brand-300' : listening ? 'animate-pulse bg-red-400' : busy ? 'bg-amber-400' : 'bg-emerald-400'
+                        }`} aria-hidden="true" />
+                    </span>
                     <span className="block truncate text-xs text-slate-400">{statusText}</span>
                 </span>
                 <button
@@ -466,10 +469,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                         ? 'Modo manos libres activado: escucha, envia y vuelve a escuchar sola. Pulsa para apagarlo'
                         : 'Activar el modo manos libres: escucha de forma continua sin pulsar el microfono cada vez'}
                     title={handsFree ? 'Manos libres activado' : 'Activar manos libres'}
-                    className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition ${
+                    className={`btn btn-sm rounded-full ${
                         handsFree
-                            ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
-                            : 'border-white/15 bg-white/5 text-slate-300 hover:bg-white/10'
+                            ? 'border border-emerald-400/40 bg-emerald-400/15 text-emerald-200 hover:bg-emerald-400/25'
+                            : 'btn-secondary'
                     }`}
                 >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -492,11 +495,11 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     aria-pressed={!voiceOn}
                     aria-label={voiceOn ? 'Apagar la voz del asistente' : 'Encender la voz del asistente'}
                     title={voiceOn ? 'Apagar la voz: seguira respondiendo por escrito' : 'Encender la voz'}
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition ${
-                        voiceOn ? 'bg-white/10 text-slate-200 hover:bg-white/20' : 'bg-red-500/20 text-red-300 hover:bg-red-500/30'
+                    className={`btn-icon rounded-full ${
+                        voiceOn ? 'border border-white/10 bg-white/[0.04] text-slate-200' : 'bg-red-500/15 text-red-300 hover:bg-red-500/25 hover:text-red-200'
                     }`}
                 >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M11 5 6 9H3v6h3l5 4z" />
                         {voiceOn ? (
                             <>
@@ -508,27 +511,32 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                         )}
                     </svg>
                 </button>
-                <span className={`h-2 w-2 shrink-0 rounded-full ${
-                    speaking ? 'animate-pulse bg-sky-400' : listening ? 'animate-pulse bg-red-400' : busy ? 'bg-amber-400' : 'bg-emerald-400'
-                }`} aria-hidden="true" />
             </header>
 
             {/* The assistant's body, between the controls and the conversation:
                 it is what tells you, at a glance, whether it is listening,
                 thinking or talking. */}
-            <div className="flex flex-col items-center border-b border-white/10 py-2">
+            <div className="flex flex-col items-center border-b border-white/[0.07] bg-gradient-to-b from-brand-500/[0.07] to-transparent pb-3 pt-2">
                 <AssistantEntity mood={mood} pulse={pulse} />
-                <span className="text-xs text-slate-400" aria-live="polite">{statusText}</span>
+                <span className="chip -mt-1" aria-live="polite">{statusText}</span>
             </div>
 
             <div ref={transcriptRef} className="thin-scroll flex-1 space-y-3 overflow-y-auto p-4">
+                {turns.length === 0 && (
+                    // Until the list loads there is no greeting yet: a quiet
+                    // placeholder instead of an empty box.
+                    <div className="space-y-2" aria-hidden="true">
+                        <div className="skeleton h-10 w-3/4 rounded-2xl" />
+                        <div className="skeleton h-6 w-1/2 rounded-2xl" />
+                    </div>
+                )}
                 {turns.map((turn, index) => (
                     <div
                         key={index}
                         className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                             turn.who === 'tu'
-                                ? 'ml-auto bg-sky-500/90 text-white'
-                                : 'border border-white/10 bg-white/5 text-slate-100'
+                                ? 'ml-auto rounded-br-md bg-brand-600 text-white'
+                                : 'rounded-bl-md border border-white/[0.08] bg-white/[0.04] text-slate-100'
                         }`}
                     >
                         {turn.text}
@@ -538,22 +546,25 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     // What it is hearing right now, not yet sent: dashed so it
                     // reads as provisional next to the solid sent bubbles.
                     <div
-                        className="ml-auto max-w-[88%] rounded-2xl border border-dashed border-sky-400/50 bg-sky-500/10 px-3.5 py-2.5 text-sm italic leading-relaxed text-sky-100"
+                        className="ml-auto max-w-[88%] rounded-2xl rounded-br-md border border-dashed border-brand-400/50 bg-brand-500/10 px-3.5 py-2.5 text-sm italic leading-relaxed text-brand-100"
                         aria-label={`Escuchando: ${interim}`}
                     >
                         {interim}
                     </div>
                 )}
                 {busy && (
-                    <div className="max-w-[88%] rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm text-slate-400">
-                        Pensando...
+                    <div className="inline-flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-white/[0.08] bg-white/[0.04] px-3.5 py-3" role="status">
+                        <span className="sr-only">Pensando...</span>
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" aria-hidden="true" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" aria-hidden="true" />
+                        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" aria-hidden="true" />
                     </div>
                 )}
             </div>
 
             <form
                 onSubmit={(event) => { event.preventDefault(); void send(input); }}
-                className="flex items-center gap-2 border-t border-white/10 p-3"
+                className="flex items-center gap-2 border-t border-white/[0.07] bg-ink-900/40 p-3"
             >
                 <button
                     type="button"
@@ -564,14 +575,14 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                         ? 'Microfono en uso por el modo manos libres'
                         : listening ? 'Escuchando: pulsa para detener' : 'Hablar: pulsa y di lo que necesitas'}
                     title={handsFree ? 'El modo manos libres ya tiene el microfono abierto' : undefined}
-                    className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                        listening && !handsFree ? 'listening-ring bg-red-500 text-white' : 'bg-white/10 text-slate-200 hover:bg-white/20'
+                    className={`btn rounded-full px-3 text-xs ${
+                        listening && !handsFree ? 'listening-ring bg-red-600 font-semibold text-white hover:bg-red-700' : 'btn-secondary'
                     }`}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v4" />
                     </svg>
-                    <span>{listening && !handsFree ? 'Escuchando' : 'Hablar'}</span>
+                    <span className="hidden min-[400px]:inline">{listening && !handsFree ? 'Escuchando' : 'Hablar'}</span>
                 </button>
                 <input
                     value={input}
@@ -579,14 +590,18 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     disabled={busy}
                     placeholder={micPlaceholder}
                     aria-label="Mensaje para el asistente"
-                    className="min-w-0 flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-400/60 focus:outline-none"
+                    className="field h-10 min-w-0 flex-1 rounded-full px-4"
                 />
                 <button
                     type="submit"
                     disabled={busy || !input.trim()}
-                    className="shrink-0 rounded-full bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:opacity-40"
+                    aria-label="Enviar mensaje"
+                    className="btn btn-primary rounded-full px-3 sm:px-4"
                 >
-                    Enviar
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                    <span className="hidden sm:inline">Enviar</span>
                 </button>
             </form>
         </section>

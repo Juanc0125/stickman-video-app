@@ -5,6 +5,7 @@ import { fetchSession, fetchVideos, logout, type VideoRecord } from './api';
 import VideoList from './video-list';
 import VideoWorkspace from './video-workspace';
 import Assistant from './assistant';
+import Logo from './logo';
 
 export default function VideoStudio() {
     const [videos, setVideos] = useState<VideoRecord[]>([]);
@@ -75,38 +76,38 @@ export default function VideoStudio() {
 
     return (
         <div className="relative flex flex-1 flex-col">
-            {/* Fixed so the art stays put while the panels scroll over it. */}
-            <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0a0f18]">
-                <div
-                    className="backdrop-layer absolute inset-0 bg-cover bg-center opacity-90"
-                    style={{ backgroundImage: 'url(/backdrop/space.jpg)' }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f18]/30 via-transparent to-[#0a0f18]/85" />
-            </div>
+            <div aria-hidden="true" className="app-backdrop" />
 
-            <header className="glass-strong sticky top-0 z-20 border-b border-white/10">
-                <div className="mx-auto flex max-w-[110rem] items-center gap-3 px-5 py-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 ring-1 ring-sky-400/25">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/icons/icon-192.png" alt="" width={30} height={30} className="rounded-lg" />
-                    </span>
-                    <div className="flex-1">
-                        <h1 className="text-base font-semibold leading-tight tracking-tight text-white">Stickman</h1>
-                        <p className="text-xs text-slate-400">Videos cortos de marketing hipotecario</p>
+            <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-ink-950/75 backdrop-blur-xl">
+                <div className="mx-auto flex h-16 max-w-[110rem] items-center gap-3 px-4 sm:px-6">
+                    <div className="min-w-0 flex-1">
+                        <h1 className="sr-only">Stickman Studio</h1>
+                        <Logo size={36} tagline="Videos cortos de marketing hipotecario" />
                     </div>
-                    <div className="hidden items-center gap-4 text-xs text-slate-400 sm:flex">
-                        <span><span className="font-mono text-base text-white">{videos.length}</span> videos</span>
+
+                    <div className="hidden items-center gap-2 md:flex" aria-label="Resumen">
+                        <span className="chip">
+                            <span className="font-mono text-sm font-semibold tabular-nums text-white">{videos.length}</span>
+                            {videos.length === 1 ? 'video' : 'videos'}
+                        </span>
                         {rendering > 0 && (
-                            <span className="flex items-center gap-1.5 text-sky-300">
-                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-sky-400" />
+                            <span className="chip border-brand-400/30 bg-brand-500/10 text-brand-200">
+                                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-300" aria-hidden="true" />
                                 {rendering} generando
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-2.5 border-l border-white/10 pl-3 text-xs text-slate-400">
+
+                    <div className="flex items-center gap-2 sm:border-l sm:border-white/10 sm:pl-3">
                         {email && (
-                            <span className="hidden max-w-[11rem] truncate sm:inline" title={email}>
-                                {email}
+                            <span className="hidden items-center gap-2 lg:flex" title={email}>
+                                <span
+                                    aria-hidden="true"
+                                    className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500/15 text-xs font-semibold uppercase text-brand-200 ring-1 ring-brand-400/25"
+                                >
+                                    {email.charAt(0)}
+                                </span>
+                                <span className="max-w-[12rem] truncate text-xs text-slate-300">{email}</span>
                             </span>
                         )}
                         {email ? (
@@ -115,7 +116,7 @@ export default function VideoStudio() {
                                 onClick={() => { void handleLogout(); }}
                                 disabled={loggingOut}
                                 aria-label="Cerrar sesión"
-                                className="rounded-full border border-white/15 px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="btn btn-secondary btn-sm"
                             >
                                 {loggingOut ? 'Saliendo...' : 'Salir'}
                             </button>
@@ -125,7 +126,7 @@ export default function VideoStudio() {
                             <a
                                 href="/login"
                                 title="Inicia sesión para generar, aprobar, borrar o subir archivos"
-                                className="rounded-full border border-sky-400/40 px-3 py-1.5 font-medium text-sky-200 transition hover:bg-sky-400/10"
+                                className="btn btn-primary btn-sm"
                             >
                                 Entrar
                             </a>
@@ -134,12 +135,12 @@ export default function VideoStudio() {
                 </div>
             </header>
 
-            <main className="mx-auto w-full max-w-[110rem] flex-1 px-5 pb-10 pt-5">
+            <main className="mx-auto w-full max-w-[110rem] flex-1 px-4 pb-12 pt-5 sm:px-6 sm:pt-6">
                 {/* The assistant leads: it is how the studio is meant to be driven.
                     The panels stay because approving is a deliberate human act and
                     should not be something you can say by accident. */}
-                <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[26rem_1fr]">
-                    <div className="flex flex-col gap-5">
+                <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[26rem_minmax(0,1fr)] xl:gap-6">
+                    <div className="flex min-w-0 flex-col gap-5">
                         <Assistant
                             videos={videos}
                             loading={loading}
@@ -159,7 +160,9 @@ export default function VideoStudio() {
                             onDeleted={handleDeleted}
                         />
                     </div>
-                    <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
+                    <div className="min-w-0">
+                        <VideoWorkspace video={selectedVideo} onUpdated={handleUpdated} onDuplicated={handleCreated} />
+                    </div>
                 </div>
             </main>
         </div>

@@ -45,13 +45,16 @@ const KIND_LABELS: Record<SoundKind, string> = {
     efecto: 'Efecto',
 };
 
-const fieldClass = 'w-full rounded border border-white/15 px-3 py-2 text-sm focus:border-sky-400/60 focus:outline-none';
+const fieldClass = 'field';
 
 export default function SoundPanel({ video, sounds, soundsLoading, soundsError, onSoundsChanged, onUpdated }: SoundPanelProps) {
     return (
-        <section className="glass rounded-2xl p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">Música y sonidos</h3>
-            {soundsError && <p className="mb-3 text-sm text-red-300">{soundsError}</p>}
+        <section className="panel panel-pad">
+            <div className="mb-4">
+                <h3 className="panel-title">Música y sonidos</h3>
+                <p className="hint">La música de fondo de este video y los audios propios del negocio.</p>
+            </div>
+            {soundsError && <p className="alert alert-error mb-4" role="alert">{soundsError}</p>}
 
             {/* Keyed by the stored choice: the picker holds a candidate in its
                 own state for listening, and the copilot or a deleted sound can
@@ -109,7 +112,7 @@ function MusicPicker({ video, sounds, soundsLoading, onUpdated }: MusicPickerPro
 
     return (
         <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor={`music-${video.id}`}>Música de fondo</label>
+            <label className="label" htmlFor={`music-${video.id}`}>Música de fondo</label>
             <div className="flex flex-wrap items-center gap-2">
                 <select
                     id={`music-${video.id}`}
@@ -143,8 +146,9 @@ function MusicPicker({ video, sounds, soundsLoading, onUpdated }: MusicPickerPro
                     type="button"
                     onClick={handleApply}
                     disabled={saving || !dirty}
-                    className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn-primary"
                 >
+                    {saving && <span className="spinner" aria-hidden="true" />}
                     {saving ? 'Guardando...' : candidate === '' ? 'Quitar música' : 'Usar esta música'}
                 </button>
             </div>
@@ -159,12 +163,12 @@ function MusicPicker({ video, sounds, soundsLoading, onUpdated }: MusicPickerPro
                         aria-label={`Escuchar ${selected.name}`}
                         className="w-full"
                     />
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="hint mt-1.5">
                         Licencia: {selected.license}
                         {selected.source && (
                             <>
                                 {' · '}
-                                <a href={selected.source} target="_blank" rel="noreferrer" className="text-sky-300 underline-offset-2 hover:underline">
+                                <a href={selected.source} target="_blank" rel="noreferrer" className="text-brand-300 underline-offset-2 hover:underline">
                                     Fuente
                                 </a>
                             </>
@@ -172,14 +176,14 @@ function MusicPicker({ video, sounds, soundsLoading, onUpdated }: MusicPickerPro
                     </p>
                 </div>
             ) : (
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="hint mt-1.5">
                     La música suena de fondo durante todo el video y baja sola cuando habla la voz.
                 </p>
             )}
             {dirty && !saving && (
-                <p className="mt-1 text-xs text-amber-200">Escúchala y pulsa el botón para aplicarla al video.</p>
+                <p className="mt-1.5 text-xs text-amber-200">Escúchala y pulsa el botón para aplicarla al video.</p>
             )}
-            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
+            {error && <p className="alert alert-error mt-3" role="alert">{error}</p>}
         </div>
     );
 }
@@ -281,16 +285,16 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
     }
 
     return (
-        <div className="mt-5 border-t border-white/10 pt-4">
-            <h4 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-400">Sonidos del negocio</h4>
-            <p className="mb-3 text-sm text-slate-300">
+        <div className="divider mt-6 pt-5">
+            <h4 className="panel-title mb-1">Sonidos del negocio</h4>
+            <p className="panel-subtitle mb-4">
                 Sube música o efectos propios para usarlos en cualquier video. Solo audios que el negocio pueda usar
                 comercialmente: el video es publicidad.
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor="sound-name">Nombre</label>
+                    <label className="label" htmlFor="sound-name">Nombre</label>
                     <input
                         id="sound-name"
                         type="text"
@@ -303,7 +307,7 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
                     />
                 </div>
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor="sound-kind">Tipo</label>
+                    <label className="label" htmlFor="sound-kind">Tipo</label>
                     <select
                         id="sound-kind"
                         value={kind}
@@ -316,7 +320,7 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
                     </select>
                 </div>
                 <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor="sound-file">Archivo de audio</label>
+                    <label className="label" htmlFor="sound-file">Archivo de audio</label>
                     <input
                         id="sound-file"
                         ref={fileInputRef}
@@ -324,12 +328,12 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
                         accept={ACCEPTED_AUDIO_TYPES}
                         onChange={handleFileChange}
                         disabled={uploading}
-                        className="block w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-sky-500 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white"
+                        className="file-input"
                     />
-                    <p className="mt-1 text-xs text-slate-400">MP3, M4A, WAV, OGG, AAC o WEBM. Máximo 20 MB.</p>
+                    <p className="hint mt-1.5">MP3, M4A, WAV, OGG, AAC o WEBM. Máximo 20 MB.</p>
                 </div>
                 <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor="sound-license">
+                    <label className="label" htmlFor="sound-license">
                         Licencia (obligatoria)
                     </label>
                     <input
@@ -346,42 +350,43 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
                 </div>
             </div>
 
-            <label className="mt-3 flex items-start gap-2 text-sm text-slate-300" htmlFor="sound-rights">
+            <label className="mt-4 flex items-start gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.02] p-3 text-sm text-slate-200" htmlFor="sound-rights">
                 <input
                     id="sound-rights"
                     type="checkbox"
                     checked={rightsConfirmed}
                     onChange={(event) => setRightsConfirmed(event.target.checked)}
                     disabled={uploading}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-sky-500"
+                    className="checkbox"
                 />
                 <span>Confirmo que el negocio tiene derecho de uso comercial de este audio</span>
             </label>
 
-            <div className="mt-3 flex flex-wrap items-center gap-3">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
                     type="button"
                     onClick={handleUpload}
                     disabled={!canUpload}
-                    className="rounded border border-sky-400/50 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn-secondary"
                 >
+                    {step && <span className="spinner" aria-hidden="true" />}
                     {step ? UPLOAD_STEP_LABELS[step] : 'Subir sonido'}
                 </button>
                 {!uploading && !canUpload && (
-                    <span className="text-xs text-slate-400">Completa nombre, archivo y licencia, y marca la casilla.</span>
+                    <span className="hint">Completa nombre, archivo y licencia, y marca la casilla.</span>
                 )}
             </div>
 
-            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
+            {error && <p className="alert alert-error mt-3" role="alert">{error}</p>}
 
             {uploaded.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-400">Todavía no hay sonidos subidos por el negocio.</p>
+                <p className="mt-4 rounded-xl border border-dashed border-white/[0.12] px-4 py-5 text-center text-sm text-slate-400">Todavía no hay sonidos subidos por el negocio.</p>
             ) : (
-                <ul className="mt-3 space-y-2">
+                <ul className="mt-4 space-y-2">
                     {uploaded.map((sound) => (
-                        <li key={sound.id} className="rounded border border-white/10 px-3 py-2">
+                        <li key={sound.id} className="tile px-3.5 py-3">
                             <div className="flex items-center gap-2">
-                                <span className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 text-[11px] font-medium text-slate-300">
+                                <span className="chip shrink-0 px-2 text-[11px]">
                                     {KIND_LABELS[sound.kind]}
                                 </span>
                                 <span className="min-w-0 flex-1 truncate text-sm" title={sound.name}>{sound.name}</span>
@@ -391,7 +396,7 @@ function BusinessSounds({ sounds, onSoundsChanged, onUpdated }: BusinessSoundsPr
                                     disabled={deletingId === sound.id}
                                     aria-label={`Eliminar el sonido ${sound.name}`}
                                     title="Eliminar sonido"
-                                    className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="btn-icon btn-icon-danger"
                                 >
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                                         <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />

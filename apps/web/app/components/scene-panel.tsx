@@ -69,16 +69,20 @@ export default function ScenePanel({ video, sounds, soundsLoading, onUpdated }: 
     }
 
     return (
-        <section className="glass rounded-2xl p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Escenas</h3>
+        <section className="panel panel-pad">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 className="panel-title">Escenas</h3>
+                    <p className="hint">Personaje, acción, objeto y texto de cada momento del video.</p>
+                </div>
                 <div className="flex flex-wrap gap-2">
                     <button
                         type="button"
                         onClick={handleGenerateScenes}
                         disabled={generatingAll}
-                        className="rounded border border-sky-400/50 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-sky-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-secondary h-9 px-3.5"
                     >
+                        {generatingAll && <span className="spinner" aria-hidden="true" />}
                         {generatingAll ? 'Generando escenas...' : scenes.length > 0 ? 'Regenerar todas las escenas' : 'Generar escenas'}
                     </button>
                     <button
@@ -86,28 +90,32 @@ export default function ScenePanel({ video, sounds, soundsLoading, onUpdated }: 
                         onClick={handleGenerateVoice}
                         disabled={generatingVoice || scenes.length === 0}
                         title="El video ya se narra solo. Usa esto solo si configuras un servicio de voz externo."
-                        className="rounded border border-white/15 px-3 py-1.5 text-sm font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-ghost h-9 px-3.5"
                     >
+                        {generatingVoice && <span className="spinner" aria-hidden="true" />}
                         {generatingVoice ? 'Generando voz...' : 'Voz externa (opcional)'}
                     </button>
                 </div>
             </div>
 
-            {panelError && <p className="mb-3 text-sm text-red-300">{panelError}</p>}
-            {voiceNotice && <p className="mb-3 rounded bg-sky-500/10 p-2 text-sm text-sky-200">{voiceNotice}</p>}
+            {panelError && <p className="alert alert-error mb-4" role="alert">{panelError}</p>}
+            {voiceNotice && <p className="alert alert-info mb-4">{voiceNotice}</p>}
 
             {scenes.length === 0 ? (
-                <p className="text-sm text-slate-400">Aún no hay escenas. Genera el guion y pulsa &quot;Generar escenas&quot;.</p>
+                <div className="rounded-xl border border-dashed border-white/[0.12] px-4 py-8 text-center">
+                    <p className="text-sm font-medium text-slate-200">Aún no hay escenas</p>
+                    <p className="hint mt-1">Genera el guion y pulsa &quot;Generar escenas&quot;.</p>
+                </div>
             ) : (
                 <>
                     <div className="mb-4">
-                        <p className="mb-1 text-xs text-slate-400">Línea de tiempo (total aprox. {totalDuration.toFixed(1)}s)</p>
-                        <div className="flex h-3 w-full overflow-hidden rounded bg-white/10">
+                        <p className="hint mb-1.5">Línea de tiempo (total aprox. {totalDuration.toFixed(1)}s)</p>
+                        <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-white/[0.06]">
                             {scenes.map((scene, index) => (
                                 <div
                                     key={scene.id}
                                     title={`Escena ${index + 1}: ${scene.duration_seconds}s`}
-                                    className={index % 2 === 0 ? 'h-full bg-white/50' : 'h-full bg-sky-400/70'}
+                                    className={index % 2 === 0 ? 'h-full bg-brand-400' : 'h-full bg-brand-300/60'}
                                     style={{ width: `${totalDuration > 0 ? (scene.duration_seconds / totalDuration) * 100 : 0}%` }}
                                 />
                             ))}
@@ -221,16 +229,22 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
     }
 
     return (
-        <li className="rounded border border-white/10 p-3">
+        <li className="tile p-3.5 sm:p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-slate-400">Escena {index + 1} · {scene.duration_seconds}s</span>
+                <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 font-mono text-[0.6875rem] text-brand-200 ring-1 ring-inset ring-brand-400/25">
+                        {index + 1}
+                    </span>
+                    Escena {index + 1} · <span className="tabular-nums">{scene.duration_seconds}s</span>
+                </span>
                 <div className="flex items-center gap-1.5">
                     <button
                         type="button"
                         onClick={handleRegenerate}
                         disabled={busy}
-                        className="rounded border border-white/15 px-2.5 py-1 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn btn-secondary btn-sm"
                     >
+                        {busyAction === 'regenerate' && <span className="spinner h-3 w-3" aria-hidden="true" />}
                         {busyAction === 'regenerate' ? 'Regenerando con IA...' : 'Regenerar con IA'}
                     </button>
                     <button
@@ -239,7 +253,7 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                         disabled={busy}
                         aria-label={`Eliminar escena ${index + 1}`}
                         title="Eliminar esta escena"
-                        className="rounded p-1.5 text-slate-500 transition hover:bg-red-500/15 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="btn-icon btn-icon-danger"
                     >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                             <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5" />
@@ -248,15 +262,15 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                 </div>
             </div>
 
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`character-${scene.id}`}>Personaje</label>
+                    <label className="label" htmlFor={`character-${scene.id}`}>Personaje</label>
                     <select
                         id={`character-${scene.id}`}
                         value={scene.character}
                         onChange={(event) => handleCharacterChange(event.target.value as CharacterType)}
                         disabled={busy}
-                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field field-sm"
                     >
                         {CHARACTER_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -264,13 +278,13 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                     </select>
                 </div>
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`action-${scene.id}`}>Acción</label>
+                    <label className="label" htmlFor={`action-${scene.id}`}>Acción</label>
                     <select
                         id={`action-${scene.id}`}
                         value={scene.action}
                         onChange={(event) => handleActionChange(event.target.value as SceneAction)}
                         disabled={busy}
-                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field field-sm"
                     >
                         {ACTION_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -278,13 +292,13 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                     </select>
                 </div>
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`prop-${scene.id}`}>Objeto</label>
+                    <label className="label" htmlFor={`prop-${scene.id}`}>Objeto</label>
                     <select
                         id={`prop-${scene.id}`}
                         value={scene.prop}
                         onChange={(event) => handlePropChange(event.target.value as ScenePropType)}
                         disabled={busy}
-                        className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field field-sm"
                     >
                         {PROP_OPTIONS.map((option) => (
                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -293,21 +307,21 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                 </div>
             </div>
 
-            <div className="mt-2">
-                <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`description-${scene.id}`}>Descripción / subtítulo</label>
+            <div className="mt-3">
+                <label className="label" htmlFor={`description-${scene.id}`}>Descripción / subtítulo</label>
                 <textarea
                     id={`description-${scene.id}`}
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
                     rows={2}
                     disabled={busy}
-                    className="w-full rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
+                    className="field field-sm"
                 />
             </div>
 
-            <div className="mt-2 flex flex-wrap items-end gap-3">
+            <div className="mt-3 flex flex-wrap items-end gap-3">
                 <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`duration-${scene.id}`}>Duración (s)</label>
+                    <label className="label" htmlFor={`duration-${scene.id}`}>Duración (s)</label>
                     <input
                         id={`duration-${scene.id}`}
                         type="number"
@@ -316,21 +330,22 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                         value={durationSeconds}
                         onChange={(event) => setDurationSeconds(Number(event.target.value))}
                         disabled={busy}
-                        className="w-28 rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none"
+                        className="field field-sm w-28"
                     />
                 </div>
                 <button
                     type="button"
                     onClick={handleSaveText}
                     disabled={busy || !textDirty}
-                    className="rounded bg-sky-500 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn-primary h-9 px-3.5"
                 >
+                    {busyAction === 'text' && <span className="spinner h-3.5 w-3.5" aria-hidden="true" />}
                     {busyAction === 'text' ? 'Guardando...' : 'Guardar cambios'}
                 </button>
             </div>
 
-            <div className="mt-2">
-                <label className="mb-1 block text-xs font-medium text-slate-300" htmlFor={`effect-${scene.id}`}>Efecto de sonido</label>
+            <div className="mt-3">
+                <label className="label" htmlFor={`effect-${scene.id}`}>Efecto de sonido</label>
                 {/* Read straight from the record, not copied into state, so the
                     row's key does not need it: re-keying on every effect change
                     would throw away an unsaved description. */}
@@ -340,7 +355,7 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                         value={effectId}
                         onChange={(event) => handleEffectChange(event.target.value)}
                         disabled={busy}
-                        className="min-w-0 flex-1 rounded border border-white/15 px-2 py-1.5 text-sm focus:border-sky-400/60 focus:outline-none sm:max-w-xs"
+                        className="field field-sm min-w-0 flex-1 sm:max-w-xs"
                     >
                         <option value="">Ninguno</option>
                         {effectId !== '' && !selectedEffect && (
@@ -365,7 +380,7 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                         />
                     )}
                 </div>
-                <p className="mt-1 text-xs text-slate-400">Suena al empezar la escena.</p>
+                <p className="hint mt-1.5">Suena al empezar la escena.</p>
             </div>
 
             {scene.audio_url && (
@@ -374,7 +389,7 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
                 </div>
             )}
 
-            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
+            {error && <p className="alert alert-error mt-3" role="alert">{error}</p>}
         </li>
     );
 }

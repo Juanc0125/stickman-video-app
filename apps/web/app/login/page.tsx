@@ -1,35 +1,34 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import LoginForm from '../components/login-form';
+import { LogoMark } from '../components/logo';
 
 export const metadata: Metadata = {
     title: 'Iniciar sesión · Stickman',
 };
 
 // The first screen a client sees of the product they are paying for, so it
-// carries the same backdrop and glass panel as the studio behind it rather
-// than reading as a bare, unfinished form.
+// carries the same ground and panel style as the studio behind it rather than
+// reading as a bare, unfinished form.
 export default function LoginPage() {
     return (
-        <div className="relative flex min-h-screen flex-1 items-center justify-center px-5 py-10">
-            <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#0a0f18]">
-                <div
-                    className="backdrop-layer absolute inset-0 bg-cover bg-center opacity-90"
-                    style={{ backgroundImage: 'url(/backdrop/space.jpg)' }}
-                />
-                <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f18]/30 via-transparent to-[#0a0f18]/85" />
-            </div>
+        <div className="relative flex min-h-screen flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6">
+            <div aria-hidden="true" className="app-backdrop" />
 
-            <div className="flex w-full max-w-sm flex-col items-center">
-                <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-500/15 ring-1 ring-sky-400/25">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/icon-192.png" alt="" width={40} height={40} className="rounded-xl" />
-                </span>
-                <h1 className="mb-1 text-xl font-semibold tracking-tight text-white">Stickman</h1>
-                <p className="mb-8 text-center text-sm text-slate-400">
+            <main className="flex w-full max-w-sm flex-col items-center">
+                <LogoMark size={56} className="mb-5" />
+                <h1 className="text-center text-2xl font-semibold tracking-tight text-white">Inicia sesión en Stickman</h1>
+                <p className="mb-8 mt-2 text-center text-sm leading-relaxed text-slate-400">
                     Genera, revisa, aprueba y publica videos cortos de marketing hipotecario.
                 </p>
                 <LoginForm />
-            </div>
+                <Link
+                    href="/"
+                    className="mt-6 rounded-md text-sm font-medium text-slate-400 transition-colors hover:text-white"
+                >
+                    &larr; Volver al estudio
+                </Link>
+            </main>
         </div>
     );
 }

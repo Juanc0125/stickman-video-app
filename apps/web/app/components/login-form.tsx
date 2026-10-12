@@ -29,25 +29,26 @@ export default function LoginForm() {
     }
 
     return (
-        <form onSubmit={(event) => { void handleSubmit(event); }} className="glass w-full max-w-sm rounded-2xl p-6">
-            <div className="mb-5 space-y-1">
-                <label htmlFor="login-email" className="block text-sm font-medium text-slate-300">
+        <form onSubmit={(event) => { void handleSubmit(event); }} className="panel w-full max-w-sm p-6 sm:p-7">
+            <div className="mb-4">
+                <label htmlFor="login-email" className="label text-sm">
                     Correo
                 </label>
                 <input
                     id="login-email"
                     type="email"
                     autoComplete="email"
+                    placeholder="nombre@empresa.com"
                     required
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     disabled={submitting}
-                    className="w-full rounded-lg border border-white/15 px-3.5 py-2.5 text-sm text-white focus:border-sky-400/60 focus:outline-none disabled:opacity-60"
+                    className="field h-11"
                 />
             </div>
 
-            <div className="mb-5 space-y-1">
-                <label htmlFor="login-password" className="block text-sm font-medium text-slate-300">
+            <div className="mb-4">
+                <label htmlFor="login-password" className="label text-sm">
                     Contraseña
                 </label>
                 <input
@@ -58,12 +59,12 @@ export default function LoginForm() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     disabled={submitting}
-                    className="w-full rounded-lg border border-white/15 px-3.5 py-2.5 text-sm text-white focus:border-sky-400/60 focus:outline-none disabled:opacity-60"
+                    className="field h-11"
                 />
             </div>
 
             {error && (
-                <p role="alert" className="mb-4 text-sm text-red-300">
+                <p role="alert" className="alert alert-error mb-4">
                     {error}
                 </p>
             )}
@@ -71,10 +72,15 @@ export default function LoginForm() {
             <button
                 type="submit"
                 disabled={submitting}
-                className="w-full rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn btn-primary btn-block mt-2 h-11"
             >
+                {submitting && <span className="spinner" aria-hidden="true" />}
                 {submitting ? 'Entrando...' : 'Entrar'}
             </button>
+
+            <p className="hint mt-4 text-center">
+                Las cuentas las crea el administrador del estudio.
+            </p>
         </form>
     );
 }

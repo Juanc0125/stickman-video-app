@@ -64,11 +64,20 @@ export const STATUS_LABELS: Record<VideoStatus, string> = {
     publicado: 'Publicado',
 };
 
+// Tinted on the dark ground, each with a matching dot colour, so a status
+// reads by colour and by text and every pair keeps WCAG AA contrast.
 export const STATUS_BADGE_CLASSES: Record<VideoStatus, string> = {
-    borrador: 'bg-gray-200 text-gray-700',
-    pendiente_aprobacion: 'bg-amber-100 text-amber-800',
-    aprobado: 'bg-blue-100 text-blue-800',
-    publicado: 'bg-green-100 text-green-800',
+    borrador: 'bg-slate-400/10 text-slate-200 ring-slate-400/25',
+    pendiente_aprobacion: 'bg-amber-400/10 text-amber-200 ring-amber-400/30',
+    aprobado: 'bg-brand-400/10 text-brand-200 ring-brand-400/30',
+    publicado: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/30',
+};
+
+export const STATUS_DOT_CLASSES: Record<VideoStatus, string> = {
+    borrador: 'bg-slate-400',
+    pendiente_aprobacion: 'bg-amber-400',
+    aprobado: 'bg-brand-400',
+    publicado: 'bg-emerald-400',
 };
 
 // The four typefaces the renderer actually bundles. A brand can only pick from

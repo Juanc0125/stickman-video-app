@@ -32,29 +32,31 @@ export default function ScriptPanel({ video, onUpdated }: ScriptPanelProps) {
     }
 
     return (
-        <section className="glass rounded-2xl p-4">
-            <div className="mb-2 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400">Guion</h3>
-                {dirty && <span className="text-xs text-amber-600">Cambios sin guardar</span>}
+        <section className="panel panel-pad">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 id={`script-title-${video.id}`} className="panel-title">Guion</h3>
+                {dirty && <span className="chip border-amber-400/30 bg-amber-400/10 text-amber-200">Cambios sin guardar</span>}
             </div>
             <textarea
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 rows={8}
-                className="w-full rounded border border-white/15 px-3 py-2 text-sm leading-relaxed focus:border-sky-400/60 focus:outline-none"
+                aria-labelledby={`script-title-${video.id}`}
+                className="field leading-relaxed"
                 disabled={saving}
             />
-            <p className="mt-2 text-xs text-slate-400">
+            <p className="hint mt-2">
                 Si editas el guion después de generar las escenas, recuerda pulsar &quot;Generar escenas&quot; de nuevo para que reflejen el cambio.
             </p>
-            {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
-            <div className="mt-3">
+            {error && <p className="alert alert-error mt-3" role="alert">{error}</p>}
+            <div className="mt-4">
                 <button
                     type="button"
                     onClick={handleSave}
                     disabled={saving || !dirty}
-                    className="rounded bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn-primary"
                 >
+                    {saving && <span className="spinner" aria-hidden="true" />}
                     {saving ? 'Guardando...' : 'Guardar guion'}
                 </button>
             </div>

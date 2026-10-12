@@ -19,7 +19,7 @@ interface AssistantEntityProps {
 // One palette per mood: the operator should be able to tell from across the
 // desk whether it is listening, thinking or talking without reading a label.
 const PALETTE: Record<EntityMood, { core: string; glow: string; rim: string }> = {
-    idle: { core: '#38bdf8', glow: 'rgba(56, 189, 248, 0.35)', rim: '#bae6fd' },
+    idle: { core: '#3b82f6', glow: 'rgba(59, 130, 246, 0.38)', rim: '#bfd6fe' },
     listening: { core: '#34d399', glow: 'rgba(52, 211, 153, 0.42)', rim: '#bbf7d0' },
     thinking: { core: '#a78bfa', glow: 'rgba(167, 139, 250, 0.42)', rim: '#ddd6fe' },
     speaking: { core: '#22d3ee', glow: 'rgba(34, 211, 238, 0.5)', rim: '#cffafe' },
