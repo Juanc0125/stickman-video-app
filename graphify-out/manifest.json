@@ -12,15 +12,15 @@
     "semantic_hash": ""
   },
   "apps/render-worker/index.ts": {
-    "mtime": 1791486874.5505357,
-    "seen": 1791487482.01236,
-    "ast_hash": "294e682ceeca02ac92ce8b857ba91559",
+    "mtime": 1791788737.7591727,
+    "seen": 1791788981.031497,
+    "ast_hash": "ed4c7f47da2a014bd36314a76aaf106c",
     "semantic_hash": ""
   },
   "apps/render-worker/package.json": {
-    "mtime": 1791487149.0827067,
-    "seen": 1791487482.012369,
-    "ast_hash": "6dba636e127d8f075a85ee1492972e3e",
+    "mtime": 1791788818.9903052,
+    "seen": 1791788981.0315049,
+    "ast_hash": "ff74fdbf966aecf8bc0d8fd36bfd911e",
     "semantic_hash": ""
   },
   "apps/render-worker/tsconfig.json": {
@@ -60,10 +60,10 @@
     "semantic_hash": "3da7292f0264b70c084548e6f519d02d"
   },
   "apps/web/app/api/videos/[id]/route.ts": {
-    "mtime": 1789871804.8544378,
-    "seen": 1790000479.699763,
-    "ast_hash": "3578238b6ea7dad2be0246e3c1a74245",
-    "semantic_hash": "3578238b6ea7dad2be0246e3c1a74245"
+    "mtime": 1791786743.9567993,
+    "seen": 1791787257.9361577,
+    "ast_hash": "52613185bfacdd1fd9f7c75bc97e264e",
+    "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/scenes/[sceneId]/route.ts": {
     "mtime": 1791485882.369154,
@@ -96,9 +96,9 @@
     "semantic_hash": "8aa3fb583847f301f03e738d144c0d29"
   },
   "apps/web/app/components/api.ts": {
-    "mtime": 1791485702.5625098,
-    "seen": 1791487482.0125713,
-    "ast_hash": "ba8d7960a038e60933636422c936dfde",
+    "mtime": 1791786808.4868925,
+    "seen": 1791787257.9361901,
+    "ast_hash": "2d56981ba08d046a091dd52ca07a9f5d",
     "semantic_hash": ""
   },
   "apps/web/app/components/branding-panel.tsx": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "apps/web/app/components/video-studio.tsx": {
-    "mtime": 1790535591.8340125,
-    "seen": 1790536803.2987375,
-    "ast_hash": "cf1922b9ad0a4934f4036167ec8e0279",
+    "mtime": 1791786854.8529248,
+    "seen": 1791787257.9362488,
+    "ast_hash": "f74fbfed839ca39a7cd30e4e28f59e0d",
     "semantic_hash": ""
   },
   "apps/web/app/components/video-workspace.tsx": {
@@ -438,10 +438,10 @@
     "semantic_hash": "098610297ccd9c1126c55f8794507ae3"
   },
   "apps/web/app/api/copilot/route.ts": {
-    "mtime": 1790224439.7675624,
-    "seen": 1790264776.2479012,
-    "ast_hash": "a86e8be1ab1beb9cfc76e2f52a4ff567",
-    "semantic_hash": "a86e8be1ab1beb9cfc76e2f52a4ff567"
+    "mtime": 1791786789.7345612,
+    "seen": 1791787257.9361076,
+    "ast_hash": "adc30ea8891fb67d853e2302b34aca54",
+    "semantic_hash": ""
   },
   "apps/web/app/api/videos/[id]/brand-template/route.ts": {
     "mtime": 1790144704.0171816,
@@ -474,9 +474,9 @@
     "semantic_hash": "c3e0aa8dbfb734bb34a872e36b105925"
   },
   "apps/web/lib/copilot.ts": {
-    "mtime": 1790734811.3331287,
-    "seen": 1790735021.1674304,
-    "ast_hash": "4eab38ce05c4b126b83874ac2fee2235",
+    "mtime": 1791786789.7340536,
+    "seen": 1791787257.9363036,
+    "ast_hash": "a036fb83371ec8d7fde98a47655b1fe7",
     "semantic_hash": ""
   },
   "packages/shared-types/templates.ts": {
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "scripts/e2e.mjs": {
-    "mtime": 1791345843.6846855,
-    "seen": 1791346082.706749,
-    "ast_hash": "183616ff5552ae00b541833297129598",
+    "mtime": 1791786934.513775,
+    "seen": 1791787257.9364157,
+    "ast_hash": "8e80ce97e448a947699cb674a8dbffdb",
     "semantic_hash": ""
   },
   "scripts/make-backdrop.mjs": {
@@ -510,9 +510,9 @@
     "semantic_hash": "6cbb81b6748ec69c802643080ada3a20"
   },
   "CLAUDE.md": {
-    "mtime": 1791345854.141413,
-    "seen": 1791346082.7067804,
-    "ast_hash": "e0dc8c9ec991908cf31a29aa23d6d189",
+    "mtime": 1791788965.364845,
+    "seen": 1791788981.0320284,
+    "ast_hash": "456f184dda99a0309e6dae6f40780ba7",
     "semantic_hash": ""
   },
   "scripts/graph.mjs": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "scripts/set-ai-key.mjs": {
-    "mtime": 1790562440.0488565,
-    "seen": 1790614262.5008116,
-    "ast_hash": "78461c61aa9b23a399393951e6758580",
+    "mtime": 1791788786.2907722,
+    "seen": 1791788981.0319595,
+    "ast_hash": "fc40eba8e2315aaddd1c8488f727f29c",
     "semantic_hash": ""
   },
   "apps/web/public/backdrop/space.jpg": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "apps/web/proxy.ts": {
-    "mtime": 1790660202.9786992,
-    "seen": 1790660542.6108527,
-    "ast_hash": "c723935646d9b84cd1bdae9e7d71f27d",
+    "mtime": 1791786727.270183,
+    "seen": 1791787257.9363534,
+    "ast_hash": "cc4f50b4231580114de6fb432919d134",
     "semantic_hash": ""
   },
   "apps/web/app/api/health/route.ts": {
@@ -660,15 +660,15 @@
     "semantic_hash": ""
   },
   "plugin/skills/desplegar/SKILL.md": {
-    "mtime": 1791345746.4698803,
-    "seen": 1791346082.7068036,
-    "ast_hash": "1c628d552bb87dedc5805b933b843246",
+    "mtime": 1791786983.4480555,
+    "seen": 1791787257.9365313,
+    "ast_hash": "0e1bd426fc70ff229b7340315cbd9263",
     "semantic_hash": ""
   },
   "plugin/skills/verificar/SKILL.md": {
-    "mtime": 1791345840.4736097,
-    "seen": 1791346082.7068052,
-    "ast_hash": "52f7b756f8cac035631f9af3e7b2daa5",
+    "mtime": 1791786940.8958633,
+    "seen": 1791787257.9365351,
+    "ast_hash": "3bdd65adfaec598ab93da0ffefcd8236",
     "semantic_hash": ""
   },
   "apps/render-worker/scripts/sound-library.mjs": {
@@ -729,6 +729,24 @@
     "mtime": 1791485891.5810502,
     "seen": 1791487482.0129213,
     "ast_hash": "2f0c7b7758d89683b30bc56e2ee94c06",
+    "semantic_hash": ""
+  },
+  "apps/web/lib/sign-in-required.ts": {
+    "mtime": 1791786727.3169317,
+    "seen": 1791787257.936309,
+    "ast_hash": "0e23fa3acc144d3106eabf4d1aa4a84f",
+    "semantic_hash": ""
+  },
+  "apps/render-worker/heygen.ts": {
+    "mtime": 1791788709.958336,
+    "seen": 1791788981.0314865,
+    "ast_hash": "146fa90aa6da19660d399af708b371b0",
+    "semantic_hash": ""
+  },
+  "apps/render-worker/scripts/heygen-catalogo.mjs": {
+    "mtime": 1791788813.8922648,
+    "seen": 1791788981.0315118,
+    "ast_hash": "9f1dc4fa1595724f6577cca69099b573",
     "semantic_hash": ""
   }
 }
