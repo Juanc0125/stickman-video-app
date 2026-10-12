@@ -12,6 +12,7 @@
 //   npm run set:ai-key -- groq
 //   npm run set:ai-key -- openrouter
 //   npm run set:ai-key -- fal      (goes to Railway, not Vercel - see below)
+//   npm run set:ai-key -- heygen   (Railway too: the worker calls HeyGen)
 //   npm run set:ai-key            (asks which provider)
 //
 // With --from-local it takes the key already in .env.local instead of asking,
@@ -78,6 +79,17 @@ const PROVIDERS = {
         // fal has no chat-completions API, so the generic probe() below does
         // not apply - this replaces it entirely (see the dispatch in run()).
         probe: probeFal,
+        probeLabel: 'fal.run',
+        railway: true,
+    },
+    heygen: {
+        // HeyGen's API wallet key - not the web subscription, whose credits
+        // the API cannot use. Feeds apps/render-worker/heygen.ts on Railway.
+        envVar: 'HEYGEN_API_KEY',
+        prefix: '',
+        probe: probeHeygen,
+        probeLabel: 'api.heygen.com',
+        railway: true,
     },
 };
 
@@ -147,9 +159,9 @@ function createSession() {
 
 async function pickProvider(session) {
     while (true) {
-        const answer = (await session.ask('Proveedor (groq/openrouter/fal): ')).trim().toLowerCase();
+        const answer = (await session.ask('Proveedor (groq/openrouter/fal/heygen): ')).trim().toLowerCase();
         if (PROVIDERS[answer]) return answer;
-        console.log('Escribe "groq", "openrouter" o "fal".');
+        console.log('Escribe "groq", "openrouter", "fal" o "heygen".');
     }
 }
 
@@ -292,6 +304,25 @@ function readLocalEnv(name) {
     return match ? match[1].trim() : '';
 }
 
+// Listing one public voice is free and needs a valid key: 200 means the key
+// authenticates, 401/403 means it does not. It never touches the wallet.
+async function probeHeygen(key) {
+    let response;
+    try {
+        response = await fetch('https://api.heygen.com/v3/voices?limit=1', {
+            headers: { 'x-api-key': key, accept: 'application/json' },
+            signal: AbortSignal.timeout(40000),
+        });
+    } catch (error) {
+        return { estado: 'FALLA', detalle: `sin respuesta: ${error.message}` };
+    }
+    if (response.ok) return { estado: 'OK', detalle: `HTTP ${response.status}: api.heygen.com autentico la clave` };
+    if (response.status === 401 || response.status === 403) {
+        return { estado: 'FALLA', detalle: `HTTP ${response.status}: HeyGen rechazo la clave (¿es la de la API y no la de LiveAvatar?)` };
+    }
+    return { estado: 'FALLA', detalle: `respuesta inesperada de api.heygen.com: HTTP ${response.status}` };
+}
+
 async function run() {
     const args = process.argv.slice(2).filter((arg) => arg !== '--from-local');
     const desdeLocal = process.argv.includes('--from-local');
@@ -299,7 +330,7 @@ async function run() {
     const providerArg = (rawArg ?? '').toLowerCase();
 
     if (rawArg && !PROVIDERS[providerArg]) {
-        console.error(`Proveedor desconocido: "${rawArg}". Usa "groq", "openrouter" o "fal".`);
+        console.error(`Proveedor desconocido: "${rawArg}". Usa "groq", "openrouter", "fal" o "heygen".`);
         process.exitCode = 1;
         return;
     }
@@ -341,7 +372,7 @@ async function run() {
         return;
     }
 
-    console.log(provider.probe ? 'Probando la clave contra fal.run ...' : `Probando la clave contra ${provider.url} ...`);
+    console.log(`Probando la clave contra ${provider.probeLabel ?? provider.url} ...`);
     const test = provider.probe ? await provider.probe(key) : await probeGenerico(provider, key);
     if (test.estado === 'FALLA') {
         console.error(`La clave no funciono: ${test.detalle}`);
@@ -359,9 +390,9 @@ async function run() {
     writeLocalEnv(provider.envVar, key);
     console.log(`Guardada en .env.local (raiz del repo) como ${provider.envVar}.`);
 
-    if (providerName === 'fal') {
-        // FAL_KEY feeds apps/render-worker, which deploys to Railway - pushing
-        // it to Vercel here would leave the actual consumer unset.
+    if (provider.railway) {
+        // FAL_KEY and HEYGEN_API_KEY feed apps/render-worker, which deploys to
+        // Railway - pushing them to Vercel would leave the consumer unset.
         const who = runCommand('railway', ['whoami']);
         if (who.status !== 0) {
             console.log('');

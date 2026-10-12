@@ -21,6 +21,7 @@ import {
 } from './drawing';
 import { ensureVoiceModel, estimateWordTimings, mouthEnvelope, speak } from './voice';
 import { aiVideoModel, buildScenePrompt, generateSceneVideo, isAiVideoEnabled } from './ai-video';
+import { heygenMissingConfig, isHeygenEnabled, startAvatarScenes, type AvatarClip } from './heygen';
 
 // Frames are drawn with a real 2D graphics context and piped to ffmpeg, so
 // this is the animation's frame rate as well as the output's.
@@ -617,6 +618,21 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 		const transitionCanvas = createFrameCanvas(width, height);
 		const transitionContext = transitionCanvas.getContext('2d');
 
+		// HeyGen, when configured, is the main engine: every scene is sent to it
+		// before the first one is drawn, so its queue works in parallel with the
+		// loop below. A scene it cannot produce comes back null and is drawn.
+		const avatarClips: Array<Promise<AvatarClip | null>> | null = isHeygenEnabled()
+			? startAvatarScenes(
+				scenes.map((scene) => ({ description: (scene.description || '').trim(), audio_url: scene.audio_url })),
+				(index) => join(jobDirectory, `scene-${index + 1}-heygen.mp4`),
+				{
+					aspectRatio: width === height ? '1:1' : width > height ? '16:9' : '9:16',
+					backgroundColor,
+					fallbackDurations: scenes.map((scene) => Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1))),
+				},
+			)
+			: null;
+
 		for (let index = 0; index < scenes.length; index += 1) {
 			const scene = scenes[index];
 			const requestedDuration = Math.max(1, Math.min(60, Number(scene.duration_seconds) || 1));
@@ -627,16 +643,22 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 				? scene.audio_url.trim()
 				: null;
 
+			// A HeyGen clip brings its own lip-synced voice and sets the scene's
+			// length; nothing below narrates or draws it.
+			const avatarClip = avatarClips ? await avatarClips[index] : null;
+
 			// Narrate locally unless the scene already carries audio from the
 			// app's own TTS. Doing it here rather than upstream also hands us the
 			// waveform, which is what drives the lip sync below.
-			const speech = audioUrl ? null : await speak(narration);
+			const speech = audioUrl || avatarClip ? null : await speak(narration);
 
 			// A scene must never cut its own narration off mid-sentence, so
 			// speech length wins when it exceeds the planned duration.
-			const duration = speech
-				? Math.min(60, Math.max(requestedDuration, speech.durationSeconds + 0.35))
-				: requestedDuration;
+			const duration = avatarClip
+				? avatarClip.durationSeconds
+				: speech
+					? Math.min(60, Math.max(requestedDuration, speech.durationSeconds + 0.35))
+					: requestedDuration;
 
 			// Every clip gets both a video AND an audio stream - real audio when
 			// available, otherwise a silent anullsrc track of the same duration -
@@ -678,8 +700,8 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 			// and we only add our own text and narration on top. Generation is
 			// best-effort: if it fails or is not configured, the scene is drawn
 			// instead, so a render always produces a video.
-			let generatedPath: string | null = null;
-			if (isAiVideoEnabled()) {
+			let generatedPath: string | null = avatarClip ? avatarClip.path : null;
+			if (!generatedPath && isAiVideoEnabled()) {
 				const candidate = join(jobDirectory, `scene-${index + 1}-ai.mp4`);
 				const prompt = buildScenePrompt(scene);
 				if (await generateSceneVideo(prompt, duration, candidate)) generatedPath = candidate;
@@ -694,15 +716,18 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 				// looped in case it came back shorter than the voice line.
 				await runFfmpeg([
 					'-y',
-					'-stream_loop', '-1',
+					// A HeyGen clip already is the whole scene, voice included,
+					// at the exact length; only the fal.ai footage is looped and
+					// gets the narration laid over it.
+					...(avatarClip ? [] : ['-stream_loop', '-1']),
 					'-i', generatedPath,
 					'-i', overlayPath,
-					...audioInputArgs,
+					...(avatarClip ? [] : audioInputArgs),
 					'-filter_complex',
 					`[0:v]scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height},fps=${FRAME_RATE}[bg];`
 					+ `[bg][1:v]overlay=0:0[outv]`,
 					'-map', '[outv]',
-					'-map', '2:a',
+					'-map', avatarClip ? '0:a' : '2:a',
 					'-af', 'apad',
 					'-t', String(duration),
 					'-c:v', 'libx264',
@@ -778,7 +803,7 @@ export async function render(job: RenderJob, onProgress?: (percent: number) => v
 			// has no frame of ours to blend from, and generation is best-effort
 			// per scene, so whether the *next* scene will need one isn't known
 			// yet here - simplest to keep every AI-video boundary a plain cut.
-			if (!isLastScene && !generatedPath && !isAiVideoEnabled()) {
+			if (!isLastScene && !generatedPath && !isAiVideoEnabled() && !avatarClips) {
 				const nextFrameScene = previewFrameScene(scenes[index + 1], index + 1);
 				const narrationWordCount = frameScene.description.split(/\s+/).filter(Boolean).length;
 				const wordsPerSecond = duration > 0 ? narrationWordCount / duration : 0;
@@ -886,7 +911,10 @@ const server = createServer(async (request, response) => {
 			ok: true,
 			service: 'render-worker',
 			storage: storageClient ? 'supabase' : 'local-disk',
-			video_engine: isAiVideoEnabled() ? aiVideoModel() : 'canvas',
+			video_engine: isHeygenEnabled() ? 'heygen' : isAiVideoEnabled() ? aiVideoModel() : 'canvas',
+			// Why HeyGen is off, so a missing avatar or voice id is visible here
+			// instead of looking like "the key did nothing".
+			heygen: heygenMissingConfig() ?? 'configurado',
 			bucket: storageBucket,
 			last_storage_error: lastStorageError,
 			render_auth: renderAuthStatus(),
