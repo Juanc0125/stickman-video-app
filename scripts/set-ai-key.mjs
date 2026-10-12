@@ -84,12 +84,15 @@ const PROVIDERS = {
     },
     heygen: {
         // HeyGen's API wallet key - not the web subscription, whose credits
-        // the API cannot use. Feeds apps/render-worker/heygen.ts on Railway.
+        // the API cannot use. Two consumers: the worker's videos
+        // (apps/render-worker/heygen.ts, on Railway) and the assistant's voice
+        // (apps/web/app/api/speak, on Vercel), so it goes to both.
         envVar: 'HEYGEN_API_KEY',
         prefix: '',
         probe: probeHeygen,
         probeLabel: 'api.heygen.com',
         railway: true,
+        alsoVercel: true,
     },
 };
 
@@ -421,7 +424,8 @@ async function run() {
         console.log('Pendiente para un humano:');
         console.log('- Confirma en el panel de Railway que la variable llego al servicio correcto y que el redeploy termino.');
         console.log('- Reinicia el servidor local del worker (npm run dev) para que recoja el nuevo valor de .env.local.');
-        return;
+        if (!provider.alsoVercel) return;
+        console.log('');
     }
 
     const who = runCommand('vercel', ['whoami']);

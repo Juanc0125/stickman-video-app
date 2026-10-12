@@ -99,6 +99,9 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     const voiceRef = useRef(true);
     const handsFreeRef = useRef(false);
     const speakingRef = useRef(false);
+    // The HeyGen clip being played, so muting or a newer reply can cut it.
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const wordTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
     const busyRef = useRef(false);
     const [busy, setBusy] = useState(false);
     // Bumped on each heard or spoken word; the figure turns it into motion.
@@ -161,7 +164,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         // utterance's onend, which (via the token check in speak()) picks the
         // microphone back up immediately in hands-free mode - correct, since
         // there is nothing left to echo.
-        if (!next && typeof window !== 'undefined') window.speechSynthesis?.cancel();
+        if (!next && typeof window !== 'undefined') {
+            stopVoiceClip();
+            window.speechSynthesis?.cancel();
+        }
         try {
             window.localStorage.setItem(VOICE_KEY, next ? 'on' : 'off');
         } catch {
@@ -200,21 +206,104 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     // (or was never spoken at all - unsupported browser, empty string). This
     // is the one hook point for the whole echo trap: recognition must stay
     // suspended until this fires, never a fixed delay.
+    function stopVoiceClip() {
+        wordTimersRef.current.forEach(clearTimeout);
+        wordTimersRef.current = [];
+        const audio = audioRef.current;
+        audioRef.current = null;
+        if (audio) {
+            audio.onended = null;
+            audio.onerror = null;
+            audio.pause();
+            // pause() fires no end event, so whoever was waiting on this clip
+            // is released here; the token check below keeps it from resuming
+            // the mic on behalf of a reply that has already been superseded.
+            audio.dispatchEvent(new Event('stickman-stopped'));
+        }
+    }
+
+    // The HeyGen voice first (the same voice as the videos), the browser's
+    // own voice whenever that is not available: /api/speak answers 204 with no
+    // key, no balance, no session or any error, and a clip that will not play
+    // falls back too. Either way onDone fires exactly once.
     function speak(text: string, onDone: () => void) {
-        if (typeof window === 'undefined' || !window.speechSynthesis || !text) {
+        if (typeof window === 'undefined' || !text) {
             onDone();
             return;
         }
         const token = ++speechTokenRef.current;
+        stopVoiceClip();
+        window.speechSynthesis?.cancel();
+        const finish = () => {
+            if (speechTokenRef.current === token) onDone();
+        };
+
+        void (async () => {
+            try {
+                const response = await fetch('/api/speak', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                    signal: AbortSignal.timeout(9000),
+                });
+                if (speechTokenRef.current !== token) return;
+                if (response.status === 200) {
+                    const data = await response.json() as { audio_url?: string; word_starts?: number[] };
+                    if (speechTokenRef.current !== token) return;
+                    if (data.audio_url) {
+                        const audio = new Audio(data.audio_url);
+                        audioRef.current = audio;
+                        let settled = false;
+                        const done = () => {
+                            if (settled) return;
+                            settled = true;
+                            wordTimersRef.current.forEach(clearTimeout);
+                            wordTimersRef.current = [];
+                            if (audioRef.current === audio) audioRef.current = null;
+                            finish();
+                        };
+                        audio.onended = done;
+                        audio.addEventListener('stickman-stopped', done);
+                        audio.onerror = () => {
+                            if (settled) return;
+                            settled = true;
+                            if (audioRef.current === audio) audioRef.current = null;
+                            speakWithBrowser(text, token, finish);
+                        };
+                        audio.onplay = () => {
+                            // Pulse the figure on every word, like the browser
+                            // voice's boundary events do.
+                            wordTimersRef.current = (data.word_starts ?? []).map((start) => setTimeout(onVoiceActivity, start * 1000));
+                        };
+                        try {
+                            await audio.play();
+                            return;
+                        } catch {
+                            // Autoplay refused or the clip will not decode:
+                            // drop it so the browser voice below takes over.
+                            settled = true;
+                            if (audioRef.current === audio) audioRef.current = null;
+                        }
+                    }
+                }
+            } catch {
+                // fall through to the browser's voice
+            }
+            if (speechTokenRef.current === token && !audioRef.current) speakWithBrowser(text, token, finish);
+        })();
+    }
+
+    function speakWithBrowser(text: string, token: number, finish: () => void) {
+        if (!window.speechSynthesis || speechTokenRef.current !== token) {
+            finish();
+            return;
+        }
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'es-ES';
         utterance.rate = 1.05;
-        const finish = () => {
-            // cancel() above also fires onend on whatever it interrupted, so a
-            // superseded utterance must not be the one that resumes the mic.
-            if (speechTokenRef.current === token) onDone();
-        };
+        // cancel() above also fires onend on whatever it interrupted; finish()
+        // checks the token, so a superseded utterance never resumes the mic.
         utterance.onend = finish;
         utterance.onerror = finish;
         utterance.onboundary = onVoiceActivity;

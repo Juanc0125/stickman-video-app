@@ -14,7 +14,9 @@ import { SIGN_IN_REQUIRED_ERROR } from './lib/sign-in-required';
 // session: rendering (the worker, and HeyGen when it is configured, bill per
 // second), any approval transition (RF-012: the approver must be a known
 // person), deleting videos, sounds or brand templates, uploading files to
-// Storage, and the paid TTS. Accounts are still created by the operator in the
+// Storage, and the paid TTS - the per-video one and the assistant's HeyGen
+// voice (/api/speak; visitors hear the browser's free voice instead). Accounts
+// are still created by the operator in the
 // Supabase dashboard; there is no signup route.
 //
 // The approval and render actions share PATCH /api/videos/[id] with the
@@ -24,6 +26,7 @@ import { SIGN_IN_REQUIRED_ERROR } from './lib/sign-in-required';
 // here by method and path.
 const PROTECTED_ROUTES: Array<{ method: string; pattern: RegExp }> = [
     { method: 'POST', pattern: /^\/api\/videos\/[^/]+\/tts$/ },
+    { method: 'POST', pattern: /^\/api\/speak$/ },
     { method: 'POST', pattern: /^\/api\/videos\/[^/]+\/logo$/ },
     { method: 'DELETE', pattern: /^\/api\/videos\/[^/]+$/ },
     { method: 'POST', pattern: /^\/api\/sounds(\/upload-url)?$/ },
