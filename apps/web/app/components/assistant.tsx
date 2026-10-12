@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { VideoRecord } from './api';
 import AssistantEntity, { type EntityMood } from './assistant-entity';
+import { createRecordedRecognition } from './recorded-dictation';
 
 interface AssistantProps {
     videos: VideoRecord[];
@@ -56,7 +57,9 @@ function getRecognition(): Recognition | null {
     if (typeof window === 'undefined') return null;
     const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!Ctor) return null;
+    // No native engine (Firefox, Brave...): record the phrase and transcribe
+    // it on the server instead, so the mic works in every browser.
+    if (!Ctor) return createRecordedRecognition();
     const recognition = new Ctor();
     recognition.lang = RECOGNITION_LANG;
     // Continuous for press-to-talk too: non-continuous sessions end themselves
@@ -306,11 +309,11 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         if (recognitionRef.current || busyRef.current || speakingRef.current) return;
         const recognition = getRecognition();
         if (!recognition) {
-            // Kept visible rather than hidden when unsupported: a control that
-            // silently does nothing reads as a bug, and the reason is worth
-            // saying. Hands-free falls back to the same text field everything
-            // else already uses.
-            say('Tu navegador no soporta dictado por voz. Prueba en Chrome o Edge, o escribeme.', false);
+            // Only reached when the browser cannot even record audio (both the
+            // native engine and the recorded fallback are missing). Said out
+            // loud rather than hidden: a control that silently does nothing
+            // reads as a bug. Hands-free falls back to the text field.
+            say('Este navegador no permite usar el microfono. Escribeme y te ayudo igual.', false);
             if (handsFreeRef.current) {
                 handsFreeRef.current = false;
                 setHandsFree(false);
