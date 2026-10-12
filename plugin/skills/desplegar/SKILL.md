@@ -6,9 +6,10 @@ description: Sube Stickman a producción y comprueba que siguió funcionando - p
 # Desplegar y comprobar
 
 Un push a `master` dispara un despliegue de Vercel por sí solo. Lo que no se
-hace solo es comprobar que lo desplegado sigue siendo correcto — y en marketing
-financiero regulado, la puerta de autenticación es el único control que hay: si
-un despliegue la abre, cualquiera lee los borradores del cliente.
+hace solo es comprobar que lo desplegado sigue siendo correcto. El estudio está
+abierto a cualquiera desde el 12-oct (decisión del dueño), pero generar,
+aprobar, borrar y subir archivos siguen pidiendo sesión: es la única barrera
+entre un desconocido y el saldo de HeyGen o la aprobación de RF-012.
 
 ## Antes de empujar
 
@@ -57,7 +58,8 @@ Cuatro comprobaciones, y las cuatro importan:
 
 ```
 curl -s -o /dev/null -w "%{http_code}\n" https://project-bftvz.vercel.app/
-curl -s -o /dev/null -w "%{http_code}\n" https://project-bftvz.vercel.app/api/videos
+curl -s -o /dev/null -w "%{http_code}\n" -X PATCH -H "Content-Type: application/json" \
+  -d '{"action":"render"}' https://project-bftvz.vercel.app/api/videos/00000000-0000-0000-0000-000000000000
 curl -s https://project-bftvz.vercel.app/api/health
 curl -s https://stickman-video-app-production.up.railway.app/health
 ```
@@ -66,15 +68,15 @@ Lo que debe salir:
 
 | Comprobación | Esperado | Por qué importa |
 |---|---|---|
-| `/` sin sesión | **307** a `/login` | la puerta sigue cerrada |
-| `/api/videos` sin sesión | **401** | la API no quedó abierta |
+| `/` sin sesión | **200** | el estudio está abierto, como se decidió |
+| generar (`PATCH` con `action: render`) sin sesión | **401** | nadie gasta saldo ni aprueba sin cuenta |
 | `/api/health` | **200** `{"ok":true,"db":"ok"}` | la base responde de verdad |
 | worker `/health` | `ok:true`, `render_auth: configurado` | el render vive y está protegido |
 
-Un 200 en `/api/videos` es una fuga de datos del cliente, no un detalle.
+Cualquier cosa distinta de 401 en el `PATCH` de generar (un 404, un 202) quiere
+decir que la acción pasó sin sesión: es gasto abierto a cualquiera, no un detalle.
 
-`/api/health` es la única ruta pública de la API, a propósito: el cron que evita
-que Supabase se pause no tiene sesión. Devuelve 503 si la base no contesta.
+`/api/health` devuelve 503 si la base no contesta.
 
 ## Si tocaste `vercel.json`
 
@@ -110,5 +112,5 @@ no debería cambiar eso por accidente.
 
 El sha que quedó vivo en producción, y el resultado de las cuatro
 comprobaciones. Si alguna no da lo esperado, dilo con el código que salió en vez
-de redondear a "todo bien" — y si la que falló es la de 401, trátalo como
+de redondear a "todo bien" — y si la que falló es la del 401 al generar, trátalo como
 urgente.

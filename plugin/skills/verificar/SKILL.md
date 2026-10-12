@@ -106,7 +106,7 @@ del worker la deja vacía, así que dibuja con canvas.
 npm run e2e
 ```
 
-Son 37 comprobaciones e incluyen un render de verdad con descarga del MP4, así
+Son 38 comprobaciones e incluyen un render de verdad con descarga del MP4, así
 que tarda unos minutos. Recorre el flujo entero: guion, escenas, marca, la
 puerta de aprobación, publicar, duplicar, plantillas, el lote y el copiloto.
 

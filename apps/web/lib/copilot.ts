@@ -16,6 +16,7 @@ import { ACTION_OPTIONS, CHARACTER_OPTIONS, PLATFORM_LABELS, PLATFORM_OPTIONS, P
 import { generateWithFallback, isCopilotConfigured, type ChatMessage, type ToolCall, type ToolSchema } from './ai-provider';
 import { FORBIDDEN, interpret, type AssistantAction, type AssistantContext, type BrandPatch } from './assistant';
 import { listBrandTemplates } from './brand-templates';
+import { SIGN_IN_REQUIRED_ERROR } from './sign-in-required';
 import { createVideo, deleteScene, deleteVideo, getVideo, listVideos, updateBranding, updateScene, updateScript } from './video-persistence';
 
 export interface CopilotTurn {
@@ -47,6 +48,8 @@ interface CopilotState {
     acciones: string[];
     selectId: string | null;
     descargarUrl: string | null;
+    // The studio is open to anyone; deleting still needs a session (proxy.ts).
+    signedIn: boolean;
 }
 
 type ToolArgs = Record<string, unknown>;
@@ -851,6 +854,7 @@ async function aplicarMarca(patch: BrandPatch, state: CopilotState): Promise<str
 }
 
 async function borrarVideo(state: CopilotState): Promise<string> {
+    if (!state.signedIn) return SIGN_IN_REQUIRED_ERROR;
     const open = await requireVideo(state);
     if (!open.ok) return open.message;
 
@@ -949,8 +953,8 @@ async function runWithoutModel(message: string, state: CopilotState): Promise<Co
  * their results and answers. The loop is bounded so a model that keeps calling
  * tools without ever answering still ends the turn.
  */
-export async function runCopilot(videoId: string | null, turns: CopilotTurn[]): Promise<CopilotResult> {
-    const state: CopilotState = { videoId, touched: null, created: false, deletedId: null, acciones: [], selectId: null, descargarUrl: null };
+export async function runCopilot(videoId: string | null, turns: CopilotTurn[], signedIn = false): Promise<CopilotResult> {
+    const state: CopilotState = { videoId, touched: null, created: false, deletedId: null, acciones: [], selectId: null, descargarUrl: null, signedIn };
     const lastUser = [...turns].reverse().find((turn) => turn.role === 'user')?.content ?? '';
 
     // RF-012: refused before anything runs, whichever path would have served it.

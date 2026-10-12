@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runCopilot, type CopilotTurn } from '../../../lib/copilot';
+import { requireSession } from '../../../lib/sign-in-required';
 
 // The browser sends the whole visible conversation and the id of the video on
 // screen; everything else the copilot needs it reads from the database itself,
@@ -20,7 +21,9 @@ export async function POST(request: Request) {
     }
 
     try {
-        return NextResponse.json(await runCopilot(videoId, turns));
+        // Open to anyone; only the delete it can perform needs a session.
+        const signedIn = (await requireSession()) === null;
+        return NextResponse.json(await runCopilot(videoId, turns, signedIn));
     } catch (error) {
         console.error('Fallo el copiloto.', error);
         return NextResponse.json({ error: 'El copiloto no pudo completar la peticion.' }, { status: 500 });

@@ -91,8 +91,19 @@ const entrada = await api('/api/auth/login', { method: 'POST', body: JSON.string
 record('iniciar sesion', entrada.status === 200 && cookieJar.size > 0,
     entrada.status === 200 ? `sesion abierta como ${E2E_EMAIL}` : `HTTP ${entrada.status} - revisa E2E_PASSWORD o DEMO_USER_PASSWORD`);
 
-const sinSesion = await fetch(`${S}/api/videos`);
-record('la API rechaza sin sesion', sinSesion.status === 401, `HTTP ${sinSesion.status}`);
+// The studio is open to visitors; only the actions that spend money or commit
+// the client need a session (see apps/web/proxy.ts). Both halves are checked:
+// a visitor can read, and a visitor cannot render, approve or delete. The
+// guarded calls target a made-up id - with no session they never reach it.
+const visitante = await fetch(`${S}/api/videos`);
+record('un visitante puede leer sin sesion', visitante.status === 200, `HTTP ${visitante.status}`);
+const ID_FALSO = '00000000-0000-0000-0000-000000000000';
+const renderSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'render' }) });
+const aprobarSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) });
+const borrarSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'DELETE' });
+record('sin sesion no se genera, aprueba ni borra',
+    renderSinSesion.status === 401 && aprobarSinSesion.status === 401 && borrarSinSesion.status === 401,
+    `render ${renderSinSesion.status}, aprobar ${aprobarSinSesion.status}, borrar ${borrarSinSesion.status}`);
 
 try {
     // 1. health

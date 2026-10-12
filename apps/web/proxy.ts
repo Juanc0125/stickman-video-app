@@ -2,50 +2,59 @@
 // same file position at the app root); see node_modules/next/dist/docs/01-app
 // /03-api-reference/03-file-conventions/proxy.md. This is that file.
 //
-// Without this, the studio has no door: every route under app/api/** answers
-// anyone who knows the Vercel URL, which also makes RF-012's human-approval
-// gate meaningless - the gate exists, but anyone can walk through it. This
-// runs before every request and turns "no session" into a 401 for API calls
-// and a redirect for pages.
+// Runs before every request: refreshes the session cookie and turns "no
+// session" into a 401 for the API calls that spend money or commit the
+// client. Everything else is open to anyone with the URL.
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseProxyClient } from './lib/supabase-server';
+import { SIGN_IN_REQUIRED_ERROR } from './lib/sign-in-required';
 
-// The login page and the auth endpoints themselves are the only way in while
-// signed out - block them and nobody could ever log in. Everything else,
-// page or API, needs a session. There is deliberately no signup route to
-// exempt: accounts are created by the operator in the Supabase dashboard.
-// /api/health is the one non-auth exception: the cron that keeps the free
-// Supabase project from pausing has no session, and it answers two fixed
-// booleans, so there is nothing behind it to protect. See that route's header.
-const PUBLIC_PATHS = ['/login', '/api/auth/login', '/api/auth/logout', '/api/auth/session', '/api/health'];
+// Open studio, guarded spending. Anyone can browse, write and edit drafts
+// without signing in; what costs money or commits the client still needs a
+// session: rendering (the worker, and HeyGen when it is configured, bill per
+// second), any approval transition (RF-012: the approver must be a known
+// person), deleting videos, sounds or brand templates, uploading files to
+// Storage, and the paid TTS. Accounts are still created by the operator in the
+// Supabase dashboard; there is no signup route.
+//
+// The approval and render actions share PATCH /api/videos/[id] with the
+// script edit, and only the body tells them apart - a proxy cannot read the
+// body without consuming it, so that one check lives in the route itself
+// (see requireSession in lib/sign-in-required.ts). Everything else is decided
+// here by method and path.
+const PROTECTED_ROUTES: Array<{ method: string; pattern: RegExp }> = [
+    { method: 'POST', pattern: /^\/api\/videos\/[^/]+\/tts$/ },
+    { method: 'POST', pattern: /^\/api\/videos\/[^/]+\/logo$/ },
+    { method: 'DELETE', pattern: /^\/api\/videos\/[^/]+$/ },
+    { method: 'POST', pattern: /^\/api\/sounds(\/upload-url)?$/ },
+    { method: 'DELETE', pattern: /^\/api\/sounds\/[^/]+$/ },
+    { method: 'DELETE', pattern: /^\/api\/brand-templates\/[^/]+$/ },
+];
 
-function isPublicPath(pathname: string): boolean {
-    return PUBLIC_PATHS.includes(pathname);
+function needsSession(method: string, pathname: string): boolean {
+    return PROTECTED_ROUTES.some((route) => route.method === method && route.pattern.test(pathname));
 }
 
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
-    if (isPublicPath(pathname)) return NextResponse.next();
-
-    const isApiRequest = pathname.startsWith('/api/');
     const client = createSupabaseProxyClient(request);
+    const guarded = needsSession(request.method, pathname);
 
     // No Supabase configuration means no way to check anyone's identity:
-    // fail closed instead of letting every request through unchecked.
+    // the open parts keep working, the guarded ones fail closed.
     if (!client) {
+        if (!guarded) return NextResponse.next();
         console.error('Supabase no esta configurado: no se puede verificar la sesion.');
-        return isApiRequest
-            ? NextResponse.json({ error: 'El servicio de autenticacion no esta disponible.' }, { status: 401 })
-            : NextResponse.redirect(new URL('/login', request.url));
+        return NextResponse.json({ error: 'El servicio de autenticacion no esta disponible.' }, { status: 401 });
     }
 
+    // getUser() runs for every request, not only the guarded ones, so a
+    // signed-in session keeps getting its cookie refreshed while browsing.
     const { supabase, getResponse } = client;
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        return isApiRequest
-            ? NextResponse.json({ error: 'No autenticado. Inicia sesion para continuar.' }, { status: 401 })
-            : NextResponse.redirect(new URL('/login', request.url));
+    if (guarded && !user) {
+        return NextResponse.json({ error: SIGN_IN_REQUIRED_ERROR }, { status: 401 });
     }
 
     // Carries any refreshed session cookie the getUser() call above wrote.

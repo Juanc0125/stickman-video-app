@@ -11,9 +11,9 @@ export default function VideoStudio() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    // Who is signed in, for the header. Middleware already guarantees a
-    // session exists before this component ever renders, so a failed lookup
-    // here just leaves the email blank rather than blocking the studio.
+    // Who is signed in, for the header - null for a visitor. The studio is
+    // open to anyone (proxy.ts), so a missing session only swaps "Salir" for
+    // "Entrar"; it never blocks the page.
     const [email, setEmail] = useState<string | null>(null);
     const [loggingOut, setLoggingOut] = useState(false);
 
@@ -38,7 +38,9 @@ export default function VideoStudio() {
             // The cookie may already be gone (e.g. expired seconds ago) -
             // either way, the destination is the same.
         }
-        window.location.href = '/login';
+        // The studio stays open after signing out; reload so every panel
+        // drops what it knew about the session.
+        window.location.href = '/';
     }
 
     // Rendering runs in the background on the worker, which reports progress on
@@ -107,15 +109,27 @@ export default function VideoStudio() {
                                 {email}
                             </span>
                         )}
-                        <button
-                            type="button"
-                            onClick={() => { void handleLogout(); }}
-                            disabled={loggingOut}
-                            aria-label="Cerrar sesión"
-                            className="rounded-full border border-white/15 px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {loggingOut ? 'Saliendo...' : 'Salir'}
-                        </button>
+                        {email ? (
+                            <button
+                                type="button"
+                                onClick={() => { void handleLogout(); }}
+                                disabled={loggingOut}
+                                aria-label="Cerrar sesión"
+                                className="rounded-full border border-white/15 px-3 py-1.5 font-medium text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {loggingOut ? 'Saliendo...' : 'Salir'}
+                            </button>
+                        ) : (
+                            // Anyone can draft without an account; generating,
+                            // approving, deleting and uploading need one.
+                            <a
+                                href="/login"
+                                title="Inicia sesión para generar, aprobar, borrar o subir archivos"
+                                className="rounded-full border border-sky-400/40 px-3 py-1.5 font-medium text-sky-200 transition hover:bg-sky-400/10"
+                            >
+                                Entrar
+                            </a>
+                        )}
                     </div>
                 </div>
             </header>

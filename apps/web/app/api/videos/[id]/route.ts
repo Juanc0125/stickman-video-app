@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireSession } from '../../../../lib/sign-in-required';
 import { deleteVideo, renderVideo, updateScript, updateVideoStatus } from '../../../../lib/video-persistence';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -24,6 +25,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!action) {
         return NextResponse.json({ error: 'La accion es obligatoria.' }, { status: 400 });
     }
+
+    // Editing the script is open to anyone; rendering and every approval
+    // transition are not (see proxy.ts) - this is the one guarded action the
+    // proxy cannot tell apart by path, so it is checked here.
+    const signInRequired = await requireSession();
+    if (signInRequired) return signInRequired;
 
     try {
         if (action === 'render') {

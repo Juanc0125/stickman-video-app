@@ -24,27 +24,13 @@ async function parseJsonSafe(response: Response): Promise<unknown> {
     }
 }
 
-// The middleware answers every /api/** call with 401 once the session cookie
-// is gone (expired, or signed out in another tab). Login itself can also
-// answer 401 for a wrong password - that one must NOT bounce the browser,
-// since the person is already on /login and needs to see the message.
-interface RequestOptions extends RequestInit {
-    skipAuthRedirect?: boolean;
-}
-
-function redirectToLogin(): void {
-    if (typeof window === 'undefined') return;
-    if (window.location.pathname === '/login') return;
-    window.location.href = '/login';
-}
-
-async function request<T>(input: string, init?: RequestOptions): Promise<T> {
-    const { skipAuthRedirect, ...requestInit } = init ?? {};
-    const response = await fetch(input, requestInit);
-    if (response.status === 401 && !skipAuthRedirect) {
-        redirectToLogin();
-        throw new Error('La sesión expiró. Inicia sesión de nuevo.');
-    }
+// The studio is open to anyone; only the guarded actions (render, approve,
+// delete, upload - see proxy.ts) answer 401 without a session. That 401 is
+// not "you were thrown out", it is "this one needs you to sign in", so it is
+// shown like any other error instead of bouncing the browser to /login and
+// losing whatever was on screen. The header's "Entrar" button is the way in.
+async function request<T>(input: string, init?: RequestInit): Promise<T> {
+    const response = await fetch(input, init);
     const data = await parseJsonSafe(response);
     if (!response.ok) {
         const record = data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
@@ -63,16 +49,15 @@ export async function login(email: string, password: string): Promise<void> {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ email, password }),
-        skipAuthRedirect: true,
     });
 }
 
 export async function logout(): Promise<void> {
-    await request<unknown>('/api/auth/logout', { method: 'POST', skipAuthRedirect: true });
+    await request<unknown>('/api/auth/logout', { method: 'POST' });
 }
 
 export async function fetchSession(): Promise<{ email: string | null }> {
-    return request<{ email: string | null }>('/api/auth/session', { skipAuthRedirect: true });
+    return request<{ email: string | null }>('/api/auth/session');
 }
 
 export async function fetchVideos(): Promise<VideoRecord[]> {
