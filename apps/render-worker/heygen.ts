@@ -4,8 +4,8 @@ import { pipeline } from 'node:stream/promises';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 
 // The main video engine when it is configured: every scene becomes a HeyGen
-// avatar - a realistic person - saying that scene's narration, lip-synced, on
-// the brand's background colour. The worker then puts its own subtitles,
+// avatar - a realistic person - saying that scene's narration, lip-synced, in
+// the avatar's own filmed set. The worker then puts its own subtitles,
 // logo and music on top, exactly as it does for drawn scenes.
 //
 // Billing: this uses HeyGen's API wallet (pay-as-you-go, per second of
@@ -23,6 +23,10 @@ const VOICE_ID = process.env.HEYGEN_VOICE_ID?.trim();
 const ENGINE = process.env.HEYGEN_ENGINE?.trim();
 const RESOLUTION = process.env.HEYGEN_RESOLUTION?.trim() || '720p';
 const LOCALE = process.env.HEYGEN_LOCALE?.trim() || 'es-MX';
+// HeyGen's public avatars are filmed in a real room (office, living room,
+// kitchen), which is most of what makes them look real, so that set is kept by
+// default. HEYGEN_BACKGROUND=marca swaps it for the brand's primary colour.
+const BRAND_BACKGROUND = process.env.HEYGEN_BACKGROUND?.trim().toLowerCase() === 'marca';
 const API_BASE = 'https://api.heygen.com';
 
 // HeyGen renders in its own queue and a busy day means minutes per clip. All
@@ -83,7 +87,7 @@ async function submit(scene: AvatarScene, aspectRatio: string, backgroundColor: 
 		avatar_id: AVATAR_ID,
 		aspect_ratio: aspectRatio,
 		resolution: RESOLUTION,
-		background: { type: 'color', value: backgroundColor },
+		...(BRAND_BACKGROUND ? { background: { type: 'color', value: backgroundColor } } : {}),
 		// A scene that already carries the app's own narration keeps it, and
 		// HeyGen only lip-syncs to it; otherwise HeyGen's voice reads the text.
 		...(audioUrl

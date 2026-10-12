@@ -66,7 +66,10 @@ const gender = process.argv.includes('--mujer') ? 'female' : process.argv.includ
 
 try {
 	const voices = await listAll(`/v3/voices?type=public&language=Spanish&limit=100${gender ? `&gender=${gender}` : ''}`, key);
-	const looks = await listAll('/v3/avatars/looks?ownership=public&limit=50', key, 2);
+	// The listing has no gender filter, so with --mujer/--hombre more pages
+	// are read and filtered here.
+	const allLooks = await listAll('/v3/avatars/looks?ownership=public&limit=50', key, gender ? 10 : 2);
+	const looks = gender ? allLooks.filter((look) => String(look.gender ?? '').toLowerCase() === gender) : allLooks;
 	const own = await listAll('/v3/avatars/looks?ownership=private&limit=50', key, 1).catch(() => []);
 
 	const isEleven = (voice) => String(voice.engine ?? voice.engines ?? '').toLowerCase().includes('elevenlabs');
