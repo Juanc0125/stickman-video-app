@@ -9,6 +9,7 @@ import { POST as applyBrandTemplateRoute } from '../app/api/videos/[id]/brand-te
 import { PATCH as patchSceneRoute } from '../app/api/videos/[id]/scenes/[sceneId]/route';
 import { POST as planScenesRoute } from '../app/api/videos/[id]/scenes/route';
 import { POST as duplicateRoute } from '../app/api/videos/[id]/duplicate/route';
+import { PATCH as musicRoute } from '../app/api/videos/[id]/music/route';
 import { POST as ttsRoute } from '../app/api/videos/[id]/tts/route';
 import { POST as batchRoute } from '../app/api/videos/batch/route';
 import type { VideoRecord } from '../app/api/videos/store';
@@ -17,6 +18,7 @@ import { generateWithFallback, isCopilotConfigured, type ChatMessage, type ToolC
 import { FORBIDDEN, interpret, type AssistantAction, type AssistantContext, type BrandPatch } from './assistant';
 import { listBrandTemplates } from './brand-templates';
 import { SIGN_IN_REQUIRED_ERROR } from './sign-in-required';
+import { listSounds } from './sounds';
 import { createVideo, deleteScene, deleteVideo, getVideo, listVideos, updateBranding, updateScene, updateScript } from './video-persistence';
 
 export interface CopilotTurn {
@@ -50,6 +52,13 @@ interface CopilotState {
     descargarUrl: string | null;
     // The studio is open to anyone; deleting still needs a session (proxy.ts).
     signedIn: boolean;
+    // What the copilot said right before an affirmative "si" from the
+    // operator, or '' when the last message is not one. A delete only goes
+    // through when this holds the question that named the same video.
+    deleteConfirmation: string;
+    // A reply a tool insists on, ending the turn: the delete question must
+    // reach the operator word for word, because the next turn checks for it.
+    finalReply: string | null;
 }
 
 type ToolArgs = Record<string, unknown>;
@@ -73,12 +82,24 @@ const DEFAULT_DURATION = 30;
 const MAX_ROUNDS = 5;
 
 // Only the tail of the conversation is sent. The studio state travels in the
-// tool results, not in the transcript, so older turns add tokens and no facts.
-const MAX_HISTORY = 12;
+// context block and the tool results, not in the transcript, so older turns
+// add tokens and few facts. Spoken replies are one to three sentences, which is
+// what makes sixteen affordable on the free tier.
+const MAX_HISTORY = 16;
+
+// What the context block lets through of the open video. The script and the
+// scene lines are resent on every round, so they are capped: enough to resolve
+// "la escena del cliente con la llave", not the whole production. Once there
+// are scenes they carry the story line by line, so the script shrinks.
+const CONTEXT_SCRIPT_CHARS = 700;
+const CONTEXT_SCRIPT_CHARS_WITH_SCENES = 300;
+const CONTEXT_SCENE_CHARS = 70;
+const CONTEXT_MAX_SCENES = 12;
+const CONTEXT_RECENT_VIDEOS = 5;
 
 // RF-012, half of the guard: the tool list below has no approve, publish or
-// render tool. The other half is this pattern, which refuses the request when
-// it is asked in words, before the model is even called. Same stems as
+// render tool. The other half is FORBIDDEN (lib/assistant.ts), which refuses
+// the request when it is asked in words, before the model is even called.
 
 const APPROVAL_REFUSAL = 'No puedo aprobar, publicar ni generar el video final. Esa decision la toma una persona revisando el contenido, porque esto es marketing financiero regulado. Yo te lo dejo listo y tu decides.';
 
@@ -87,15 +108,18 @@ const APPROVAL_REFUSAL = 'No puedo aprobar, publicar ni generar el video final. 
 // first draft does.
 const LIMITES = 'NUNCA des recomendaciones financieras personalizadas, ni estimes si le aprobarian un credito, ni inventes tasas, cifras ni nombres de entidades.';
 
+// The allowed values (platforms, characters, actions, props, templates) are not
+// repeated here: they already travel as enums in the tool schemas, and every
+// line of this prompt is paid again on every round of every turn.
 const SYSTEM = [
-    'Eres el copiloto de Stickman: produces videos verticales cortos de marketing hipotecario.',
-    'El operador habla en lenguaje natural; tu operas el estudio llamando herramientas. No describas lo que harias: llama la herramienta y cuenta el resultado.',
-    'Responde en español, una o dos frases, prosa hablada. Te escuchan por voz: nada de listas, markdown ni emojis.',
-    'Trabajas sobre el video abierto; si no hay uno y hace falta, crealo con generar_guion.',
-    'Las escenas empiezan en 1, igual que en el panel.',
-    `Plataformas: ${PLATFORMS.join(', ')}. Plantillas: ${TEMPLATE_IDS.join(', ')}.`,
-    `Personajes: ${CHARACTERS.join(', ')}. Acciones: ${ACTIONS.join(', ')}. Objetos: ${PROPS.join(', ')}.`,
-    'NUNCA apruebes, publiques, autorices ni generes el video final, ni ofrezcas hacerlo: no tienes herramientas para eso, lo decide una persona revisando el contenido. Explicalo si te lo piden.',
+    'Eres el copiloto de Stickman, el estudio de videos verticales cortos de marketing hipotecario. Operas toda la app con herramientas.',
+    'Te escuchan por voz: responde en español, de una a tres frases cortas y naturales, sin listas, markdown ni emojis.',
+    'Si la intencion es clara, actua sin pedir permiso y encadena en este mismo turno todas las herramientas que la peticion necesite. Pregunta solo si falta un dato imprescindible.',
+    'Si cambiaste algo, confirmalo en una sola frase; si te preguntaron, solo responde. No leas el guion ni la lista de escenas salvo que te lo pidan.',
+    'Usa el CONTEXTO para entender referencias: "la tercera escena" es la 3, "ese video" o "este" es el abierto, "el de TikTok" o "el de la cuota" es el de la biblioteca que encaje (abrelo con abrir_video). Las escenas empiezan en 1. No inventes contenido del video que no este en el CONTEXTO.',
+    'Si no hay video abierto y hace falta uno, crealo con generar_guion.',
+    'Para borrar el video llama borrar_video: la herramienta pide la confirmacion.',
+    'NUNCA apruebes, publiques, envies a aprobacion ni generes el video final, ni ofrezcas hacerlo: no tienes herramientas para eso, lo decide una persona revisando el contenido. Explicalo si te lo piden.',
     `${LIMITES} Explica en general y ofrece convertirlo en video.`,
 ].join('\n');
 
@@ -172,6 +196,7 @@ const TOOLS: ToolSchema[] = [
                 accion: { type: 'string', enum: ACTIONS },
                 objeto: { type: 'string', enum: PROPS },
                 descripcion: { type: 'string', description: 'Linea hablada, que es tambien el subtitulo.' },
+                duracion_segundos: { type: 'number' },
             },
             required: ['numero_escena'],
             additionalProperties: false,
@@ -215,15 +240,45 @@ const TOOLS: ToolSchema[] = [
     },
     {
         name: 'aplicar_branding',
-        description: 'Aplica una marca guardada: logo, colores y tipografia.',
+        description: 'Aplica una plantilla de marca guardada (logo, colores, tipografia) por nombre aproximado. Sin nombre, lista las guardadas.',
         parameters: {
             type: 'object',
             properties: {
                 nombre_o_id_plantilla: { type: 'string' },
             },
-            required: ['nombre_o_id_plantilla'],
             additionalProperties: false,
         },
+    },
+    {
+        name: 'poner_musica',
+        description: 'Pone la musica de fondo por nombre aproximado, o la quita. Sin nombre, lista las opciones.',
+        parameters: {
+            type: 'object',
+            properties: {
+                nombre: { type: 'string' },
+                quitar: { type: 'boolean' },
+            },
+            additionalProperties: false,
+        },
+    },
+    {
+        name: 'poner_efecto',
+        description: 'Pone el efecto de sonido de una escena por nombre aproximado, o lo quita. Sin nombre, lista los efectos.',
+        parameters: {
+            type: 'object',
+            properties: {
+                numero_escena: { type: 'number' },
+                nombre: { type: 'string' },
+                quitar: { type: 'boolean' },
+            },
+            required: ['numero_escena'],
+            additionalProperties: false,
+        },
+    },
+    {
+        name: 'borrar_video',
+        description: 'Borra el video abierto. No se deshace; la herramienta pide confirmacion.',
+        parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
     {
         name: 'estado_proyecto',
@@ -572,7 +627,7 @@ async function editarEscena(args: ToolArgs, state: CopilotState): Promise<string
     const found = resolveScene(open.value, args.numero_escena);
     if (!found.ok) return found.message;
 
-    const patch: Record<string, string> = {};
+    const patch: Record<string, string | number> = {};
     const ignored: string[] = [];
     const fields: [string, unknown, readonly string[] | null][] = [
         ['character', args.personaje, CHARACTERS],
@@ -593,6 +648,10 @@ async function editarEscena(args: ToolArgs, state: CopilotState): Promise<string
         else ignored.push(`"${value}"`);
     }
 
+    // The scene route owns the rule (a positive number); this only reads it.
+    const seconds = typeof args.duracion_segundos === 'number' ? args.duracion_segundos : Number(readText(args.duracion_segundos));
+    if (Number.isFinite(seconds) && seconds > 0) patch.duration_seconds = seconds;
+
     if (!Object.keys(patch).length) {
         return `No hay nada valido que cambiar en la escena ${found.value.order}. Personajes: ${CHARACTERS.join(', ')}. Acciones: ${ACTIONS.join(', ')}. Objetos: ${PROPS.join(', ')}.`;
     }
@@ -602,7 +661,7 @@ async function editarEscena(args: ToolArgs, state: CopilotState): Promise<string
     state.acciones.push(`Escena ${found.value.order} editada`);
 
     const scene = updated.scenes.find((entry) => entry.id === found.value.id);
-    const resumen = scene ? `${scene.character} / ${scene.action} / ${scene.prop}: ${scene.description}` : Object.keys(patch).join(', ');
+    const resumen = scene ? `${scene.character} / ${scene.action} / ${scene.prop} (${scene.duration_seconds}s): ${scene.description}` : Object.keys(patch).join(', ');
     return `Escena ${found.value.order} actualizada: ${resumen}.${ignored.length ? ` Ignore ${ignored.join(' y ')} porque no esta entre los valores permitidos.` : ''}`;
 }
 
@@ -626,6 +685,25 @@ function scoreText(query: string, text: string): number {
     const words = normalise(query).split(/[^a-z0-9]+/).filter((word) => word.length >= 4);
     const haystack = normalise(text);
     return words.filter((word) => haystack.includes(word)).length;
+}
+
+// Brand templates and sounds are chosen by what the operator calls them ("la de
+// confianza", "la marca azul"), never by id: the exact id, the exact name, a
+// name containing the phrase, then the name sharing the most words with it.
+function findByName<T extends { id: string; name: string }>(items: T[], query: string): T | null {
+    const wanted = normalise(query);
+    if (!wanted) return null;
+    const exact = items.find((item) => item.id === query) ?? items.find((item) => normalise(item.name) === wanted);
+    if (exact) return exact;
+    if (wanted.length >= 3) {
+        const contained = items.find((item) => normalise(item.name).includes(wanted));
+        if (contained) return contained;
+    }
+    const ranked = items
+        .map((item) => ({ item, score: scoreText(query, item.name) }))
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score);
+    return ranked[0]?.item ?? null;
 }
 
 async function sugerirPlantilla(args: ToolArgs): Promise<string> {
@@ -682,19 +760,82 @@ async function aplicarBranding(args: ToolArgs, state: CopilotState): Promise<str
     }
 
     const query = readText(args.nombre_o_id_plantilla);
-    const wanted = normalise(query);
-    const match = templates.find((template) => template.id === query)
-        ?? templates.find((template) => normalise(template.name) === wanted)
-        ?? (wanted.length >= 3 ? templates.find((template) => normalise(template.name).includes(wanted)) : undefined);
+    const saved = templates.map((template) => template.name).join(', ');
+    if (!query) return `Plantillas de marca guardadas: ${saved}.`;
 
+    const match = findByName(templates, query);
     if (!match) {
-        return `No encontre la plantilla de marca "${query}". Guardadas: ${templates.map((template) => template.name).join(', ')}.`;
+        return `No encontre la plantilla de marca "${query}". Guardadas: ${saved}.`;
     }
 
     const updated = await callRoute(applyBrandTemplateRoute, { id: open.value.id }, jsonInit('POST', { template_id: match.id }));
     state.touched = updated;
     state.acciones.push(`Marca "${match.name}" aplicada`);
     return `Marca "${match.name}" aplicada al video: ${describeBranding(updated)}.`;
+}
+
+// RF-010. The choice lands in the same routes the sound panel calls, which
+// check that the id exists and is of the right kind; listing by kind here only
+// keeps a music name from being offered as an effect.
+async function soundOptions(kind: 'musica' | 'efecto') {
+    return (await listSounds()).filter((sound) => sound.kind === kind);
+}
+
+async function ponerMusica(args: ToolArgs, state: CopilotState): Promise<string> {
+    const open = await requireVideo(state);
+    if (!open.ok) return open.message;
+
+    if (args.quitar === true) {
+        const updated = await callRoute(musicRoute, { id: open.value.id }, jsonInit('PATCH', { music_id: null }));
+        state.touched = updated;
+        state.acciones.push('Musica quitada');
+        return 'Quite la musica de fondo del video.';
+    }
+
+    const options = await soundOptions('musica');
+    if (!options.length) return 'No hay musicas de fondo disponibles todavia; se suben desde el panel de sonido.';
+    const catalog = options.map((sound) => sound.name).join(', ');
+    const current = options.find((sound) => sound.id === open.value.music_id)?.name ?? 'ninguna';
+
+    const nombre = readText(args.nombre);
+    if (!nombre) return `Musicas disponibles: ${catalog}. Ahora tiene: ${current}.`;
+    const match = findByName(options, nombre);
+    if (!match) return `No encontre la musica "${nombre}". Disponibles: ${catalog}.`;
+
+    const updated = await callRoute(musicRoute, { id: open.value.id }, jsonInit('PATCH', { music_id: match.id }));
+    state.touched = updated;
+    state.acciones.push(`Musica "${match.name}" elegida`);
+    return `Musica de fondo: ${match.name}.`;
+}
+
+async function ponerEfecto(args: ToolArgs, state: CopilotState): Promise<string> {
+    const open = await requireVideo(state);
+    if (!open.ok) return open.message;
+
+    const found = resolveScene(open.value, args.numero_escena);
+    if (!found.ok) return found.message;
+    const sceneId = { id: open.value.id, sceneId: found.value.id };
+
+    if (args.quitar === true) {
+        const updated = await callRoute(patchSceneRoute, sceneId, jsonInit('PATCH', { sound_effect_id: null }));
+        state.touched = updated;
+        state.acciones.push(`Efecto quitado de la escena ${found.value.order}`);
+        return `Quite el efecto de sonido de la escena ${found.value.order}.`;
+    }
+
+    const options = await soundOptions('efecto');
+    if (!options.length) return 'No hay efectos de sonido disponibles todavia; se suben desde el panel de sonido.';
+    const catalog = options.map((sound) => sound.name).join(', ');
+
+    const nombre = readText(args.nombre);
+    if (!nombre) return `Efectos disponibles: ${catalog}.`;
+    const match = findByName(options, nombre);
+    if (!match) return `No encontre el efecto "${nombre}". Disponibles: ${catalog}.`;
+
+    const updated = await callRoute(patchSceneRoute, sceneId, jsonInit('PATCH', { sound_effect_id: match.id }));
+    state.touched = updated;
+    state.acciones.push(`Efecto "${match.name}" en la escena ${found.value.order}`);
+    return `Escena ${found.value.order} con el efecto ${match.name}.`;
 }
 
 async function estadoProyecto(_args: ToolArgs, state: CopilotState): Promise<string> {
@@ -724,17 +865,26 @@ async function estadoProyecto(_args: ToolArgs, state: CopilotState): Promise<str
 // of the turn at the video it found: "abre el de la cuota inicial y generale
 // las escenas" has to work in one go.
 async function abrirVideo(args: ToolArgs, state: CopilotState): Promise<string> {
-    const videos = await listVideos();
+    const videos = newestFirst(await listVideos());
     if (!videos.length) return 'Todavia no hay videos guardados. Dime un tema y te creo el primero.';
 
+    // "el de TikTok" narrows to that platform first; "el ultimo" is the newest
+    // and "el primero" the oldest one created, within whatever is left.
     const query = normalise(readText(args.busqueda));
+    const platform = PLATFORMS.find((value) => query.includes(value))
+        ?? Object.entries(PLATFORM_ALIASES).find(([alias]) => query.includes(alias))?.[1];
+    const pool = platform ? videos.filter((video) => video.platform === platform) : videos;
+    if (!pool.length) return `No hay ningun video de ${PLATFORM_LABELS[platform as Platform]}.`;
+
+    const topicQuery = platform ? query.replace(/\b(de|para|en)?\s*(tik tok|tiktok|reels?|instagram|shorts?|youtube)\b/g, ' ').trim() : query;
     let match: VideoRecord | undefined;
-    if (/ultimo|reciente/.test(query)) match = videos[videos.length - 1];
-    else if (/primero|primer/.test(query)) match = videos[0];
-    if (!match && query) {
-        match = videos.find((video) => normalise(video.topic).includes(query))
-            ?? videos.find((video) => query.split(/\s+/).some((word) => word.length > 3 && normalise(video.topic).includes(word)));
+    if (/ultimo|reciente/.test(topicQuery)) match = pool[0];
+    else if (/primero|primer/.test(topicQuery)) match = pool[pool.length - 1];
+    if (!match && topicQuery) {
+        match = pool.find((video) => normalise(video.topic).includes(topicQuery))
+            ?? pool.find((video) => topicQuery.split(/\s+/).some((word) => word.length > 3 && normalise(video.topic).includes(word)));
     }
+    if (!match && platform) match = pool[0];
     if (!match) return `No encontre ese video. Los que hay son: ${videos.map((video) => video.topic).join(', ')}.`;
 
     state.videoId = match.id;
@@ -792,6 +942,9 @@ const EXECUTORS: Record<string, ToolExecutor> = {
     sugerir_plantilla: sugerirPlantilla,
     sugerir_personaje: sugerirPersonaje,
     aplicar_branding: aplicarBranding,
+    poner_musica: ponerMusica,
+    poner_efecto: ponerEfecto,
+    borrar_video: (_args, state) => borrarVideo(state),
     estado_proyecto: estadoProyecto,
     abrir_video: abrirVideo,
     generar_voz: generarVoz,
@@ -828,7 +981,7 @@ function summarise(state: CopilotState): string {
 
 function toResult(state: CopilotState, reply: string, provider: string | null): CopilotResult {
     return {
-        reply: reply.trim() || summarise(state),
+        reply: state.finalReply ?? (reply.trim() || summarise(state)),
         video: state.touched,
         created: state.created,
         deletedId: state.deletedId,
@@ -839,10 +992,10 @@ function toResult(state: CopilotState, reply: string, provider: string | null): 
     };
 }
 
-// Two executors no tool exposes. They exist because the regex interpreter below
-// can still ask for them, and deleting a video or repainting its colours is not
-// something the copilot should infer from a vague sentence - only from a
-// command the interpreter already recognised as exactly that.
+// An executor no tool exposes. It exists because the regex interpreter below
+// can still ask for it, and repainting a video's colours is not something the
+// copilot should infer from a vague sentence - only from a command the
+// interpreter already recognised as exactly that.
 async function aplicarMarca(patch: BrandPatch, state: CopilotState): Promise<string> {
     const open = await requireVideo(state);
     if (!open.ok) return open.message;
@@ -853,10 +1006,29 @@ async function aplicarMarca(patch: BrandPatch, state: CopilotState): Promise<str
     return `Marca actualizada: ${describeBranding(updated)}.`;
 }
 
+// Deleting cannot be undone, so it takes two turns whichever path asked for
+// it: the first one asks this exact question, and only an affirmative answer
+// to it, about the same video, deletes. A model that calls the tool on its own
+// initiative therefore only ever produces the question.
+function deleteQuestion(video: VideoRecord): string {
+    return `¿Seguro que borro el video "${video.topic}"? No se puede deshacer.`;
+}
+
+const AFFIRMATIVE = /^\s*(si|sip|claro|dale|confirmo|confirmado|de una|adelante|hazlo|borralo|ok|okay|de acuerdo|por favor)\b/;
+
+function confirmsDelete(state: CopilotState, video: VideoRecord): boolean {
+    return normalise(state.deleteConfirmation).includes(normalise(deleteQuestion(video)));
+}
+
 async function borrarVideo(state: CopilotState): Promise<string> {
     if (!state.signedIn) return SIGN_IN_REQUIRED_ERROR;
     const open = await requireVideo(state);
     if (!open.ok) return open.message;
+
+    if (!confirmsDelete(state, open.value)) {
+        state.finalReply = deleteQuestion(open.value);
+        return state.finalReply;
+    }
 
     await deleteVideo(open.value.id);
     state.videoId = null;
@@ -880,13 +1052,82 @@ function buildContext(videos: VideoRecord[], videoId: string | null): AssistantC
     };
 }
 
+// Supabase lists newest first and the in-memory fallback oldest first, so
+// anything that says "el ultimo" sorts for itself.
+function newestFirst(videos: VideoRecord[]): VideoRecord[] {
+    return [...videos].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
+}
+
+function clip(text: string, max: number): string {
+    const flat = text.replace(/\s+/g, ' ').trim();
+    return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+}
+
+/**
+ * The facts the model needs to act without asking: the library in one line
+ * per recent video, so "el de TikTok" resolves, and the open video in full -
+ * script, scenes, sound, brand and status - so "la tercera escena" or "cambiale
+ * la musica" can be acted on at once. It is appended to the system prompt and
+ * rebuilt every turn from the database, never from what the browser says.
+ */
+async function buildPromptContext(videoId: string | null): Promise<string> {
+    const videos = newestFirst(await listVideos());
+    const lines = ['CONTEXTO'];
+
+    if (!videos.length) {
+        lines.push('Biblioteca vacia.');
+    } else {
+        const recent = videos.slice(0, CONTEXT_RECENT_VIDEOS)
+            .map((video) => `"${clip(video.topic, 50)}" (${PLATFORM_LABELS[video.platform]}, ${STATUS_LABELS[video.status].toLowerCase()})`);
+        lines.push(`Biblioteca: ${videos.length} videos. Recientes: ${recent.join('; ')}.`);
+    }
+
+    const open = videoId ? videos.find((video) => video.id === videoId) ?? await getVideo(videoId) : null;
+    if (!open) {
+        lines.push('No hay video abierto.');
+        return lines.join('\n');
+    }
+
+    const scenes = orderedScenes(open);
+    // Only resolved when something is actually chosen: listing the uploads is
+    // a query, and most videos have no sound yet.
+    const soundIds = [open.music_id, ...scenes.map((scene) => scene.sound_effect_id)].filter(Boolean);
+    const soundNames = new Map((soundIds.length ? await listSounds().catch(() => []) : []).map((sound) => [sound.id, sound.name]));
+    const soundName = (id: string | null) => (id ? soundNames.get(id) ?? 'desconocido' : null);
+
+    const total = Math.round(scenes.reduce((sum, scene) => sum + scene.duration_seconds, 0));
+    lines.push([
+        `Video abierto: "${open.topic}"`,
+        PLATFORM_LABELS[open.platform],
+        `plantilla ${getTemplate(open.template).label}`,
+        `objetivo ${open.target_duration_seconds}s`,
+        `estado ${STATUS_LABELS[open.status].toLowerCase()}`,
+        `render ${open.render_status}${open.video_url ? ' (MP4 listo)' : ''}`,
+        `musica ${soundName(open.music_id) ?? 'ninguna'}`,
+    ].join(' | ') + '.');
+    const scriptChars = scenes.length ? CONTEXT_SCRIPT_CHARS_WITH_SCENES : CONTEXT_SCRIPT_CHARS;
+    lines.push(open.script.trim() ? `Guion: ${clip(open.script, scriptChars)}` : 'Sin guion.');
+
+    if (!scenes.length) {
+        lines.push('Sin escenas.');
+    } else {
+        lines.push(`Escenas (${scenes.length}, ${total}s${scenes.every((scene) => scene.audio_url) ? ', narradas' : ''}):`);
+        for (const scene of scenes.slice(0, CONTEXT_MAX_SCENES)) {
+            const efecto = soundName(scene.sound_effect_id);
+            lines.push(`${scene.order}. ${scene.character}/${scene.action}/${scene.prop} ${scene.duration_seconds}s${efecto ? `, efecto ${efecto}` : ''}: ${clip(scene.description, CONTEXT_SCENE_CHARS)}`);
+        }
+        if (scenes.length > CONTEXT_MAX_SCENES) lines.push(`... y ${scenes.length - CONTEXT_MAX_SCENES} mas.`);
+    }
+    return lines.join('\n');
+}
+
 function describeLibrary(videos: VideoRecord[]): string {
     if (!videos.length) return 'Todavia no hay videos. Pideme uno y lo creo.';
     const porEstado = Object.entries(buildContext(videos, null).porEstado)
         .map(([estado, cantidad]) => `${cantidad} en ${STATUS_LABELS[estado as keyof typeof STATUS_LABELS] ?? estado}`)
         .join(', ');
     if (videos.length === 1) return `Hay un solo video, "${videos[0].topic}", en estado ${STATUS_LABELS[videos[0].status]}.`;
-    const temas = videos.slice(0, 3).map((video) => `"${video.topic}"`).join(', ');
+    const temas = newestFirst(videos).slice(0, 3).map((video) => `"${video.topic}"`).join(', ');
     return `Hay ${videos.length} videos (${porEstado}). Los ultimos son ${temas}.`;
 }
 
@@ -948,30 +1189,66 @@ async function runWithoutModel(message: string, state: CopilotState): Promise<Co
     return toResult(state, reply.trim() || (state.acciones.length ? '' : detail), null);
 }
 
+// The assistant turns between the operator's previous message and this one,
+// kept only when this one is a plain yes ("si", "dale, borralo"). It is what
+// borrarVideo checks its own question against.
+function pendingConfirmation(turns: CopilotTurn[]): string {
+    const lastUserIndex = turns.map((turn) => turn.role).lastIndexOf('user');
+    if (lastUserIndex < 0) return '';
+    const answer = normalise(turns[lastUserIndex].content);
+    if (!AFFIRMATIVE.test(answer) || /\bno\b/.test(answer)) return '';
+    const previousUserIndex = turns.slice(0, lastUserIndex).map((turn) => turn.role).lastIndexOf('user');
+    return turns.slice(previousUserIndex + 1, lastUserIndex)
+        .filter((turn) => turn.role === 'assistant')
+        .map((turn) => turn.content)
+        .join('\n');
+}
+
 /**
  * One turn of the copilot: the model reads the conversation, calls tools, reads
  * their results and answers. The loop is bounded so a model that keeps calling
  * tools without ever answering still ends the turn.
  */
 export async function runCopilot(videoId: string | null, turns: CopilotTurn[], signedIn = false): Promise<CopilotResult> {
-    const state: CopilotState = { videoId, touched: null, created: false, deletedId: null, acciones: [], selectId: null, descargarUrl: null, signedIn };
+    const state: CopilotState = {
+        videoId, touched: null, created: false, deletedId: null, acciones: [], selectId: null, descargarUrl: null, signedIn,
+        deleteConfirmation: pendingConfirmation(turns), finalReply: null,
+    };
     const lastUser = [...turns].reverse().find((turn) => turn.role === 'user')?.content ?? '';
+    const configured = isCopilotConfigured();
 
     // RF-012: refused before anything runs, whichever path would have served it.
-    if (FORBIDDEN.test(lastUser)) {
+    // Tested without accents too: the stems are written bare, so "apruébalo"
+    // slipped past them and reached the model.
+    if (FORBIDDEN.test(lastUser) || FORBIDDEN.test(normalise(lastUser))) {
         return toResult(state, APPROVAL_REFUSAL, null);
     }
 
-    if (!isCopilotConfigured()) {
+    // "si" right after the delete question deletes without asking the model:
+    // a model could just as well answer "listo, lo borre" without calling the
+    // tool, and the regex interpreter does not read "si" as a command at all.
+    // The provider is reported only so the panel does not announce basic mode
+    // for a turn that never needed a model.
+    if (state.deleteConfirmation && state.videoId) {
+        const open = await getVideo(state.videoId);
+        if (open && confirmsDelete(state, open)) {
+            return toResult(state, await borrarVideo(state), configured ? 'confirmacion' : null);
+        }
+    }
+
+    if (!configured) {
         return runWithoutModel(lastUser, state);
     }
 
+    let system = `${SYSTEM}\n\n${await buildPromptContext(state.videoId)}`;
+    let contextFor = state.videoId;
+    let contextActions = 0;
     const chat: ChatMessage[] = turns.slice(-MAX_HISTORY).map((turn) => ({ role: turn.role, content: turn.content }));
     let provider: string | null = null;
     let reply = '';
 
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
-        const result = await generateWithFallback(SYSTEM, chat, { tools: TOOLS, maxTokens: 800, temperature: 0.3 });
+        const result = await generateWithFallback(system, chat, { tools: TOOLS, maxTokens: 800, temperature: 0.3 });
         if (!result) {
             // Keys are configured but every provider failed. On the first round
             // nothing has run yet, so the regex interpreter can still serve the
@@ -986,12 +1263,21 @@ export async function runCopilot(videoId: string | null, turns: CopilotTurn[], s
             break;
         }
 
-        // ChatMessage cannot carry tool_calls, so the assistant's turn is kept
-        // as text naming what it invoked; without it the tool results that
-        // follow would appear to answer nothing.
-        chat.push({ role: 'assistant', content: result.text.trim() || `Ejecuto: ${result.toolCalls.map((call) => call.name).join(', ')}.` });
+        // The assistant turn is replayed with the calls it made, so each tool
+        // result that follows answers a request the API can see; that is what
+        // lets the next round chain on what this one did.
+        chat.push({ role: 'assistant', content: result.text, tool_calls: result.toolCalls });
         for (const call of result.toolCalls) {
             chat.push({ role: 'tool', content: await executeTool(call, state), tool_call_id: call.id, name: call.name });
+        }
+        if (state.finalReply) break;
+
+        // A round that opened another video or changed this one would leave
+        // the next round reading a stale context block, so it is rebuilt.
+        if (state.videoId !== contextFor || state.acciones.length !== contextActions) {
+            system = `${SYSTEM}\n\n${await buildPromptContext(state.videoId)}`;
+            contextFor = state.videoId;
+            contextActions = state.acciones.length;
         }
     }
 
