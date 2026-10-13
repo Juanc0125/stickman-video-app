@@ -52,12 +52,24 @@ export default function VideoWorkspace({ video, onUpdated, onDuplicated }: Video
 
     if (!video) {
         return (
-            <section className="panel overflow-hidden px-5 py-10 sm:px-8 sm:py-14">
-                <div className="mx-auto max-w-3xl">
-                    <div className="mb-10 text-center">
-                        <LogoMark size={56} className="mx-auto mb-5" />
-                        <h2 className="mb-3 text-balance text-2xl font-semibold tracking-tight text-white sm:text-[1.75rem]">
-                            Convierte un tema en un video listo para publicar
+            <section className="panel enter relative overflow-hidden px-5 py-12 sm:px-10 sm:py-16">
+                {/* Soft spotlight behind the hero. Decorative only. */}
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-0 -top-24 mx-auto h-72 max-w-2xl rounded-full bg-[radial-gradient(closest-side,rgba(99,102,241,0.28),transparent)] blur-2xl"
+                />
+                <div className="relative mx-auto max-w-4xl">
+                    <div className="mb-12 text-center">
+                        <div className="float-soft mx-auto mb-6 w-fit">
+                            <LogoMark size={64} />
+                        </div>
+                        <p className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-medium text-slate-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+                            Estudio de video con IA
+                        </p>
+                        <h2 className="text-gradient mx-auto mb-4 max-w-2xl text-balance text-3xl font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[2.75rem]">
+                            Convierte un tema en un video{' '}
+                            <span className="text-gradient-brand pr-1 font-display text-[1.12em] font-normal italic tracking-[-0.01em]">listo para publicar</span>
                         </h2>
                         <p className="mx-auto max-w-xl text-pretty text-sm leading-relaxed text-slate-400 sm:text-base">
                             Stickman escribe la historia, la reparte en escenas, la narra en español y arma el MP4
@@ -67,38 +79,64 @@ export default function VideoWorkspace({ video, onUpdated, onDuplicated }: Video
 
                     <ol className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {[
-                            { n: '1', t: 'Dices el tema', d: 'Hablas o escribes. Se genera un guion con forma de historia, no un folleto.' },
-                            { n: '2', t: 'Se arma en escenas', d: 'Cada escena con su personaje, su accion y su objeto. Puedes editarlas o borrarlas.' },
-                            { n: '3', t: 'Tu lo apruebas', d: 'Nada se publica sin que una persona lo revise. El asistente no puede saltarse este paso.' },
-                            { n: '4', t: 'Sale el video', d: 'MP4 vertical con voz y subtitulos, listo para descargar o publicar.' },
+                            { n: '01', t: 'Dices el tema', d: 'Hablas o escribes. Se genera un guion con forma de historia, no un folleto.' },
+                            { n: '02', t: 'Se arma en escenas', d: 'Cada escena con su personaje, su accion y su objeto. Puedes editarlas o borrarlas.' },
+                            { n: '03', t: 'Tu lo apruebas', d: 'Nada se publica sin que una persona lo revise. El asistente no puede saltarse este paso.' },
+                            { n: '04', t: 'Sale el video', d: 'MP4 vertical con voz y subtitulos, listo para descargar o publicar.' },
                         ].map((step) => (
-                            <li key={step.n} className="tile p-4">
-                                <span className="mb-3 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500/15 font-mono text-xs font-semibold text-brand-200 ring-1 ring-inset ring-brand-400/25">
-                                    {step.n}
-                                </span>
-                                <h3 className="mb-1 text-sm font-semibold text-white">{step.t}</h3>
+                            <li key={step.n} className="tile tile-hover group relative overflow-hidden p-5">
+                                <span
+                                    aria-hidden="true"
+                                    className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/50 to-transparent opacity-40 transition-opacity duration-300 group-hover:opacity-100"
+                                />
+                                <span className="mb-4 block font-mono text-xs font-medium tracking-wider text-brand-300">{step.n}</span>
+                                <h3 className="mb-1.5 text-sm font-semibold text-white">{step.t}</h3>
                                 <p className="text-xs leading-relaxed text-slate-400">{step.d}</p>
                             </li>
                         ))}
                     </ol>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="tile p-4">
-                            <h3 className="eyebrow mb-3">Pruebalo diciendo</h3>
-                            <ul className="space-y-2 text-sm text-slate-200">
-                                <li>&ldquo;Crea un video sobre tasas fijas para TikTok&rdquo;</li>
-                                <li>&ldquo;Genera las escenas&rdquo;</li>
-                                <li>&ldquo;En la escena 2 que el broker camine con una casa&rdquo;</li>
-                                <li>&ldquo;Cuantos videos tengo pendientes&rdquo;</li>
+                        <div className="tile p-5">
+                            <h3 className="eyebrow mb-4">Pruebalo diciendo</h3>
+                            <ul className="space-y-2">
+                                {[
+                                    'Crea un video sobre tasas fijas para TikTok',
+                                    'Genera las escenas',
+                                    'En la escena 2 que el broker camine con una casa',
+                                    'Cuantos videos tengo pendientes',
+                                ].map((example) => (
+                                    <li
+                                        key={example}
+                                        className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] bg-ink-950/40 px-3 py-2 text-sm text-slate-200"
+                                    >
+                                        <svg className="mt-[3px] shrink-0 text-brand-300" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <rect x="9" y="3" width="6" height="11" rx="3" />
+                                            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                                        </svg>
+                                        <span>&ldquo;{example}&rdquo;</span>
+                                    </li>
+                                ))}
                             </ul>
                         </div>
-                        <div className="tile p-4">
-                            <h3 className="eyebrow mb-3">Tambien puedes</h3>
-                            <ul className="space-y-2 text-sm text-slate-200">
-                                <li>Editar el guion y cada escena a mano</li>
-                                <li>Poner tu logo, tus colores y tu tipografia</li>
-                                <li>Reutilizar un video para otra plataforma</li>
-                                <li>Descargar el MP4 o publicarlo</li>
+                        <div className="tile p-5">
+                            <h3 className="eyebrow mb-4">Tambien puedes</h3>
+                            <ul className="space-y-3 text-sm text-slate-200">
+                                {[
+                                    'Editar el guion y cada escena a mano',
+                                    'Poner tu logo, tus colores y tu tipografia',
+                                    'Reutilizar un video para otra plataforma',
+                                    'Descargar el MP4 o publicarlo',
+                                ].map((item) => (
+                                    <li key={item} className="flex items-start gap-2.5">
+                                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-300 ring-1 ring-inset ring-emerald-400/25" aria-hidden="true">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="m5 12 5 5L20 7" />
+                                            </svg>
+                                        </span>
+                                        {item}
+                                    </li>
+                                ))}
                             </ul>
                         </div>
                     </div>
@@ -117,34 +155,74 @@ export default function VideoWorkspace({ video, onUpdated, onDuplicated }: Video
         { label: 'Aprobación', done: approved },
         { label: 'Video', done: Boolean(video.video_url) },
     ];
+    // The first step not yet done is "where you are": highlighted, not clickable.
+    const currentIndex = steps.findIndex((step) => !step.done);
 
     return (
-        <div key={video.id} className="space-y-5">
-            <header className="panel panel-pad">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                        <p className="eyebrow mb-1">Video seleccionado</p>
-                        <h2 className="text-balance break-words text-xl font-semibold tracking-tight text-white sm:text-2xl">{video.topic}</h2>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                            <span className="chip">{PLATFORM_LABELS[video.platform]}</span>
-                            <span className="chip tabular-nums">Duración objetivo: {video.target_duration_seconds}s</span>
-                            <span className="chip tabular-nums">
-                                {video.scenes.length} {video.scenes.length === 1 ? 'escena' : 'escenas'}
-                            </span>
+        <div key={video.id} className="enter space-y-5 sm:space-y-6">
+            <header className="panel relative overflow-hidden">
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(closest-side,rgba(154,92,246,0.2),transparent)]"
+                />
+                <div className="panel-pad relative">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <p className="eyebrow mb-2">Video seleccionado</p>
+                            <h2 className="text-balance break-words text-2xl font-semibold leading-tight tracking-[-0.025em] text-white sm:text-[1.75rem]">{video.topic}</h2>
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <span className="chip">{PLATFORM_LABELS[video.platform]}</span>
+                                <span className="chip tabular-nums">Duración objetivo: {video.target_duration_seconds}s</span>
+                                <span className="chip tabular-nums">
+                                    {video.scenes.length} {video.scenes.length === 1 ? 'escena' : 'escenas'}
+                                </span>
+                            </div>
                         </div>
+                        <StatusBadge status={video.status} />
                     </div>
-                    <StatusBadge status={video.status} />
                 </div>
-                <ol className="mt-5 grid grid-cols-4 gap-2" aria-label="Avance del video">
-                    {steps.map((step, index) => (
-                        <li key={step.label} className="min-w-0">
-                            <span className={`block h-1.5 rounded-full ${step.done ? 'bg-brand-400' : 'bg-white/[0.08]'}`} aria-hidden="true" />
-                            <span className={`mt-1.5 block truncate text-[0.6875rem] font-medium sm:text-xs ${step.done ? 'text-slate-200' : 'text-slate-400'}`}>
-                                <span className="sr-only">{step.done ? 'Completado: ' : 'Pendiente: '}</span>
-                                {index + 1}. {step.label}
-                            </span>
-                        </li>
-                    ))}
+                <ol className="relative grid grid-cols-4 border-t border-white/[0.06] bg-ink-950/30" aria-label="Avance del video">
+                    {steps.map((step, index) => {
+                        const current = index === currentIndex;
+                        return (
+                            <li
+                                key={step.label}
+                                aria-current={current ? 'step' : undefined}
+                                className={`relative min-w-0 px-2 py-3 sm:px-5 sm:py-4 ${index > 0 ? 'border-l border-white/[0.06]' : ''}`}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className={`absolute inset-x-0 top-0 h-0.5 transition-colors duration-500 ${
+                                        step.done ? 'bg-gradient-to-r from-brand-400 to-accent-400' : current ? 'bg-brand-400/35' : 'bg-transparent'
+                                    }`}
+                                />
+                                <span className="flex min-w-0 items-center gap-2">
+                                    <span
+                                        aria-hidden="true"
+                                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[0.625rem] font-semibold transition-colors duration-300 ${
+                                            step.done
+                                                ? 'bg-brand-500 text-white'
+                                                : current
+                                                    ? 'bg-brand-500/15 text-brand-200 ring-1 ring-inset ring-brand-400/50'
+                                                    : 'bg-white/[0.05] text-slate-400 ring-1 ring-inset ring-white/10'
+                                        }`}
+                                    >
+                                        {step.done ? (
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="m5 12 5 5L20 7" />
+                                            </svg>
+                                        ) : (
+                                            index + 1
+                                        )}
+                                    </span>
+                                    <span className={`truncate text-[0.6875rem] font-medium sm:text-xs ${step.done || current ? 'text-slate-100' : 'text-slate-400'}`}>
+                                        <span className="sr-only">{step.done ? 'Completado: ' : current ? 'Paso actual: ' : 'Pendiente: '}</span>
+                                        {step.label}
+                                    </span>
+                                </span>
+                            </li>
+                        );
+                    })}
                 </ol>
             </header>
 

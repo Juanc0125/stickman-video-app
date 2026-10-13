@@ -14,6 +14,7 @@ import {
 } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
 import StatusBadge from './status-badge';
+import SectionIcon from './section-icon';
 
 interface VideoListProps {
     videos: VideoRecord[];
@@ -31,6 +32,15 @@ interface VideoListProps {
 type CreateMode = 'single' | 'batch';
 
 const MAX_BATCH_TOPICS = 8;
+
+// Fill of the small poster beside each video, tinted by status so the list
+// can be scanned by colour as well as by the badge text.
+const POSTER_CLASSES: Record<VideoRecord['status'], string> = {
+    borrador: 'bg-gradient-to-b from-slate-500/40 to-slate-700/40 ring-white/10',
+    pendiente_aprobacion: 'bg-gradient-to-b from-amber-400/45 to-amber-700/35 ring-amber-300/25',
+    aprobado: 'bg-gradient-to-b from-brand-500/70 to-accent-600/60 ring-brand-300/30',
+    publicado: 'bg-gradient-to-b from-emerald-400/55 to-emerald-700/45 ring-emerald-300/30',
+};
 
 interface BatchSummary {
     createdCount: number;
@@ -182,22 +192,25 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
     return (
         <div className="space-y-5">
             <section className="panel panel-pad" aria-labelledby="create-video-title">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                        <h2 id="create-video-title" className="panel-title">Crear nuevo video</h2>
-                        <p className="hint">También puedes pedírselo al asistente.</p>
+                <div className="panel-head">
+                    <div className="panel-head-main">
+                        <SectionIcon name="sparkles" />
+                        <div className="min-w-0">
+                            <h2 id="create-video-title" className="panel-title">Crear nuevo video</h2>
+                            <p className="hint">También puedes pedírselo al asistente.</p>
+                        </div>
                     </div>
                 </div>
 
                 {/* Segmented control: one track, the active option raised. */}
-                <div role="group" aria-label="Modo de creación" className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.08] bg-ink-950/50 p-1 text-sm">
+                <div role="group" aria-label="Modo de creación" className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.07] bg-ink-950/60 p-1 text-sm">
                     <button
                         type="button"
                         aria-pressed={mode === 'single'}
                         onClick={() => handleModeChange('single')}
                         disabled={submitting}
-                        className={`h-8 rounded-lg px-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                            mode === 'single' ? 'bg-ink-700 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-100'
+                        className={`h-8 rounded-lg px-3 font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            mode === 'single' ? 'bg-ink-700 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/10' : 'text-slate-400 hover:text-slate-100'
                         }`}
                     >
                         Un video
@@ -207,8 +220,8 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                         aria-pressed={mode === 'batch'}
                         onClick={() => handleModeChange('batch')}
                         disabled={submitting}
-                        className={`h-8 rounded-lg px-3 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                            mode === 'batch' ? 'bg-ink-700 text-white shadow-sm ring-1 ring-white/10' : 'text-slate-400 hover:text-slate-100'
+                        className={`h-8 rounded-lg px-3 font-medium transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${
+                            mode === 'batch' ? 'bg-ink-700 text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] ring-1 ring-inset ring-white/10' : 'text-slate-400 hover:text-slate-100'
                         }`}
                     >
                         Varios videos
@@ -401,27 +414,33 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
             </section>
 
             <section className="panel panel-pad" aria-labelledby="video-list-title">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                    <h2 id="video-list-title" className="panel-title">Tus videos</h2>
+                <div className="panel-head mb-4">
+                    <div className="panel-head-main items-center">
+                        <SectionIcon name="library" />
+                        <h2 id="video-list-title" className="panel-title">Tus videos</h2>
+                    </div>
                     {!loading && videos.length > 0 && (
-                        <span className="chip tabular-nums">{videos.length}</span>
+                        <span className="chip font-mono tabular-nums">{videos.length}</span>
                     )}
                 </div>
                 {loading && (
                     <ul className="space-y-2" aria-label="Cargando videos">
                         {[0, 1, 2].map((key) => (
-                            <li key={key} className="tile space-y-2 p-3">
-                                <div className="skeleton h-4 w-3/4" />
-                                <div className="skeleton h-3 w-1/3" />
+                            <li key={key} className="tile flex gap-3 p-3">
+                                <div className="skeleton h-14 w-10 shrink-0 rounded-lg" />
+                                <div className="flex-1 space-y-2 py-1">
+                                    <div className="skeleton h-4 w-3/4" />
+                                    <div className="skeleton h-3 w-1/3" />
+                                </div>
                             </li>
                         ))}
                     </ul>
                 )}
                 {loadError && <p role="alert" className="alert alert-error">{loadError}</p>}
                 {!loading && !loadError && videos.length === 0 && (
-                    <div className="flex flex-col items-center rounded-xl border border-dashed border-white/[0.12] px-4 py-8 text-center">
-                        <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.05] text-slate-400" aria-hidden="true">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.012] px-4 py-10 text-center">
+                        <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500/20 to-accent-500/10 text-brand-200 ring-1 ring-inset ring-brand-400/25" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                                 <rect x="3" y="5" width="18" height="14" rx="3" />
                                 <path d="m10 9 5 3-5 3z" />
                             </svg>
@@ -437,33 +456,55 @@ export default function VideoList({ videos, loading, loadError, selectedId, onSe
                         return (
                             <li
                                 key={video.id}
-                                className={`group relative rounded-xl border transition-colors ${
+                                className={`group relative rounded-2xl border transition-[border-color,background-color,box-shadow] duration-200 ${
                                     isSelected
-                                        ? 'border-brand-400/50 bg-brand-500/[0.08] shadow-[inset_3px_0_0_0_theme(colors.brand.400)]'
-                                        : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.16] hover:bg-white/[0.05]'
+                                        ? 'border-brand-400/45 bg-gradient-to-r from-brand-500/[0.12] to-brand-500/[0.03] shadow-[0_0_0_1px_rgba(129,137,248,0.15),0_8px_24px_-12px_rgba(99,102,241,0.5)]'
+                                        : 'border-white/[0.07] bg-white/[0.018] hover:border-white/[0.14] hover:bg-white/[0.04]'
                                 }`}
                             >
                                 <button
                                     type="button"
                                     onClick={() => onSelect(video.id)}
                                     aria-current={isSelected ? 'true' : undefined}
-                                    className="w-full rounded-xl px-3.5 py-3 pr-11 text-left text-sm"
+                                    className="flex w-full items-start gap-3 rounded-2xl p-3 pr-11 text-left text-sm"
                                 >
-                                    <div className="line-clamp-2 font-medium leading-snug text-slate-50">{video.topic}</div>
-                                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                                        <span className="flex items-center gap-1.5 text-xs text-slate-400">
-                                            {PLATFORM_LABELS[video.platform]}
-                                            <span aria-hidden="true">·</span>
-                                            <span className="tabular-nums">{video.target_duration_seconds}s</span>
-                                            {video.render_status === 'procesando' && (
-                                                <span className="ml-1 inline-flex items-center gap-1 text-brand-200">
-                                                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-300" aria-hidden="true" />
-                                                    <span className="tabular-nums">{video.render_progress}%</span>
-                                                </span>
-                                            )}
+                                    {/* A tiny vertical "poster" so the list reads as videos,
+                                        not rows of text. Purely decorative. */}
+                                    <span
+                                        aria-hidden="true"
+                                        className={`relative flex h-14 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ring-1 ring-inset ${POSTER_CLASSES[video.status]}`}
+                                    >
+                                        {video.render_status === 'procesando' ? (
+                                            <>
+                                                <span
+                                                    className="absolute inset-x-0 bottom-0 bg-brand-400/35 transition-[height] duration-700 ease-out-expo"
+                                                    style={{ height: `${Math.max(4, video.render_progress)}%` }}
+                                                />
+                                                <span className="spinner relative h-3.5 w-3.5 text-white/90" />
+                                            </>
+                                        ) : (
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-white/85">
+                                                <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+                                            </svg>
+                                        )}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="line-clamp-2 font-medium leading-snug text-slate-50">{video.topic}</span>
+                                        <span className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                                            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                {PLATFORM_LABELS[video.platform]}
+                                                <span aria-hidden="true">·</span>
+                                                <span className="tabular-nums">{video.target_duration_seconds}s</span>
+                                                {video.render_status === 'procesando' && (
+                                                    <span className="ml-1 inline-flex items-center gap-1 text-brand-200">
+                                                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-300" aria-hidden="true" />
+                                                        <span className="tabular-nums">{video.render_progress}%</span>
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <StatusBadge status={video.status} />
                                         </span>
-                                        <StatusBadge status={video.status} />
-                                    </div>
+                                    </span>
                                 </button>
                                 <button
                                     type="button"

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { saveScript, type VideoRecord } from './api';
+import SectionIcon from './section-icon';
 
 interface ScriptPanelProps {
     video: VideoRecord;
@@ -33,9 +34,20 @@ export default function ScriptPanel({ video, onUpdated }: ScriptPanelProps) {
 
     return (
         <section className="panel panel-pad">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <h3 id={`script-title-${video.id}`} className="panel-title">Guion</h3>
-                {dirty && <span className="chip border-amber-400/30 bg-amber-400/10 text-amber-200">Cambios sin guardar</span>}
+            <div className="panel-head">
+                <div className="panel-head-main">
+                    <SectionIcon name="script" />
+                    <div className="min-w-0">
+                        <h3 id={`script-title-${video.id}`} className="panel-title">Guion</h3>
+                        <p className="hint">La historia que se narra, de principio a fin.</p>
+                    </div>
+                </div>
+                {dirty && (
+                    <span className="chip animate-fade-in border-amber-400/30 bg-amber-400/10 text-amber-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-300" aria-hidden="true" />
+                        Cambios sin guardar
+                    </span>
+                )}
             </div>
             <textarea
                 value={text}

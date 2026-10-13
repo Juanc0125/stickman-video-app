@@ -1,17 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
   <title>Stickman</title>
   <defs>
-    <linearGradient id="sm-tile" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#3b82f6"/>
-      <stop offset="1" stop-color="#4f46e5"/>
+    <linearGradient id="sm-tile" x1="6" y1="2" x2="58" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.55" stop-color="#5b3fe6"/>
+      <stop offset="1" stop-color="#7c3aed"/>
     </linearGradient>
+    <radialGradient id="sm-sheen" cx="14" cy="6" r="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#sm-tile)"/>
-  <g fill="#ffffff" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" transform="translate(10 0)">
-    <circle cx="23" cy="14.5" r="6.5" stroke="none"/>
-    <path d="M17 24.5 L17 45 L35.5 34.75 Z" stroke-width="4"/>
-    <path d="M17 30.5 L8.5 22.5" fill="none" stroke-width="4.5"/>
-    <path d="M19 44 L14 54" fill="none" stroke-width="4.5"/>
-    <path d="M27 40 L32 54" fill="none" stroke-width="4.5"/>
+  <rect width="64" height="64" rx="16" fill="url(#sm-tile)"/>
+  <rect width="64" height="64" rx="16" fill="url(#sm-sheen)"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
+  <g transform="translate(1.5 0.5)">
+    <g fill="#ffffff" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="15.5" r="6" stroke="none"/>
+      <path d="M19 25.5 L19 45 L36.5 35.25 Z" stroke-width="4"/>
+      <path d="M19 31 L10.5 23" fill="none" stroke-width="4.25"/>
+      <path d="M21 44 L16 54" fill="none" stroke-width="4.25"/>
+      <path d="M29 40.5 L34 54" fill="none" stroke-width="4.25"/>
+    </g>
+    <path d="M46 8.5 Q47 14 52.5 15 Q47 16 46 21.5 Q45 16 39.5 15 Q45 14 46 8.5 Z" fill="#e9ddff"/>
   </g>
 </svg>

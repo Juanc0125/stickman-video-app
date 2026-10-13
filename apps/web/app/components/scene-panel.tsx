@@ -5,6 +5,7 @@ import type { SoundAsset } from '@shared-types/sounds';
 import type { CharacterType, Scene, SceneAction, ScenePropType } from '@shared-types/video';
 import { deleteScene, generateScenes, generateVoice, regenerateScene, updateScene, type ScenePatch, type VideoRecord } from './api';
 import { ACTION_OPTIONS, CHARACTER_OPTIONS, PROP_OPTIONS } from './constants';
+import SectionIcon from './section-icon';
 
 interface ScenePanelProps {
     video: VideoRecord;
@@ -70,10 +71,13 @@ export default function ScenePanel({ video, sounds, soundsLoading, onUpdated }: 
 
     return (
         <section className="panel panel-pad">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 className="panel-title">Escenas</h3>
-                    <p className="hint">Personaje, acción, objeto y texto de cada momento del video.</p>
+            <div className="panel-head">
+                <div className="panel-head-main">
+                    <SectionIcon name="scenes" />
+                    <div className="min-w-0">
+                        <h3 className="panel-title">Escenas</h3>
+                        <p className="hint">Personaje, acción, objeto y texto de cada momento del video.</p>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <button
@@ -102,20 +106,29 @@ export default function ScenePanel({ video, sounds, soundsLoading, onUpdated }: 
             {voiceNotice && <p className="alert alert-info mb-4">{voiceNotice}</p>}
 
             {scenes.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/[0.12] px-4 py-8 text-center">
+                <div className="flex flex-col items-center rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.012] px-4 py-10 text-center">
+                    <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.04] text-slate-400 ring-1 ring-inset ring-white/[0.08]" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="16" rx="2.5" />
+                            <path d="M3 9h18M8 4l-1.5 5M13.5 4 12 9M19 4l-1.5 5" />
+                        </svg>
+                    </span>
                     <p className="text-sm font-medium text-slate-200">Aún no hay escenas</p>
                     <p className="hint mt-1">Genera el guion y pulsa &quot;Generar escenas&quot;.</p>
                 </div>
             ) : (
                 <>
-                    <div className="mb-4">
-                        <p className="hint mb-1.5">Línea de tiempo (total aprox. {totalDuration.toFixed(1)}s)</p>
-                        <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full bg-white/[0.06]">
+                    <div className="mb-5 rounded-2xl border border-white/[0.06] bg-ink-950/40 p-3.5">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                            <p className="eyebrow">Línea de tiempo</p>
+                            <span className="font-mono text-xs tabular-nums text-slate-400">~{totalDuration.toFixed(1)}s</span>
+                        </div>
+                        <div className="flex h-2.5 w-full gap-[3px] overflow-hidden rounded-full">
                             {scenes.map((scene, index) => (
                                 <div
                                     key={scene.id}
                                     title={`Escena ${index + 1}: ${scene.duration_seconds}s`}
-                                    className={index % 2 === 0 ? 'h-full bg-brand-400' : 'h-full bg-brand-300/60'}
+                                    className={`h-full rounded-[3px] transition-[width] duration-500 ease-out-expo ${index % 2 === 0 ? 'bg-gradient-to-r from-brand-500 to-brand-400' : 'bg-gradient-to-r from-accent-500/80 to-accent-400/80'}`}
                                     style={{ width: `${totalDuration > 0 ? (scene.duration_seconds / totalDuration) * 100 : 0}%` }}
                                 />
                             ))}
@@ -229,10 +242,10 @@ function SceneRow({ videoId, scene, index, effects, soundsLoading, onUpdated }: 
     }
 
     return (
-        <li className="tile p-3.5 sm:p-4">
+        <li className="tile tile-hover p-3.5 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-500/15 font-mono text-[0.6875rem] text-brand-200 ring-1 ring-inset ring-brand-400/25">
+                <span className="flex items-center gap-2.5 text-xs font-semibold text-slate-200">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand-500/25 to-accent-500/15 font-mono text-[0.6875rem] text-brand-100 ring-1 ring-inset ring-brand-400/30">
                         {index + 1}
                     </span>
                     Escena {index + 1} · <span className="tabular-nums">{scene.duration_seconds}s</span>

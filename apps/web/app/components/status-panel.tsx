@@ -8,6 +8,7 @@ import { RENDER_STALL_TIMEOUT_MS as STALLED_AFTER_MS } from '@shared-types/video
 import { duplicateVideo, transitionStatus, type StatusAction, type VideoRecord } from './api';
 import { PLATFORM_LABELS, PLATFORM_OPTIONS } from './constants';
 import StatusBadge from './status-badge';
+import SectionIcon from './section-icon';
 
 interface StatusPanelProps {
     video: VideoRecord;
@@ -74,9 +75,19 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
         <div className="space-y-5">
             {/* The human gate (RF-012). A faint brand ring sets it apart from the
                 editing panels above, since it is where the decision is made. */}
-            <section className="panel panel-pad ring-1 ring-inset ring-brand-400/15">
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="panel-title">Estado y aprobación</h3>
+            <section className="panel panel-pad relative overflow-hidden ring-1 ring-inset ring-brand-400/20">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/60 to-transparent"
+                />
+                <div className="panel-head">
+                    <div className="panel-head-main">
+                        <SectionIcon name="shield" />
+                        <div className="min-w-0">
+                            <h3 className="panel-title">Estado y aprobación</h3>
+                            <p className="hint">Una persona decide. Nada se genera ni se publica sin su clic.</p>
+                        </div>
+                    </div>
                     <StatusBadge status={video.status} />
                 </div>
 
@@ -100,8 +111,8 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                 )}
 
                 {video.status === 'pendiente_aprobacion' && (
-                    <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
-                        <div className="mb-4 flex gap-3">
+                    <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-b from-amber-400/[0.1] to-amber-400/[0.04] p-4 sm:p-5">
+                        <div className="mb-5 flex gap-3">
                             <svg className="mt-0.5 shrink-0 text-amber-300" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z" />
                                 <path d="m9 12 2 2 4-4" />
@@ -111,12 +122,12 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                 guion, las escenas y la marca antes de decidir.
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:flex-wrap">
                             <button
                                 type="button"
                                 onClick={() => runAction('approve')}
                                 disabled={busy}
-                                className="btn btn-approve"
+                                className="btn btn-approve btn-lg"
                             >
                                 {actionLoading === 'approve' && <span className="spinner" aria-hidden="true" />}
                                 {actionLoading === 'approve' ? 'Aprobando...' : 'Aprobar'}
@@ -125,7 +136,7 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                 type="button"
                                 onClick={() => runAction('reject')}
                                 disabled={busy}
-                                className="btn btn-danger"
+                                className="btn btn-danger btn-lg"
                             >
                                 {actionLoading === 'reject' && <span className="spinner" aria-hidden="true" />}
                                 {actionLoading === 'reject' ? 'Rechazando...' : 'Rechazar y volver a borrador'}
@@ -155,7 +166,7 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                 </button>
                             </div>
                         ) : rendering ? (
-                            <div className="rounded-xl border border-brand-400/25 bg-brand-500/10 p-4">
+                            <div className="rounded-2xl border border-brand-400/25 bg-gradient-to-b from-brand-500/[0.12] to-brand-500/[0.04] p-4 sm:p-5" aria-live="polite">
                                 <div className="mb-2 flex items-center justify-between">
                                     <span className="flex items-center gap-2 text-sm font-medium text-brand-100">
                                         <span className="spinner text-brand-300" aria-hidden="true" />
@@ -163,9 +174,9 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
                                     </span>
                                     <span className="font-mono text-sm tabular-nums text-brand-100">{video.render_progress}%</span>
                                 </div>
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-brand-500/20">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-ink-950/60 ring-1 ring-inset ring-white/[0.06]">
                                     <div
-                                        className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-300 transition-all duration-500"
+                                        className="h-full rounded-full bg-gradient-to-r from-brand-500 via-brand-400 to-accent-400 shadow-[0_0_12px_rgba(129,137,248,0.6)] transition-[width] duration-700 ease-out-expo"
                                         style={{ width: `${Math.max(2, video.render_progress)}%` }}
                                     />
                                 </div>
@@ -230,11 +241,18 @@ export default function StatusPanel({ video, onUpdated, onDuplicated }: StatusPa
             </section>
 
             <section className="panel panel-pad">
-                <h3 className="panel-title mb-1">Duplicar para otra plataforma</h3>
-                <p className="panel-subtitle mb-4">
-                    Reutiliza el guion, las escenas y la marca de este video para crear un nuevo borrador dirigido a
-                    otra plataforma. El nuevo video inicia su propio ciclo de aprobación.
-                </p>
+                <div className="panel-head">
+                    <div className="panel-head-main">
+                        <SectionIcon name="copy" />
+                        <div className="min-w-0">
+                            <h3 className="panel-title mb-1">Duplicar para otra plataforma</h3>
+                            <p className="panel-subtitle">
+                                Reutiliza el guion, las escenas y la marca de este video para crear un nuevo borrador dirigido a
+                                otra plataforma. El nuevo video inicia su propio ciclo de aprobación.
+                            </p>
+                        </div>
+                    </div>
+                </div>
                 {otherPlatforms.length === 0 ? (
                     <p className="text-sm text-slate-400">No hay otras plataformas disponibles.</p>
                 ) : (

@@ -1,15 +1,26 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import ServiceWorker from "./components/service-worker";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Inter for the interface (with its optical-size axis, so headings tighten up
+// on their own), Instrument Serif as the editorial accent in display lines
+// only, and Geist Mono for numbers, timers and colour codes.
+const sans = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
+  axes: ["opsz"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Instrument_Serif({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
+
+const mono = Geist_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
 });
 
@@ -31,7 +42,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070b14",
+  themeColor: "#06070b",
   viewportFit: "cover",
 };
 
@@ -39,9 +50,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${sans.variable} ${display.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-ink-950 font-sans text-slate-100">
+      <body className="flex min-h-full flex-col bg-ink-950 font-sans text-slate-100">
         {children}
         <ServiceWorker />
       </body>

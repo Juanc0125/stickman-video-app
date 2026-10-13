@@ -29,7 +29,11 @@ export default function LoginForm() {
     }
 
     return (
-        <form onSubmit={(event) => { void handleSubmit(event); }} className="panel w-full max-w-sm p-6 sm:p-7">
+        <form onSubmit={(event) => { void handleSubmit(event); }} className="panel relative w-full max-w-sm overflow-hidden p-6 sm:p-8">
+            <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-brand-300/60 to-transparent"
+            />
             <div className="mb-4">
                 <label htmlFor="login-email" className="label text-sm">
                     Correo
@@ -72,7 +76,7 @@ export default function LoginForm() {
             <button
                 type="submit"
                 disabled={submitting}
-                className="btn btn-primary btn-block mt-2 h-11"
+                className="btn btn-primary btn-lg btn-block mt-2"
             >
                 {submitting && <span className="spinner" aria-hidden="true" />}
                 {submitting ? 'Entrando...' : 'Entrar'}

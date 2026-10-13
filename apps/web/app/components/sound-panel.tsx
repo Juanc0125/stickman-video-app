@@ -6,6 +6,7 @@ import {
     deleteSound, fetchVideos, registerSound, requestSoundUpload, setVideoMusic, uploadSoundFile,
     type VideoRecord,
 } from './api';
+import SectionIcon from './section-icon';
 
 interface SoundPanelProps {
     video: VideoRecord;
@@ -50,9 +51,14 @@ const fieldClass = 'field';
 export default function SoundPanel({ video, sounds, soundsLoading, soundsError, onSoundsChanged, onUpdated }: SoundPanelProps) {
     return (
         <section className="panel panel-pad">
-            <div className="mb-4">
-                <h3 className="panel-title">Música y sonidos</h3>
-                <p className="hint">La música de fondo de este video y los audios propios del negocio.</p>
+            <div className="panel-head">
+                <div className="panel-head-main">
+                    <SectionIcon name="sound" />
+                    <div className="min-w-0">
+                        <h3 className="panel-title">Música y sonidos</h3>
+                        <p className="hint">La música de fondo de este video y los audios propios del negocio.</p>
+                    </div>
+                </div>
             </div>
             {soundsError && <p className="alert alert-error mb-4" role="alert">{soundsError}</p>}
 

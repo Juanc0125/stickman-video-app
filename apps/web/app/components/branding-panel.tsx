@@ -8,6 +8,7 @@ import {
     updateBranding, uploadLogo, type BrandingPatch, type VideoRecord,
 } from './api';
 import { FONT_OPTIONS, LOGO_POSITION_OPTIONS } from './constants';
+import SectionIcon from './section-icon';
 
 interface BrandingPanelProps {
     video: VideoRecord;
@@ -174,9 +175,14 @@ export default function BrandingPanel({ video, onUpdated }: BrandingPanelProps) 
 
     return (
         <section className="panel panel-pad">
-            <div className="mb-4">
-                <h3 className="panel-title">Marca (branding)</h3>
-                <p className="hint">Colores, tipografía y logo que el video lleva en pantalla.</p>
+            <div className="panel-head">
+                <div className="panel-head-main">
+                    <SectionIcon name="brand" />
+                    <div className="min-w-0">
+                        <h3 className="panel-title">Marca (branding)</h3>
+                        <p className="hint">Colores, tipografía y logo que el video lleva en pantalla.</p>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

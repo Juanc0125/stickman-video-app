@@ -6,18 +6,21 @@
    values as utilities; these variables are for the hand-written CSS below
    and for anything that needs a colour outside a class name. */
 :root {
-  --background: #070b14;
-  --surface: #0f1828;
-  --surface-raised: #131e31;
-  --foreground: #e6edf7;
-  --muted: #94a3b8;
-  --border: rgba(148, 163, 184, 0.16);
-  --border-strong: rgba(148, 163, 184, 0.28);
-  --accent: #3b82f6;
-  --accent-strong: #2563eb;
-  --focus: #6098fa;
-  --radius-panel: 1rem;
-  --radius-control: 0.625rem;
+  --background: #06070b;
+  --surface: #0f1119;
+  --surface-raised: #141722;
+  --foreground: #e8eaf2;
+  --muted: #9aa1b5;
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.13);
+  --border-hover: rgba(255, 255, 255, 0.2);
+  --accent: #6366f1;
+  --accent-strong: #4f46e5;
+  --accent-violet: #9a5cf6;
+  --focus: #a3acfd;
+  --radius-panel: 1.25rem;
+  --radius-control: 0.75rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   color-scheme: dark;
 }
 
@@ -29,6 +32,7 @@
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
   }
 
   body {
@@ -37,7 +41,21 @@
     color: var(--foreground);
     font-family: theme('fontFamily.sans');
     line-height: 1.5;
-    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.006em;
+    /* Inter's single-storey a, open digits and straight-sided l read as
+       "product UI" rather than "document". */
+    font-feature-settings: "cv11", "ss01", "ss03", "cv05";
+    /* clip rather than hidden: it stops any stray wide child from causing a
+       horizontal scroll on phones without turning the body into a scroll
+       container (which would break the sticky header). */
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.018em;
   }
 
   button,
@@ -45,6 +63,7 @@
   select,
   textarea {
     font: inherit;
+    letter-spacing: inherit;
   }
 
   button {
@@ -53,6 +72,11 @@
 
   a {
     color: inherit;
+  }
+
+  img,
+  video {
+    max-width: 100%;
   }
 
   /* One visible focus style for every interactive element, keyboard only.
@@ -73,7 +97,7 @@
   input[type="email"],
   select,
   textarea {
-    background: rgba(255, 255, 255, 0.04);
+    background-color: rgba(255, 255, 255, 0.035);
     color: var(--foreground);
   }
 
@@ -85,73 +109,118 @@
      styling on the <select> and would otherwise render white text on white. */
   select option,
   select optgroup {
-    background: #131e31;
+    background: #141722;
     color: var(--foreground);
   }
 
   ::placeholder {
-    color: #64748b;
+    color: #6b7287;
   }
 
   ::selection {
-    background: rgba(59, 130, 246, 0.35);
+    background: rgba(99, 102, 241, 0.4);
+    color: #fff;
   }
 
   audio {
     color-scheme: dark;
   }
+
+  /* Thin, dark scrollbars everywhere, not just in the transcript. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
 }
 
 @layer components {
-  /* Page ground: two soft brand glows over a faint grid. Pure CSS, so it costs
-     no download and stays put (fixed) while the panels scroll over it. */
+  /* Page ground: an indigo/violet aurora over a faint grid that fades out
+     towards the bottom. Pure CSS, so it costs no download and stays put
+     (fixed) while the panels scroll over it. */
   .app-backdrop {
     position: fixed;
     inset: 0;
     z-index: -10;
     pointer-events: none;
+    overflow: hidden;
     background:
-      radial-gradient(60rem 40rem at 12% -10%, rgba(37, 99, 235, 0.22), transparent 60%),
-      radial-gradient(50rem 36rem at 100% 0%, rgba(79, 70, 229, 0.16), transparent 60%),
-      radial-gradient(40rem 30rem at 50% 110%, rgba(14, 165, 233, 0.08), transparent 60%),
+      radial-gradient(56rem 32rem at 18% -14%, rgba(99, 102, 241, 0.2), transparent 62%),
+      radial-gradient(44rem 28rem at 88% -8%, rgba(154, 92, 246, 0.14), transparent 60%),
+      radial-gradient(40rem 26rem at 50% 115%, rgba(56, 189, 248, 0.05), transparent 60%),
       var(--background);
   }
 
-  .app-backdrop::after {
+  .app-backdrop::before {
     content: "";
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
   }
 
-  /* Panels: the one card style the whole studio is built from. */
+  /* A thin light beam along the very top edge, the "studio light". */
+  .app-backdrop::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: min(64rem, 90vw);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgba(163, 172, 253, 0.55), rgba(185, 140, 251, 0.45), transparent);
+  }
+
+  /* Panels: the one card style the whole studio is built from. A faint top
+     sheen over a translucent graphite, a hairline border and a deep, soft
+     drop shadow. */
   .panel {
-    @apply rounded-2xl border bg-ink-850/80 shadow-panel;
+    @apply rounded-[var(--radius-panel)] border shadow-panel;
     border-color: var(--border);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 40%, rgba(255, 255, 255, 0) 100%),
+      rgba(15, 17, 25, 0.78);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    transition: border-color 200ms var(--ease-out);
   }
 
   .panel-pad {
-    @apply p-4 sm:p-5;
+    @apply p-4 sm:p-6;
   }
 
   .panel-title {
-    @apply text-[0.95rem] font-semibold leading-6 tracking-tight text-slate-50;
+    @apply text-[0.975rem] font-semibold leading-6 text-white;
+    letter-spacing: -0.015em;
   }
 
   .panel-subtitle {
     @apply text-sm leading-relaxed text-slate-400;
   }
 
+  /* Header row of a panel: icon tile + title/description, actions on the
+     right that wrap under on narrow screens. */
+  .panel-head {
+    @apply mb-5 flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .panel-head-main {
+    @apply flex min-w-0 flex-1 items-start gap-3;
+  }
+
+  /* Small square that carries a panel's icon. */
+  .section-icon {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-brand-200;
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.22), rgba(154, 92, 246, 0.1));
+    box-shadow: inset 0 0 0 1px rgba(163, 172, 253, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
   /* Small uppercase label above a group inside a panel. */
   .eyebrow {
-    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-slate-400;
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-slate-400;
   }
 
   .divider {
@@ -161,54 +230,124 @@
 
   /* Sub-card inside a panel: a scene, an uploaded sound, a saved template. */
   .tile {
-    @apply rounded-xl border bg-white/[0.025];
+    @apply rounded-2xl border bg-white/[0.022];
     border-color: var(--border);
+    transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+  }
+
+  /* A tile that is itself clickable or hoverable. */
+  .tile-hover:hover {
+    border-color: var(--border-strong);
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  /* Gradient text for the hero lines. Falls back to plain white. */
+  .text-gradient {
+    color: #fff;
+    background: linear-gradient(180deg, #ffffff 30%, #c5ccff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-brand {
+    color: #c5ccff;
+    background: linear-gradient(90deg, #a3acfd, #d0b4fe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   /* Buttons. One base plus a variant; sizes are separate so any variant can
      be small. Every variant keeps WCAG AA contrast between label and fill. */
   .btn {
-    @apply inline-flex h-10 shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] px-4 text-sm font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-45;
+    @apply relative inline-flex h-10 shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] px-4 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-45;
+    letter-spacing: -0.005em;
+    transition:
+      background-color 160ms var(--ease-out),
+      border-color 160ms var(--ease-out),
+      color 160ms var(--ease-out),
+      box-shadow 200ms var(--ease-out),
+      filter 160ms var(--ease-out),
+      transform 120ms var(--ease-out);
+  }
+
+  .btn:enabled:active,
+  a.btn:active {
+    transform: scale(0.975);
   }
 
   .btn-sm {
-    @apply h-8 gap-1.5 px-3 text-xs;
+    @apply h-8 gap-1.5 rounded-[0.625rem] px-3 text-xs;
+  }
+
+  .btn-lg {
+    @apply h-12 px-6 text-[0.9375rem];
   }
 
   .btn-block {
     @apply w-full;
   }
 
+  /* Indigo into violet; both ends keep white text above 4.5:1. */
   .btn-primary {
-    @apply bg-brand-600 text-white shadow-sm shadow-brand-900/40 hover:bg-brand-700 enabled:active:bg-brand-800;
+    @apply text-white;
+    background-color: #4f46e5;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 55%), linear-gradient(100deg, #4f46e5, #6d38e0);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px -8px rgba(99, 102, 241, 0.7);
+  }
+
+  .btn-primary:enabled:hover,
+  a.btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px -8px rgba(99, 102, 241, 0.85);
   }
 
   .btn-secondary {
-    @apply border bg-white/[0.04] text-slate-100 hover:bg-white/[0.09];
+    @apply border bg-white/[0.045] text-slate-100;
     border-color: var(--border-strong);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .btn-secondary:enabled:hover,
+  a.btn-secondary:hover {
+    @apply bg-white/[0.085] text-white;
+    border-color: var(--border-hover);
   }
 
   .btn-ghost {
-    @apply text-slate-300 hover:bg-white/[0.07] hover:text-white;
+    @apply text-slate-300 hover:bg-white/[0.06] hover:text-white;
   }
 
   /* Approval: the one action that commits the client. Bright green with dark
-     text so it reads as distinct from every other blue button. */
+     text so it reads as distinct from every other indigo button. */
   .btn-approve {
-    @apply bg-emerald-400 font-semibold text-emerald-950 hover:bg-emerald-300;
+    @apply bg-emerald-400 font-semibold text-emerald-950;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0) 60%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 6px 20px -8px rgba(16, 185, 129, 0.7);
+  }
+
+  .btn-approve:enabled:hover {
+    @apply bg-emerald-300 shadow-glow-emerald;
   }
 
   .btn-warning {
     @apply bg-amber-400 font-semibold text-amber-950 hover:bg-amber-300;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   }
 
   .btn-danger {
-    @apply border border-red-400/35 text-red-200 hover:bg-red-500/15;
+    @apply border border-red-400/30 bg-red-500/[0.06] text-red-200 hover:border-red-400/50 hover:bg-red-500/15 hover:text-red-100;
   }
 
   /* Square icon-only button (delete, mute...). Pair with an aria-label. */
   .btn-icon {
-    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-45;
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.625rem] text-slate-400 hover:bg-white/[0.07] hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-45;
+    transition: background-color 160ms var(--ease-out), color 160ms var(--ease-out), opacity 160ms var(--ease-out), transform 120ms var(--ease-out);
+  }
+
+  .btn-icon:enabled:active {
+    transform: scale(0.94);
   }
 
   .btn-icon-danger {
@@ -217,16 +356,38 @@
 
   /* Form fields. */
   .label {
-    @apply mb-1.5 block text-xs font-medium text-slate-300;
+    @apply mb-1.5 block text-[0.8125rem] font-medium text-slate-300;
   }
 
   .field {
-    @apply block w-full rounded-[var(--radius-control)] border bg-white/[0.04] px-3 py-2 text-sm text-slate-100 transition-colors placeholder:text-slate-500 hover:border-slate-400/40 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply block w-full rounded-[var(--radius-control)] border bg-ink-950/60 px-3.5 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-brand-400/70 focus:outline-none focus:ring-4 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:opacity-60;
     border-color: var(--border-strong);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
+  }
+
+  .field:hover:not(:focus):not(:disabled) {
+    border-color: var(--border-hover);
+  }
+
+  /* Selects get our own chevron instead of the OS arrow. */
+  select.field {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa1b5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1rem;
   }
 
   .field-sm {
     @apply px-2.5 py-1.5;
+  }
+
+  select.field.field-sm {
+    padding-right: 2rem;
+    background-position: right 0.6rem center;
   }
 
   .hint {
@@ -234,8 +395,9 @@
   }
 
   .file-input {
-    @apply block w-full rounded-[var(--radius-control)] border border-dashed bg-white/[0.02] p-2 text-sm text-slate-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700 disabled:opacity-60;
+    @apply block w-full rounded-[var(--radius-control)] border border-dashed bg-white/[0.02] p-2 text-sm text-slate-300 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white hover:border-brand-400/40 hover:bg-brand-500/[0.04] hover:file:bg-brand-700 disabled:opacity-60;
     border-color: var(--border-strong);
+    transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out);
   }
 
   .checkbox {
@@ -249,25 +411,31 @@
   }
 
   .alert-error {
-    @apply border-red-400/30 bg-red-500/10 text-red-200;
+    @apply border-red-400/25 bg-red-500/[0.08] text-red-200;
   }
 
   .alert-warning {
-    @apply border-amber-400/30 bg-amber-400/10 text-amber-100;
+    @apply border-amber-400/25 bg-amber-400/[0.08] text-amber-100;
   }
 
   .alert-info {
-    @apply border-brand-400/30 bg-brand-500/10 text-brand-100;
+    @apply border-brand-400/25 bg-brand-500/[0.08] text-brand-100;
   }
 
   .alert-success {
-    @apply border-emerald-400/30 bg-emerald-400/10 text-emerald-100;
+    @apply border-emerald-400/25 bg-emerald-400/[0.08] text-emerald-100;
   }
 
   /* Small pill for metadata: platform, duration, scene count. */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border bg-white/[0.04] px-2.5 py-0.5 text-xs font-medium text-slate-300;
+    @apply inline-flex items-center gap-1.5 rounded-full border bg-white/[0.035] px-2.5 py-0.5 text-xs font-medium text-slate-300;
     border-color: var(--border);
+  }
+
+  /* Keyboard-key style, for example prompts. */
+  .kbd {
+    @apply inline-flex items-center rounded-md border bg-white/[0.05] px-1.5 font-mono text-[0.6875rem] text-slate-300;
+    border-color: var(--border-strong);
   }
 
   /* Spinner for buttons and inline loading states. */
@@ -277,10 +445,15 @@
 
   /* Placeholder block while content loads. */
   .skeleton {
-    @apply rounded-lg bg-white/[0.06];
+    @apply rounded-lg bg-white/[0.05];
     background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
     background-size: 200% 100%;
-    animation: skeleton-sweep 1.4s ease-in-out infinite;
+    animation: skeleton-sweep 1.6s ease-in-out infinite;
+  }
+
+  /* Entrance for content that swaps in (the selected video, empty states). */
+  .enter {
+    animation: enter-up 0.5s var(--ease-out) both;
   }
 }
 
@@ -289,25 +462,28 @@
   100% { background-position: -200% 0; }
 }
 
+@keyframes enter-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes pulse-ring {
   0% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.45); }
   70% { box-shadow: 0 0 0 14px rgba(248, 113, 113, 0); }
   100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0); }
 }
 
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
 .listening-ring {
   animation: pulse-ring 1.6s ease-out infinite;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .listening-ring,
-  .skeleton {
-    animation: none;
-  }
-
-  html {
-    scroll-behavior: auto;
-  }
+.float-soft {
+  animation: float-soft 5s ease-in-out infinite;
 }
 
 /* Thin scrollbars, so a scrolling transcript does not cut the panel with a
@@ -328,4 +504,35 @@
 
 .thin-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Motion is decoration here, never information: with reduced motion every
+   animation and transition collapses to an instant change. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .listening-ring,
+  .skeleton,
+  .float-soft {
+    animation: none;
+  }
+
+  /* A loading spinner is feedback, not decoration: keep it turning, slowly. */
+  .spinner {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
+  }
+
+  .btn:enabled:active,
+  a.btn:active,
+  .btn-icon:enabled:active {
+    transform: none;
+  }
 }
