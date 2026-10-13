@@ -7,9 +7,10 @@ description: Sube Stickman a producción y comprueba que siguió funcionando - p
 
 Un push a `master` dispara un despliegue de Vercel por sí solo. Lo que no se
 hace solo es comprobar que lo desplegado sigue siendo correcto. El estudio está
-abierto a cualquiera desde el 12-oct (decisión del dueño), pero generar,
-aprobar, borrar y subir archivos siguen pidiendo sesión: es la única barrera
-entre un desconocido y el saldo de HeyGen o la aprobación de RF-012.
+abierto a cualquiera desde el 12-oct, y desde el 13-oct tampoco pide sesión para
+generar, aprobar, borrar ni subir archivos (decisión del dueño). La sesión
+vuelve con `REQUIRE_LOGIN=true` en Vercel: hay que encenderla antes de cargar
+saldo en HeyGen, porque sin ella cualquiera con la URL gasta ese saldo.
 
 ## Antes de empujar
 
@@ -69,12 +70,13 @@ Lo que debe salir:
 | Comprobación | Esperado | Por qué importa |
 |---|---|---|
 | `/` sin sesión | **200** | el estudio está abierto, como se decidió |
-| generar (`PATCH` con `action: render`) sin sesión | **401** | nadie gasta saldo ni aprueba sin cuenta |
+| generar (`PATCH` con `action: render`) sin sesión | **404** (o **401** con `REQUIRE_LOGIN=true`) | llega a la ruta y no halla el id falso; con login, se corta antes |
 | `/api/health` | **200** `{"ok":true,"db":"ok"}` | la base responde de verdad |
 | worker `/health` | `ok:true`, `render_auth: configurado` | el render vive y está protegido |
 
-Cualquier cosa distinta de 401 en el `PATCH` de generar (un 404, un 202) quiere
-decir que la acción pasó sin sesión: es gasto abierto a cualquiera, no un detalle.
+Con `REQUIRE_LOGIN=true`, cualquier cosa distinta de 401 en el `PATCH` de
+generar quiere decir que la acción pasó sin sesión: es gasto abierto a
+cualquiera, no un detalle. Sin login, un 202 o un 500 tampoco son aceptables.
 
 `/api/health` devuelve 503 si la base no contesta.
 

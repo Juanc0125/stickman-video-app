@@ -91,19 +91,22 @@ const entrada = await api('/api/auth/login', { method: 'POST', body: JSON.string
 record('iniciar sesion', entrada.status === 200 && cookieJar.size > 0,
     entrada.status === 200 ? `sesion abierta como ${E2E_EMAIL}` : `HTTP ${entrada.status} - revisa E2E_PASSWORD o DEMO_USER_PASSWORD`);
 
-// The studio is open to visitors; only the actions that spend money or commit
-// the client need a session (see apps/web/proxy.ts). Both halves are checked:
-// a visitor can read, and a visitor cannot render, approve or delete. The
-// guarded calls target a made-up id - with no session they never reach it.
+// The studio is open to visitors. Whether rendering, approving and deleting
+// also need a session depends on REQUIRE_LOGIN (see lib/sign-in-required.ts),
+// so the suite is told which to expect with E2E_REQUIRE_LOGIN=true. The
+// guarded calls target a made-up id: with login required they stop at 401,
+// without it they reach the route and find nothing (404) - anything else
+// means the guard is not doing what the setting says.
 const visitante = await fetch(`${S}/api/videos`);
 record('un visitante puede leer sin sesion', visitante.status === 200, `HTTP ${visitante.status}`);
 const ID_FALSO = '00000000-0000-0000-0000-000000000000';
+const ESPERADO = process.env.E2E_REQUIRE_LOGIN === 'true' ? 401 : 404;
 const renderSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'render' }) });
 const aprobarSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) });
 const borrarSinSesion = await fetch(`${S}/api/videos/${ID_FALSO}`, { method: 'DELETE' });
-record('sin sesion no se genera, aprueba ni borra',
-    renderSinSesion.status === 401 && aprobarSinSesion.status === 401 && borrarSinSesion.status === 401,
-    `render ${renderSinSesion.status}, aprobar ${aprobarSinSesion.status}, borrar ${borrarSinSesion.status}`);
+record(ESPERADO === 401 ? 'sin sesion no se genera, aprueba ni borra' : 'sin login, generar/aprobar/borrar llegan a la ruta',
+    renderSinSesion.status === ESPERADO && aprobarSinSesion.status === ESPERADO && borrarSinSesion.status === ESPERADO,
+    `render ${renderSinSesion.status}, aprobar ${aprobarSinSesion.status}, borrar ${borrarSinSesion.status} (esperado ${ESPERADO})`);
 
 try {
     // 1. health

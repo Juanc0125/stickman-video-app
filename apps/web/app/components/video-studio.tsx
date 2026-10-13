@@ -123,17 +123,10 @@ export default function VideoStudio() {
                             >
                                 {loggingOut ? 'Saliendo...' : 'Salir'}
                             </button>
-                        ) : (
-                            // Anyone can draft without an account; generating,
-                            // approving, deleting and uploading need one.
-                            <a
-                                href="/login"
-                                title="Inicia sesión para generar, aprobar, borrar o subir archivos"
-                                className="btn btn-primary btn-sm"
-                            >
-                                Entrar
-                            </a>
-                        )}
+                        ) : null}
+                        {/* No "Entrar" button: since 13-oct-2026 nothing needs
+                            an account unless REQUIRE_LOGIN is on, and /login is
+                            still there for whoever has one. */}
                     </div>
                 </div>
             </header>

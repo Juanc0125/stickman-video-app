@@ -7,9 +7,11 @@
 // client. Everything else is open to anyone with the URL.
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseProxyClient } from './lib/supabase-server';
-import { SIGN_IN_REQUIRED_ERROR } from './lib/sign-in-required';
+import { LOGIN_REQUIRED, SIGN_IN_REQUIRED_ERROR } from './lib/sign-in-required';
 
-// Open studio, guarded spending. Anyone can browse, write and edit drafts
+// Open studio. Since 13-oct-2026 nothing below is enforced unless
+// REQUIRE_LOGIN=true (see LOGIN_REQUIRED in lib/sign-in-required.ts): the
+// owner wants free entry, approvals included. With it on: anyone can browse, write and edit drafts
 // without signing in; what costs money or commits the client still needs a
 // session: rendering (the worker, and HeyGen when it is configured, bill per
 // second), any approval transition (RF-012: the approver must be a known
@@ -41,7 +43,7 @@ function needsSession(method: string, pathname: string): boolean {
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const client = createSupabaseProxyClient(request);
-    const guarded = needsSession(request.method, pathname);
+    const guarded = LOGIN_REQUIRED && needsSession(request.method, pathname);
 
     // No Supabase configuration means no way to check anyone's identity:
     // the open parts keep working, the guarded ones fail closed.
