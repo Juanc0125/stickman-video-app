@@ -87,6 +87,13 @@ const MAX_ROUNDS = 5;
 // what makes sixteen affordable on the free tier.
 const MAX_HISTORY = 16;
 
+// gpt-oss reasons before it answers and those tokens count against this cap.
+// At 800 a turn that reasons at length can come back with no content at all,
+// which costs a whole fallback to OpenRouter - slow, and a different model
+// mid-conversation. The spoken reply itself stays short because the prompt
+// says so; this is headroom, not a longer answer.
+const MAX_REPLY_TOKENS = 1200;
+
 // What the context block lets through of the open video. The script and the
 // scene lines are resent on every round, so they are capped: enough to resolve
 // "la escena del cliente con la llave", not the whole production. Once there
@@ -113,8 +120,11 @@ const LIMITES = 'NUNCA des recomendaciones financieras personalizadas, ni estime
 // line of this prompt is paid again on every round of every turn.
 const SYSTEM = [
     'Eres el copiloto de Stickman, el estudio de videos verticales cortos de marketing hipotecario. Operas toda la app con herramientas.',
-    'Te escuchan por voz: responde en español, de una a tres frases cortas y naturales, sin listas, markdown ni emojis.',
-    'Si la intencion es clara, actua sin pedir permiso y encadena en este mismo turno todas las herramientas que la peticion necesite. Pregunta solo si falta un dato imprescindible.',
+    'Conversas por voz con un operador de Colombia o Latinoamerica: habla como una persona cercana, en español latino y tuteando, sin sonar a formulario ni repetir saludos.',
+    'Tu respuesta se lee en voz alta: de una a tres frases cortas, en prosa, sin listas, numeraciones, markdown, simbolos, enlaces ni emojis. Escribe numeros y unidades como se dicen.',
+    'Los mensajes del operador suelen venir del dictado por voz: llegan sin tildes, sin puntuacion, con palabras mal reconocidas o cortadas. Interpreta la intencion por el sentido y el CONTEXTO, no por la letra: "cena" o "esena" es escena, "guion" o "gion" es guion, "rils" o "rich" es Reels, "chorts" es Shorts, "tic toc" es TikTok, "la tres" es la escena 3. Entiende el habla coloquial ("hagale", "dale", "listo", "de una", "parce", "bacano", "chevere", "cambiele eso") sin comentarla.',
+    'Manten el hilo: "eso", "otra vez", "mas corto", "la siguiente" o "como antes" se refieren a lo ultimo que se hablo o se hizo en esta conversacion.',
+    'Si la intencion es clara o casi clara, actua sin pedir permiso y encadena en este mismo turno todas las herramientas que la peticion necesite; usa valores por defecto razonables en lugar de preguntar. Haz una sola pregunta corta solo cuando dos interpretaciones lleven a cosas muy distintas o falte un dato imprescindible, y si el mensaje no tiene sentido pide que lo repita con otras palabras.',
     'Si cambiaste algo, confirmalo en una sola frase; si te preguntaron, solo responde. No leas el guion ni la lista de escenas salvo que te lo pidan.',
     'Usa el CONTEXTO para entender referencias: "la tercera escena" es la 3, "ese video" o "este" es el abierto, "el de TikTok" o "el de la cuota" es el de la biblioteca que encaje (abrelo con abrir_video). Las escenas empiezan en 1. No inventes contenido del video que no este en el CONTEXTO.',
     'Si no hay video abierto y hace falta uno, crealo con generar_guion.',
@@ -971,12 +981,32 @@ async function executeTool(call: ToolCall, state: CopilotState): Promise<string>
 // still ends with what actually happened instead of silence.
 function summarise(state: CopilotState): string {
     if (!state.acciones.length) {
-        return 'No termine de entender que necesitas. Dime otra vez que quieres hacer con el video.';
+        return 'Perdona, no te entendi bien. ¿Me lo dices con otras palabras?';
     }
     const done = state.acciones.map((accion) => accion.toLowerCase());
     const last = done[done.length - 1];
     const rest = done.slice(0, -1);
     return rest.length ? `Listo: ${rest.join(', ')} y ${last}.` : `Listo: ${last}.`;
+}
+
+// The model's reply is read out loud and shown as a plain bubble, so markdown
+// it slips in despite the prompt ("**Listo**", "- escena 1") is flattened to
+// prose here, once, for every client. Only applied to model text: the tool
+// messages the keyword mode speaks are written for the voice already, and
+// finalReply (the delete question) must reach the operator word for word.
+function toSpokenReply(text: string): string {
+    return text
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/^\s{0,3}(#{1,6}|[-*•]|\d+[.)])\s+/gm, '')
+        .replace(/(\*\*|__|`)/g, '')
+        .replace(/(^|\s)[*_](\S[^*_]*\S|\S)[*_](?=\s|[.,;:!?]|$)/g, '$1$2')
+        // A line that ended without punctuation becomes a sentence, so the
+        // voice pauses there instead of running two lines together.
+        .replace(/([^.!?:;,\s])[ \t]*\n+[ \t]*/g, '$1. ')
+        .replace(/[ \t]*\n+[ \t]*/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 }
 
 function toResult(state: CopilotState, reply: string, provider: string | null): CopilotResult {
@@ -1248,7 +1278,7 @@ export async function runCopilot(videoId: string | null, turns: CopilotTurn[], s
     let reply = '';
 
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
-        const result = await generateWithFallback(system, chat, { tools: TOOLS, maxTokens: 800, temperature: 0.3 });
+        const result = await generateWithFallback(system, chat, { tools: TOOLS, maxTokens: MAX_REPLY_TOKENS, temperature: 0.3 });
         if (!result) {
             // Keys are configured but every provider failed. On the first round
             // nothing has run yet, so the regex interpreter can still serve the
@@ -1259,7 +1289,7 @@ export async function runCopilot(videoId: string | null, turns: CopilotTurn[], s
 
         provider = result.provider;
         if (!result.toolCalls.length) {
-            reply = result.text;
+            reply = toSpokenReply(result.text);
             break;
         }
 

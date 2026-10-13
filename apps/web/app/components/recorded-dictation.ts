@@ -20,8 +20,9 @@ export interface RecordedRecognition {
 }
 
 // Silence after speech that ends the phrase. Shorter than the native path's
-// PAUSE_TO_SEND_MS because the transcription round trip comes on top of it.
-const END_OF_PHRASE_MS = 1400;
+// PAUSE_TO_SEND_MS because the transcription round trip comes on top of it;
+// 1.4 s plus that round trip made every turn feel like a walkie-talkie.
+const END_OF_PHRASE_MS = 1000;
 // Nobody spoke: give the mic back so hands-free can reopen it.
 const NO_SPEECH_MS = 8000;
 // One phrase, not a monologue; also keeps the upload under Vercel's limit.

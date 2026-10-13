@@ -12,6 +12,10 @@ const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const STT_URL = process.env.GROQ_STT_URL ?? 'https://api.groq.com/openai/v1/audio/transcriptions';
 const STT_MODEL = process.env.GROQ_STT_MODEL ?? 'whisper-large-v3-turbo';
 
+// Words, not commands: on a near-silent clip Whisper can echo its prompt
+// back, and an echoed "borra el video" would be read as an order.
+const VOCABULARY = 'Stickman, TikTok, Reels, Shorts, guion, escenas, cuota inicial, crédito hipotecario, tasa fija, plantilla, marca, música.';
+
 const EXTENSIONS: Record<string, string> = {
     'audio/webm': 'webm',
     'audio/ogg': 'ogg',
@@ -47,6 +51,10 @@ export async function POST(request: Request) {
     // The language is pinned, not detected: short clips of Spanish get
     // misdetected often enough to come back translated or garbled.
     form.append('language', 'es');
+    // Whisper spells what it hears the way its prompt does: the studio's own
+    // vocabulary here keeps "Reels" from coming back as "rils" and "guion"
+    // or "escena" from turning into near-homophones.
+    form.append('prompt', VOCABULARY);
     form.append('response_format', 'json');
     form.append('temperature', '0');
 

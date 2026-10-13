@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { VideoRecord } from './api';
 import AssistantEntity, { type EntityMood } from './assistant-entity';
+import { watchForBargeIn } from './barge-in';
 import { LogoMark } from './logo';
 import { createRecordedRecognition } from './recorded-dictation';
+import { bestVoice, primeVoices, toChunks, toSpeech } from './speech-voice';
 
 interface AssistantProps {
     videos: VideoRecord[];
@@ -19,6 +21,10 @@ interface AssistantProps {
 interface Turn {
     who: 'tu' | 'stickman';
     text: string;
+    // Said by the panel itself, not by the copilot: the basic-mode notice, a
+    // refused microphone, a failed request. Shown, but never sent back as
+    // history - the model would read them as its own words and repeat them.
+    local?: boolean;
 }
 
 // Speech recognition is still vendor-prefixed in Chrome and absent in Firefox,
@@ -44,15 +50,33 @@ type Recognition = {
 // is a one-line change, not a hunt through the function body.
 const RECOGNITION_LANG = process.env.NEXT_PUBLIC_RECOGNITION_LANG ?? 'es-MX';
 
-// How long the operator has to stay quiet before what they said is sent. The
-// engine marks a phrase "final" at any half-second breath, so sending on the
-// first final result cut people off mid-thought; this is the pause that means
-// "I'm done", not the pause that means "let me think".
-const PAUSE_TO_SEND_MS = 2500;
-// Once the engine has settled everything it heard (nothing interim left), a
-// shorter silence is enough: the phrase is already complete, and waiting the
-// full pause on top of the model's own latency is what made it feel slow.
-const SETTLED_PAUSE_MS = 1200;
+// How long the operator has to stay quiet before what they said is sent, while
+// the engine still holds part of the phrase as interim (it has not decided the
+// sentence is over). Sending on the first final result cut people off
+// mid-thought; 2.5 s on top of the model's latency felt like talking to a wall.
+// 1.5 s still covers a "let me think" breath in the middle of a phrase.
+const PAUSE_TO_SEND_MS = 1500;
+// Once the engine has settled everything it heard (nothing interim left), it
+// has already waited out its own end-of-phrase silence, so a short extra pause
+// is enough to send.
+const SETTLED_PAUSE_MS = 700;
+// Between one recognition session ending and the next one starting in
+// hands-free: starting again inside the same tick fails in Chrome while the
+// previous session is still releasing the mic.
+const RESUME_DELAY_MS = 250;
+// /api/speak answered "no voice" (no key, no HeyGen balance): skip that round
+// trip for a while instead of paying its latency before every reply.
+const HEYGEN_RETRY_MS = 10 * 60 * 1000;
+
+// Outside the component: speak() only ever runs from event handlers, but the
+// React compiler's purity lint cannot tell and flags a bare Date.now() there.
+function heygenResting(offUntil: number): boolean {
+    return Date.now() < offUntil;
+}
+// A tool turn (writing a script, planning scenes) can take several seconds;
+// past this, a short spoken filler tells the operator they were heard.
+const FILLER_AFTER_MS = 3500;
+const FILLERS = ['Dame un segundo.', 'Ya casi lo tengo.', 'Un momento, ya lo hago.'];
 
 function getRecognition(): Recognition | null {
     if (typeof window === 'undefined') return null;
@@ -102,6 +126,14 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     // The HeyGen clip being played, so muting or a newer reply can cut it.
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const wordTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+    // When /api/speak may be tried again; 0 means "try it now".
+    const heygenOffUntilRef = useRef(0);
+    // The utterance being spoken. Held so Chrome does not garbage-collect it
+    // mid-sentence, which silently drops its onend and strands the mic.
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    // Stops the hands-free barge-in watcher while a reply is being spoken.
+    const bargeInStopRef = useRef<(() => void) | null>(null);
+    const fillerCountRef = useRef(0);
     const busyRef = useRef(false);
     const [busy, setBusy] = useState(false);
     // Bumped on each heard or spoken word; the figure turns it into motion.
@@ -155,18 +187,28 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         return () => clearTimeout(timer);
     }, []);
 
+    // The voice list loads asynchronously; start now so the first reply
+    // already has the good voice. Leaving the page stops any reply mid-air
+    // and releases the barge-in microphone.
+    useEffect(() => {
+        primeVoices();
+        const bargeIn = bargeInStopRef;
+        return () => {
+            bargeIn.current?.();
+            window.speechSynthesis?.cancel();
+        };
+    }, []);
+
     function toggleVoice() {
         const next = !voiceOn;
         voiceRef.current = next;
         setVoiceOn(next);
         // Silence has to be immediate: muting while a sentence is being spoken
-        // and still hearing it out is not muting. Cancelling fires the current
-        // utterance's onend, which (via the token check in speak()) picks the
-        // microphone back up immediately in hands-free mode - correct, since
-        // there is nothing left to echo.
+        // and still hearing it out is not muting. Hands-free picks the
+        // microphone back up right away - there is nothing left to echo.
         if (!next && typeof window !== 'undefined') {
-            stopVoiceClip();
-            window.speechSynthesis?.cancel();
+            stopSpeaking();
+            maybeResumeListening();
         }
         try {
             window.localStorage.setItem(VOICE_KEY, next ? 'on' : 'off');
@@ -225,9 +267,12 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     // The HeyGen voice first (the same voice as the videos), the browser's
     // own voice whenever that is not available: /api/speak answers 204 with no
     // key, no balance, no session or any error, and a clip that will not play
-    // falls back too. Either way onDone fires exactly once.
-    function speak(text: string, onDone: () => void) {
-        if (typeof window === 'undefined' || !text) {
+    // falls back too. Either way onDone fires exactly once. A 204 is
+    // remembered for a while, so a studio without HeyGen balance does not wait
+    // on that round trip before every single reply.
+    function speak(text: string, onDone: () => void, browserOnly = false) {
+        const spoken = toSpeech(text);
+        if (typeof window === 'undefined' || !spoken) {
             onDone();
             return;
         }
@@ -237,15 +282,20 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         const finish = () => {
             if (speechTokenRef.current === token) onDone();
         };
+        if (browserOnly || heygenResting(heygenOffUntilRef.current)) {
+            speakWithBrowser(spoken, token, finish);
+            return;
+        }
 
         void (async () => {
             try {
                 const response = await fetch('/api/speak', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text }),
+                    body: JSON.stringify({ text: spoken }),
                     signal: AbortSignal.timeout(9000),
                 });
+                if (response.status !== 200) heygenOffUntilRef.current = Date.now() + HEYGEN_RETRY_MS;
                 if (speechTokenRef.current !== token) return;
                 if (response.status === 200) {
                     const data = await response.json() as { audio_url?: string; word_starts?: number[] };
@@ -268,9 +318,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                             if (settled) return;
                             settled = true;
                             if (audioRef.current === audio) audioRef.current = null;
-                            speakWithBrowser(text, token, finish);
+                            speakWithBrowser(spoken, token, finish);
                         };
                         audio.onplay = () => {
+                            onSpeechStart(token);
                             // Pulse the figure on every word, like the browser
                             // voice's boundary events do.
                             wordTimersRef.current = (data.word_starts ?? []).map((start) => setTimeout(onVoiceActivity, start * 1000));
@@ -287,30 +338,117 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     }
                 }
             } catch {
-                // fall through to the browser's voice
+                // Timed out or offline: treated like a 204, and the browser's
+                // voice below takes over.
+                heygenOffUntilRef.current = Date.now() + HEYGEN_RETRY_MS;
             }
-            if (speechTokenRef.current === token && !audioRef.current) speakWithBrowser(text, token, finish);
+            if (speechTokenRef.current === token && !audioRef.current) speakWithBrowser(spoken, token, finish);
         })();
     }
 
+    // The browser's voice, made human: the best Spanish voice installed
+    // (speech-voice.ts ranks them) and the reply read sentence by sentence.
+    // One long utterance is cut off by Chrome after about fifteen seconds and
+    // makes the first word wait for the whole paragraph; short chunks start
+    // at once and chain through onend.
     function speakWithBrowser(text: string, token: number, finish: () => void) {
-        if (!window.speechSynthesis || speechTokenRef.current !== token) {
+        const synth = typeof window === 'undefined' ? undefined : window.speechSynthesis;
+        if (!synth || speechTokenRef.current !== token) {
             finish();
             return;
         }
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'es-ES';
-        utterance.rate = 1.05;
-        // cancel() above also fires onend on whatever it interrupted; finish()
-        // checks the token, so a superseded utterance never resumes the mic.
-        utterance.onend = finish;
-        utterance.onerror = finish;
-        utterance.onboundary = onVoiceActivity;
-        window.speechSynthesis.speak(utterance);
+        const chunks = toChunks(text);
+        void bestVoice().then((voice) => {
+            if (speechTokenRef.current !== token) return;
+            if (synth.speaking || synth.pending) synth.cancel();
+            let index = 0;
+            let watchdog: ReturnType<typeof setTimeout> | null = null;
+            const next = () => {
+                if (watchdog) clearTimeout(watchdog);
+                watchdog = null;
+                // Superseded (a newer reply, mute, barge-in): whoever bumped
+                // the token owns what happens next, so nothing resumes here.
+                if (speechTokenRef.current !== token) return;
+                if (index >= chunks.length) {
+                    utteranceRef.current = null;
+                    finish();
+                    return;
+                }
+                const chunk = chunks[index];
+                const first = index === 0;
+                index += 1;
+                const utterance = new SpeechSynthesisUtterance(chunk);
+                if (voice) utterance.voice = voice;
+                utterance.lang = voice?.lang ?? RECOGNITION_LANG;
+                // Neural voices already have natural pacing; speeding them up
+                // or shifting the pitch is what makes them sound synthetic.
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                let ended = false;
+                const end = () => {
+                    if (ended) return;
+                    ended = true;
+                    next();
+                };
+                // cancel() fires onend/onerror on whatever it interrupted;
+                // next() checks the token, so a superseded chunk chains nothing.
+                utterance.onend = end;
+                utterance.onerror = end;
+                utterance.onboundary = onVoiceActivity;
+                utterance.onstart = () => {
+                    onVoiceActivity();
+                    if (first) onSpeechStart(token);
+                };
+                utteranceRef.current = utterance;
+                // Chrome now and then never fires onend (network voices, a
+                // speak() right after cancel()); without a deadline the reply
+                // would never finish and hands-free would never listen again.
+                // Generous: about 9 characters a second plus start-up time.
+                watchdog = setTimeout(end, 4000 + chunk.length * 110);
+                synth.speak(utterance);
+            };
+            next();
+        });
+    }
+
+    // The reply has actually started sounding: only now is the barge-in
+    // watcher armed, so its calibration hears the assistant's own echo rather
+    // than the silence before it.
+    function onSpeechStart(token: number) {
+        if (speechTokenRef.current !== token || !speakingRef.current || !handsFreeRef.current || bargeInStopRef.current) return;
+        bargeInStopRef.current = watchForBargeIn(bargeIn);
+    }
+
+    function stopBargeIn() {
+        bargeInStopRef.current?.();
+        bargeInStopRef.current = null;
+    }
+
+    // Cuts whatever is being said, now. The token bump keeps the cancelled
+    // utterance's onend from resuming anything; the caller decides what
+    // follows (listen, send, or nothing).
+    function stopSpeaking() {
+        speechTokenRef.current += 1;
+        stopVoiceClip();
+        if (typeof window !== 'undefined') window.speechSynthesis?.cancel();
+        utteranceRef.current = null;
+        stopBargeIn();
+        if (speakingRef.current) {
+            speakingRef.current = false;
+            setSpeaking(false);
+        }
+    }
+
+    // Barge-in: the operator talked over the reply (hands-free) or pressed the
+    // mic while it was speaking. Like a person would, it stops and listens.
+    function bargeIn() {
+        if (!speakingRef.current) return;
+        stopSpeaking();
+        beginListening();
     }
 
     function onSpeechEnd() {
+        stopBargeIn();
         speakingRef.current = false;
         setSpeaking(false);
         maybeResumeListening();
@@ -323,8 +461,8 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         beginListening();
     }
 
-    function say(text: string, aloud = true) {
-        setTurns((current) => [...current, { who: 'stickman', text }]);
+    function say(text: string, aloud = true, local = !aloud) {
+        setTurns((current) => [...current, { who: 'stickman', text, local }]);
         if (aloud && voiceRef.current) {
             speakingRef.current = true;
             setSpeaking(true);
@@ -340,14 +478,29 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
         const text = message.trim();
         if (!text || busyRef.current) return;
 
+        // Typing while it talks means the operator has moved on: the old
+        // reply stops instead of talking over the new one.
+        stopSpeaking();
         setInput('');
         const history = [
-            ...turnsRef.current.map((turn) => ({ role: turn.who === 'tu' ? 'user' as const : 'assistant' as const, content: turn.text })),
+            ...turnsRef.current
+                .filter((turn) => !turn.local)
+                .map((turn) => ({ role: turn.who === 'tu' ? 'user' as const : 'assistant' as const, content: turn.text })),
             { role: 'user' as const, content: text },
         ];
         setTurns((current) => [...current, { who: 'tu', text }]);
         setBusy(true);
         busyRef.current = true;
+
+        // Silence after speaking reads as "it did not hear me". Spoken only,
+        // never added to the conversation, and cut by the reply itself (speak()
+        // cancels whatever is sounding) the moment it lands.
+        const filler = setTimeout(() => {
+            if (!busyRef.current || !voiceRef.current || speakingRef.current) return;
+            const phrase = FILLERS[fillerCountRef.current % FILLERS.length];
+            fillerCountRef.current += 1;
+            speak(phrase, () => undefined, true);
+        }, FILLER_AFTER_MS);
 
         try {
             // The copilot runs the tools itself, against the same persistence
@@ -378,6 +531,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             // reply can take far longer than the fetch did, and the mic must
             // be free to resume the instant the turn's speech (or the lack of
             // it) says so, not only once this function eventually returns.
+            clearTimeout(filler);
             setBusy(false);
             busyRef.current = false;
 
@@ -386,9 +540,10 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                 say('Aviso: estoy respondiendo en modo basico, sin modelo de lenguaje. Entiendo ordenes concretas pero no conversacion libre. Se arregla configurando GROQ_API_KEY o OPENROUTER_API_KEY.', false);
             }
         } catch (error) {
+            clearTimeout(filler);
             setBusy(false);
             busyRef.current = false;
-            say(error instanceof Error ? error.message : 'Algo fallo al ejecutar eso.');
+            say(error instanceof Error ? error.message : 'Algo fallo al ejecutar eso.', true, true);
         }
     }
 
@@ -481,20 +636,38 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                 return;
             }
 
-            // Any other end while nothing was captured - a silence timeout, or
-            // the browser closing the session on its own - is normal in
-            // continuous listening. Pick the mic back up rather than making
-            // the operator click again.
-            if (!handled) maybeResumeListening();
+            // Any other end - a silence timeout, the browser closing the
+            // session on its own, or a phrase sent whose reply already came
+            // back while this session was still closing (voice off, fast
+            // answer) - is normal in continuous listening. Pick the mic back
+            // up rather than making the operator click again; the gate
+            // refuses while a turn is still thinking or speaking, and that
+            // turn resumes it itself when it is done.
+            setTimeout(maybeResumeListening, RESUME_DELAY_MS);
         };
 
         recognitionRef.current = recognition;
         setInterim('');
-        recognition.start();
+        try {
+            recognition.start();
+        } catch {
+            // Chrome throws if the previous session has not fully let go of
+            // the mic yet. Try once more shortly instead of leaving hands-free
+            // silently dead.
+            recognitionRef.current = null;
+            setListening(false);
+            if (handsFreeRef.current) setTimeout(maybeResumeListening, RESUME_DELAY_MS * 2);
+            return;
+        }
         setListening(true);
     }
 
     function toggleMic() {
+        // Pressed while it talks: barge in, in either mode.
+        if (speakingRef.current) {
+            bargeIn();
+            return;
+        }
         if (handsFreeRef.current) return; // the mic already belongs to hands-free
         if (listening) {
             recognitionRef.current?.stop();
@@ -512,8 +685,9 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
             // completion (say -> onSpeechEnd or the silent-aside branch) will
             // pick the mic up as soon as it is free, via maybeResumeListening.
             beginListening();
-        } else if (recognitionRef.current) {
-            recognitionRef.current.stop();
+        } else {
+            stopBargeIn();
+            recognitionRef.current?.stop();
         }
     }
 
@@ -532,7 +706,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
     const mood: EntityMood = speaking ? 'speaking' : busy ? 'thinking' : listening ? 'listening' : 'idle';
 
     const micPlaceholder = speaking
-        ? 'El asistente esta hablando...'
+        ? (handsFree ? 'Hablando... interrumpeme cuando quieras' : 'Hablando... pulsa el microfono para interrumpir')
         : listening
         ? (handsFree ? 'Escuchando... haz una pausa para enviar' : 'Escuchando... pausa o pulsa el microfono para enviar')
         : 'Escribe o pulsa el microfono';
@@ -658,12 +832,16 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                 <button
                     type="button"
                     onClick={toggleMic}
-                    disabled={busy || speaking || handsFree}
+                    // Enabled while it speaks, in either mode: pressing it
+                    // then is a barge-in - it stops talking and listens.
+                    disabled={busy || (handsFree && !speaking)}
                     aria-pressed={listening && !handsFree}
-                    aria-label={handsFree
+                    aria-label={speaking
+                        ? 'Interrumpir al asistente y hablar'
+                        : handsFree
                         ? 'Microfono en uso por el modo manos libres'
                         : listening ? 'Escuchando: pulsa para detener' : 'Hablar: pulsa y di lo que necesitas'}
-                    title={handsFree ? 'El modo manos libres ya tiene el microfono abierto' : undefined}
+                    title={speaking ? 'Interrumpir y hablar' : handsFree ? 'El modo manos libres ya tiene el microfono abierto' : undefined}
                     className={`btn rounded-full px-3 text-xs ${
                         listening && !handsFree ? 'listening-ring bg-red-600 font-semibold text-white hover:bg-red-700' : 'btn-secondary'
                     }`}
@@ -671,7 +849,7 @@ export default function Assistant({ videos, loading, selected, onCreated, onUpda
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
                         <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v4" />
                     </svg>
-                    <span className="hidden min-[400px]:inline">{listening && !handsFree ? 'Escuchando' : 'Hablar'}</span>
+                    <span className="hidden min-[400px]:inline">{speaking ? 'Interrumpir' : listening && !handsFree ? 'Escuchando' : 'Hablar'}</span>
                 </button>
                 <input
                     value={input}
