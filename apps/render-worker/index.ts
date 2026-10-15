@@ -22,6 +22,7 @@ import {
 import { ensureVoiceModel, estimateWordTimings, mouthEnvelope, speak } from './voice';
 import { aiVideoModel, buildScenePrompt, generateSceneVideo, isAiVideoEnabled } from './ai-video';
 import { heygenMissingConfig, isHeygenEnabled, startAvatarScenes, type AvatarClip } from './heygen';
+import { errorReportingStatus, reportError } from './error-reporting';
 
 // Frames are drawn with a real 2D graphics context and piped to ffmpeg, so
 // this is the animation's frame rate as well as the output's.
@@ -918,6 +919,7 @@ const server = createServer(async (request, response) => {
 			bucket: storageBucket,
 			last_storage_error: lastStorageError,
 			render_auth: renderAuthStatus(),
+			error_reporting: errorReportingStatus(),
 		});
 		return;
 	}
@@ -1008,6 +1010,7 @@ const server = createServer(async (request, response) => {
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Error de render desconocido.';
 		console.error(`Render ${jobId} fallo:`, error);
+		void reportError(error, { job_id: jobId, scenes: job.scenes.length });
 		await reportProgress(jobId, { render_status: 'error', render_error: message.slice(0, 500) });
 	}
 });
