@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "apps/web/app/components/video-studio.tsx": {
-    "mtime": 1791896871.7760627,
-    "seen": 1791897531.7823868,
-    "ast_hash": "62f07a9f22497cacc7f126c958f680ac",
+    "mtime": 1791903976.7439382,
+    "seen": 1791910709.0739372,
+    "ast_hash": "392862d89042885f2b1b550a4f2bf87a",
     "semantic_hash": ""
   },
   "apps/web/app/components/video-workspace.tsx": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "scripts/e2e.mjs": {
-    "mtime": 1791786934.513775,
-    "seen": 1791787257.9364157,
-    "ast_hash": "8e80ce97e448a947699cb674a8dbffdb",
+    "mtime": 1791903940.5564458,
+    "seen": 1791910709.0739846,
+    "ast_hash": "574076a8af9e8bb511c3f2653214bdde",
     "semantic_hash": ""
   },
   "scripts/make-backdrop.mjs": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "apps/web/proxy.ts": {
-    "mtime": 1791897321.3272758,
-    "seen": 1791897531.7824628,
-    "ast_hash": "e07525c1581251180dd752dacf790d8b",
+    "mtime": 1791903920.7636318,
+    "seen": 1791910709.0739665,
+    "ast_hash": "54776d72502c78e72bf719f944c797b4",
     "semantic_hash": ""
   },
   "apps/web/app/api/health/route.ts": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "plugin/skills/desplegar/SKILL.md": {
-    "mtime": 1791786983.4480555,
-    "seen": 1791787257.9365313,
-    "ast_hash": "0e1bd426fc70ff229b7340315cbd9263",
+    "mtime": 1791903999.88252,
+    "seen": 1791910709.074017,
+    "ast_hash": "48efde88a71d16528151a38014708352",
     "semantic_hash": ""
   },
   "plugin/skills/verificar/SKILL.md": {
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "apps/web/lib/sign-in-required.ts": {
-    "mtime": 1791897321.3283088,
-    "seen": 1791897531.7824316,
-    "ast_hash": "9661c06dca337353118878ab3da35f87",
+    "mtime": 1791903920.7621167,
+    "seen": 1791910709.073955,
+    "ast_hash": "7276c9c905ea9b454fcbc0ed60162be6",
     "semantic_hash": ""
   },
   "apps/render-worker/heygen.ts": {
