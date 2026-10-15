@@ -43,7 +43,13 @@ async function exists(path: string) {
 
 async function downloadModel(): Promise<string | null> {
 	const modelDirectory = join(CACHE_DIR, MODEL_NAME);
-	if (await exists(join(modelDirectory, MODEL_FILE))) return modelDirectory;
+	// The model file alone is not proof of a usable cache: a copied project once
+	// arrived with the .onnx intact but espeak-ng-data almost empty, sherpa-onnx
+	// refused the config, and every scene came out silent while the render
+	// itself reported success. phontab is what sherpa-onnx checks first.
+	if (await exists(join(modelDirectory, MODEL_FILE)) && await exists(join(modelDirectory, 'espeak-ng-data', 'phontab'))) {
+		return modelDirectory;
+	}
 
 	// Extract into a staging directory and rename on success, so an interrupted
 	// download can never leave a half-written model that looks complete.
