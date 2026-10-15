@@ -39,6 +39,14 @@ Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` de
 
 4-space indent, single quotes, TypeScript strict, no `any`, no new dependencies without saying why in your report. Spanish for anything a person reads, English for code and comments. Comments explain **why**; read the neighbouring file and match its register instead of commenting every function.
 
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
+
 ## Before you finish
 
 Type-check what you touched. Do **not** run `npm run dev`, and be aware that `npm run verify` fails with EPERM while the dev server holds `apps/web/.next` (delete the folder if that happens). qa-agent runs the full build; your job is to hand over code that compiles.

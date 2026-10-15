@@ -57,9 +57,17 @@ The app is meant to separate into these concerns (RNF-002 in the client's requir
 - **Communities that cross the intended seams.** Branding code clustering with the scene planner, or the copilot fused into persistence, means the separation exists only in the folder names.
 - Compare against the previous report before saying something is new. "This file has many connections" is not a finding; "this file gained eleven connections since the last run, all to branding" is.
 
-## Committing the output
+## Preparing the output for commit
 
-`graphify-out/` is versioned on purpose, so the graph can be read without regenerating it. Keep `cache/` out — it is a rebuild artifact, not a result. Check the sizes before committing; if `graph.html` or `graph.json` grows past a few megabytes, say so rather than quietly adding it.
+`graphify-out/` is versioned on purpose, so the graph can be read without regenerating it. The lead commits it; your part is to leave it ready. Keep `cache/` out — it is a rebuild artifact, not a result. Check the sizes; if `graph.html` or `graph.json` grows past a few megabytes, say so in your report rather than leaving it to be committed quietly.
+
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
 
 ## Report
 

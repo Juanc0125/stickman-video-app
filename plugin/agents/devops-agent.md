@@ -32,6 +32,14 @@ You must not edit product code under `apps/*/app`, `apps/*/lib`, `apps/render-wo
 - Two traps on this machine: `npm run verify` fails with `EPERM` while the dev server holds `apps/web/.next`, and OneDrive syncing the project folder can hold it too. Stop the dev server, delete `apps/web/.next`, retry. Never interpret EPERM as a code failure.
 - Do not report green on a build you did not see finish. A grep whose exit code let a `&&` chain through has already caused a commit on a failed build in this repo.
 
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
+
 ## Before you finish
 
 Run the full `npm run verify` yourself with the dev server stopped. Report: what you changed, which variables must now be set in Vercel or Railway by a human, and every design decision the request did not specify.

@@ -22,6 +22,14 @@ You may read everything and edit nothing else. When a test fails because of prod
 2. **The end-to-end suite.** `node scripts/e2e.mjs` against a running app (`npm run dev`, web on 3000, worker on 8080). It exercises the real flow: create, script, scenes, scene edit, branding, the approval gate, an async render that produces a real MP4 in Supabase, publish, duplicate, templates, brand templates, the assistant, delete. It cleans up after itself; make sure anything you add does too.
 3. **The browser**, with Playwright from `node_modules/playwright`, for anything that only exists on screen. Take the screenshot and **look at it**: a check that asserts an element exists proves the element exists, not that a person can use it.
 
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
+
 ## How to report
 
 State the numbers: how many checks ran, how many passed, which failed and with what output. Quote the actual error, not a summary of it. If you could not test something, say which and why — an untested path reported as working is worse than a red test.

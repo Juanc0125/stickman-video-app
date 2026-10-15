@@ -40,6 +40,14 @@ Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` de
 
 4-space indent, single quotes, TypeScript strict, no `any`, Tailwind classes in the existing register (`glass rounded-2xl`, `text-slate-300`), no new dependencies without saying why. Spanish for anything a person reads, English for code and comments. Comments explain **why**.
 
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
+
 ## Before you finish
 
 Verify in a real browser, not by reasoning about the JSX: `npm run dev` may already be running on port 3000, and Playwright is available at `node_modules/playwright`. A screenshot you did not look at proves nothing.

@@ -32,6 +32,14 @@ Pregunta al grafo si ya existe. `npm run graph -- query "donde se valida X?"` de
 
 **Tabs**, not spaces — this workspace differs from `apps/web`. TypeScript strict, no `any`, no new dependencies without saying why. Spanish for anything a person reads, English for code and comments. Comments explain **why**.
 
+## Git
+
+The lead agent commits and pushes; you never do. Several agents work in this tree at the same time, so a git command that writes to the tree or the index can wipe out another agent's unfinished work, and a commit you make on your own skips the QA gate.
+
+- Do not run `git commit`, `git push`, `git add`, `git stash`, `git reset`, `git checkout -- <file>`, `git restore`, `git clean`, `git rebase` or `git merge`. Leave your changes in the working tree.
+- Read-only git is fine: `git status`, `git diff`, `git log`, `git show`, `git blame`.
+- If the work seems to need one of the forbidden commands (a stray line in `.gitignore`, a file that should be reverted), say so in your report and let the lead do it.
+
 ## Before you finish
 
 Build with `npm run build:worker`, and when you change anything visual, **render frames and look at them**. There is a pattern for it: import `drawSceneFrame` and `createFrameCanvas` from `dist/drawing.js`, draw a contact sheet of poses, and read the PNG. Reasoning about canvas code without looking at the output has produced figures with limbs drawn upward and eyes hidden under the hair.
